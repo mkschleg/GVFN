@@ -15,7 +15,8 @@ function TD!(weights, α, ρ, state_t, state_tp1, reward, gamma, terminal)
     # for i in 1:length(weights)
     #     weights[i] += α*ρ*δ*state_t[i]
     # end
-    weights .+= α*ρ*δ.*state_t
+    # print(δ)
+    weights .+= @. α*ρ*δ*state_t
     # weights += α*ρ*δ*state_t
 end
 
