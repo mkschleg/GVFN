@@ -1,5 +1,4 @@
 
-
 # using GVFN
 using ProgressMeter
 using LinearAlgebra
@@ -87,7 +86,7 @@ function test_mat(numsteps; pertubation=0.0)
                 [1.0, 0.0, 1.0],
                 [1.0, 0.0, 1.0]]
     agent_state = 0
-    numgvfs = 100
+    numgvfs = 7
     numweights = 3 + numgvfs
 
     ϕ_t = zeros(numweights)
@@ -156,7 +155,7 @@ function test_mat(numsteps; pertubation=0.0)
         r[numgvfs] = cycleobs[agent_state+1][2]
         γ_tp1[numgvfs] = 0.9*(1-r[1])
 
-        α=0.2
+        α=0.4
         λ=0.9
         
         optimize_gvfs!(preds, preds_tilde, weights, traces, ϕ_t, ϕ_tp1, r, γ_t, γ_tp1, λ, α, numgvfs, δ, preds_prime)
@@ -178,6 +177,3 @@ function test_mat(numsteps; pertubation=0.0)
     end
     return pred_strg, weights
 end
-
-
-
