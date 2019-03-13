@@ -37,7 +37,9 @@ function JuliaRL.environment_step!(env::CycleWorld, action::Int64; rng = Random.
     # actions 1 == Turn Left
     # actions 2 == Turn Right
     # actions 3 == Up
+    # JuliaRL.step()
     env.agent_state = (env.agent_state + 1) % env.chain_length
+    # JuliaRL
 end
 
 function JuliaRL.get_reward(env::CycleWorld) # -> get the reward of the environment
@@ -71,4 +73,3 @@ end
 function Base.show(io::IO, env::CycleWorld)
     println(env.agent_state)
 end
-
