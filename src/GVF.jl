@@ -1,98 +1,126 @@
-
 using Lazy
 
-module CumulantTypes
-@enum enum begin
-    Observation = 1
-    Composition = 2
-    Reward = 3
-end
+import Base.get
+
+abstract type AbstractParameterFunction end
+
+function get(apf::AbstractParameterFunction, state_t, action_t, state_tp1, action_tp1, preds_tilde) end
+
+function call(apf::AbstractParameterFunction, state_t, action_t, state_tp1, action_tp1, preds_tilde)
+    get(apf::AbstractParameterFunction, state_t, action_t, state_tp1, action_tp1, preds_tilde)
 end
 
-mutable struct Cumulant
-    typ::CumulantTypes.enum
-    dependent::Int64
-end
+"""
+Cumulants
+"""
 
-function get_cumulant(cumulant::Cumulant, obs, preds_tilde)
-    if cumulant.typ == CumulantTypes.Observation
-        return obs[cumulant.dependent]
-    elseif cumulant.typ == CumulantTypes.Composition
-        # println("Composition")
-        return preds_tilde[cumulant.dependent]
-    else
-        return 0
-    end
-end
+abstract type AbstractCumulant <: AbstractParameterFunction end
 
-# const ContinuationType = ["Observation", "Constant"]
-module ContinuationTypes
-@enum enum begin
-    Observation = 1
-    Constant = 2
-    Myopic = 3
-    Functional = 4
-end
-end
-
-mutable struct Continuation
-    typ::ContinuationTypes.enum
-    γ_const::Float64
-    terminate
-    func
-    Continuation(typ, γ_const, terminate) = new(typ, γ_const, terminate, nothing)
-    Continuation(typ, γ_const, terminate, func) = new(typ, γ_const, terminate, func)
-end
-
-function get_continuation(continuation::Continuation, obs, preds_tilde)
-    if continuation.typ == ContinuationTypes.Observation
-        if continuation.terminate(obs)
-            return 0.0
-        else
-            return continuation.γ_const
-        end
-    elseif continuation.typ == ContinuationTypes.Constant
-        return continuation.γ_const
-    elseif continuation.typ == ContinuationTypes.Functional
-        return continuation.func(continuation, obs, preds_tilde)
-    else
-        return 0.0
-    end
-end
-
-module PolicyTypes
-@enum enum begin
-    Probabilities
-    Functional
-end
-end
-
-mutable struct Policy
-    typ::PolicyTypes.enum
-    probabilities::Array{Float64, 1}
-    func
-end
-
-Policy(probabilities::Array{Float64,1}) = Policy(PolicyTypes.Probabilities, probabilities, nothing)
-
-function get_probability(policy::Policy, state, action)
-    if policy.typ == PolicyTypes.Probabilities
-        return policy.probabilities[action]
-    elseif policy.typ == PolicyTypes.Functional
-        return policy.func(policy, state, action)
-    else
-        throw(ErrorException("Policy Type doesn't exist!"))
-    end
+function get(cumulant::AbstractCumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1)
+    throw(DomainError("get(CumulantType, args...) not defined!"))
 end
 
 
-mutable struct GVF
-    cumulant::Cumulant
-    continuation::Continuation
-    policy::Policy
+"""
+    FeatureCumulant
+    - Basic Cumulant which takes the value c_t = s_tp1[idx] for 1<=idx<=length(s_tp1)
+"""
+struct FeatureCumulant <: AbstractCumulant
+    idx::Int
 end
 
-@forward GVF.cumulant get_cumulant
-@forward GVF.continuation get_continuation
-@forward GVF.policy get_probability
+get(cumulant::FeatureCumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1) = state_tp1[cumulant.idx]
 
+struct PredictionCumulant <: AbstractCumulant
+    idx::Int
+end
+
+get(cumulant::PredictionCumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1) = preds_tp1[cumulant.idx]
+
+
+"""
+Discounting
+"""
+abstract type AbstractDiscount <: AbstractParameterFunction end
+
+function get(γ::AbstractDiscount, state_t, action_t, state_tp1, action_tp1, preds_tp1)
+    throw(DomainError("get(DiscountType, args...) not defined!"))
+end
+
+struct ConstantDiscount{T} <: AbstractDiscount
+    γ::T
+end
+
+get(cd::ConstantDiscount, state_t, action_t, state_tp1, action_tp1, preds_tp1) = cd.γ
+
+struct StateTerminationDiscount{T<:Number, F} <: AbstractDiscount
+    γ::T
+    condition::F
+    terminal::T
+    StateTerminationDiscount(γ, condition) = new{typeof(γ), typeof(condition)}(γ, condition, convert(typeof(γ), 0.0)) 
+end
+
+get(td::StateTerminationDiscount, state_t, action_t, state_tp1, action_tp1, preds_tp1) =
+    td.condition(state_tp1) ? td.terminal : td.γ
+
+
+"""
+Policies
+"""
+abstract type AbstractPolicy <: AbstractParameterFunction end
+
+function get(π::AbstractPolicy, state_t, action_t, state_tp1, action_tp1, preds_tp1)
+    throw(DomainError("get(PolicyType, args...) not defined!"))
+end
+
+
+struct NullPolicy <: AbstractPolicy
+end
+
+get(π::NullPolicy, state_t, action_t, state_tp1, action_tp1, preds_tp1) = 1.0
+
+abstract type AbstractGVF end
+
+function get(gvf::AbstractGVF, state_t, action_t, state_tp1, action_tp1, preds_tp1) end
+
+get(gvf::AbstractGVF, state_t, action_t, state_tp1, preds_tp1) =
+    get(gvf::AbstractGVF, state_t, action_t, state_tp1, nothing, preds_tp1)
+
+get(gvf::AbstractGVF, state_t, action_t, state_tp1) =
+    get(gvf::AbstractGVF, state_t, action_t, state_tp1, nothing, nothing)
+
+function cumulant(gvf::AbstractGVF) end
+function discount(gvf::AbstractGVF) end
+function policy(gvf::AbstractGVF) end
+
+struct GVF{C<:AbstractCumulant, D<:AbstractDiscount, P<:AbstractPolicy} <: AbstractGVF
+    cumulant::C
+    discount::D
+    policy::P
+end
+
+cumulant(gvf::GVF) = gvf.cumulant
+discount(gvf::GVF) = gvf.discount
+policy(gvf::GVF) = gvf.policy
+
+function get(gvf::GVF, state_t, action_t, state_tp1, action_tp1, preds_tp1)
+    c = get(gvf.cumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1)
+    γ = get(gvf.discount, state_t, action_t, state_tp1, action_tp1, preds_tp1)
+    π_prob = get(gvf.policy, state_t, action_t, state_tp1, action_tp1, preds_tp1)
+    return c, γ, π_prob
+end
+
+abstract type AbstractHorde end
+
+struct Horde{T<:AbstractGVF} <: AbstractHorde
+    gvfs::Vector{T}
+end
+
+function get(gvfh::Horde, state_t, action_t, state_tp1, action_tp1, preds_tp1)
+    C = map(gvf -> get(cumulant(gvf), state_t, action_t, state_tp1, action_tp1, preds_tp1), gvfh.gvfs)
+    Γ = map(gvf -> get(discount(gvf), state_t, action_t, state_tp1, action_tp1, preds_tp1), gvfh.gvfs)
+    Π_probs = map(gvf -> get(policy(gvf), state_t, action_t, state_tp1, action_tp1, preds_tp1), gvfh.gvfs)
+    return C, Γ, Π_probs
+end
+
+get(gvfh::Horde, state_tp1, preds_tp1) = get(gvfh::Horde, nothing, nothing, state_tp1, nothing, preds_tp1)
