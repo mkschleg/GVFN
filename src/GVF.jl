@@ -1,4 +1,5 @@
 using Lazy
+using StatsBase
 
 import Base.get
 
@@ -73,11 +74,26 @@ function get(π::AbstractPolicy, state_t, action_t, state_tp1, action_tp1, preds
     throw(DomainError("get(PolicyType, args...) not defined!"))
 end
 
-
 struct NullPolicy <: AbstractPolicy
 end
-
 get(π::NullPolicy, state_t, action_t, state_tp1, action_tp1, preds_tp1) = 1.0
+
+struct PersistentPolicy <: AbstractPolicy
+    action::Int64
+end
+
+get(π::PersistentPolicy, state_t, action_t, state_tp1, action_tp1, preds_tp1) = π.action == action_t ? 1.0 : 0.0
+
+struct RandomPolicy{T<:AbstractFloat} <: AbstractPolicy
+    probabilities::Array{T,1}
+    weight_vec::Weights{T, T, Array{T, 1}}
+    RandomPolicy{T}(probabilities::Array{T,1}) where {T<:AbstractFloat} = new{T}(probabilities, Weights(probabilities))
+end
+
+get(π::RandomPolicy, state_t, action_t, state_tp1, action_tp1, preds_tp1) = π.probabilities[action_t]
+
+StatsBase.sample(π::RandomPolicy) = sample(Random.GLOBAL_RNG, π)
+StatsBase.sample(rng::Random.AbstractRNG, π::RandomPolicy) = sample(rng, π.weight_vec, 1:length(π.weight_vec))
 
 abstract type AbstractGVF end
 
@@ -124,3 +140,5 @@ function get(gvfh::Horde, state_t, action_t, state_tp1, action_tp1, preds_tp1)
 end
 
 get(gvfh::Horde, state_tp1, preds_tp1) = get(gvfh::Horde, nothing, nothing, state_tp1, nothing, preds_tp1)
+
+@forward Horde.gvfs Base.length

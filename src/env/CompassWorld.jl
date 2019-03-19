@@ -35,17 +35,17 @@ end
  CompassWorld
 
    width=8, height=8
-   |------width------|
-   g o o o o o o o o y -
-   g w w w w w w w w y |
+     |----width----|
+   g o o o o o o o o y
+   g w w w w w w w w y -
    b w w w w w w w w y h
    b w w w w w w w w y e
    b w w w w w w w w y i
    b w w w w w w w w y g
    b w w w w w w w w y h
    b w w w w w w w w y t
-   b w w w w w w w w y |
-   b r r r r r r r r y -
+   b w w w w w w w w y -
+   b r r r r r r r r y
 
 """
 
