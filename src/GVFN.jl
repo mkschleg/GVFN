@@ -9,7 +9,7 @@ using Reexport
 
 include("Environments.jl")
 
-export jacobian, glorot_uniform, glorot_normal
+export jacobian, glorot_uniform, glorot_normal, StopGradient
 include("util.jl")
 
 export
@@ -30,7 +30,7 @@ include("GVF.jl")
 export GVFNetwork, reset!, get
 include("GVFNetwork.jl")
 
-export RTD, RTD_jacobian, TDLambda, train!
+export RTD, RTD_jacobian, TDLambda, TD, train!
 include("Update.jl")
 
 
