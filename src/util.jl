@@ -31,3 +31,58 @@ function jacobian!(J::IdDict, δ::TrackedArray, pms::Params)
         end
     end
 end
+
+# export ArgIterator, iterate, next_state!
+struct ArgIterator
+    dict::Dict
+    stable_arg::Vector{String}
+    arg_list::Vector{String}
+    done::Bool
+    ArgIterator(dict, stable_arg) = new(dict, stable_arg, collect(keys(dict)), false)
+end
+
+function Base.iterate(iter::ArgIterator)
+    state = ones(Int64, length(iter.arg_list))
+    new_ret_list = Vector{String}()
+
+    for (arg_idx, arg) in enumerate(iter.arg_list)
+        push!(new_ret_list, arg)
+        push!(new_ret_list, string(iter.dict[arg][state[arg_idx]]))
+    end
+
+    return [new_ret_list; iter.stable_arg], next_state!(iter, state)
+end
+
+function next_state!(iter::ArgIterator, state)
+
+    state[end] += 1
+
+    for (arg_idx, arg) in Iterators.reverse(enumerate(iter.arg_list))
+        if arg_idx == 1
+            return state
+        end
+
+        if state[arg_idx] > length(iter.dict[arg])
+            state[arg_idx] = 1
+            state[arg_idx - 1] += 1
+        end
+
+    end
+end
+
+
+function Base.iterate(iter::ArgIterator, state)
+    if state[1] > length(iter.dict[iter.arg_list[1]])
+        return nothing
+    end
+    ret = Vector{String}()
+    for (arg_idx, arg) in enumerate(iter.arg_list)
+        push!(ret, arg)
+        push!(ret, string(iter.dict[arg][state[arg_idx]]))
+    end
+
+    new_state = next_state!(iter, state)
+    return [ret; iter.stable_arg], new_state
+end
+
+

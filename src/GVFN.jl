@@ -1,5 +1,5 @@
 
-
+__precompile__(true)
 
 module GVFN
 using Flux
@@ -9,12 +9,8 @@ using Reexport
 
 include("Environments.jl")
 
-# export GVFNetwork
-# include("GVFNetwork.jl")
-
 export jacobian, glorot_uniform, glorot_normal
 include("util.jl")
-
 
 export
     GVF,
@@ -29,22 +25,13 @@ export
     FeatureCumulant,
     PredictionCumulant
 
-
-
 include("GVF.jl")
 
 export GVFNetwork, reset!, get
 include("GVFNetwork.jl")
 
-
-export RTD, RTD_jacobian, TDλ, train!
+export RTD, RTD_jacobian, TDLambda, train!
 include("Update.jl")
-
-
-
-
-
-
 
 
 end

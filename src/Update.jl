@@ -10,14 +10,14 @@ function train!(gvfn::AbstractGVFLayer, opt::Optimizer, h_init, state_seq, env_s
 end
 
 # Don't use TDλ with recurrent learning...
-mutable struct TDλ <: Optimizer
+mutable struct TDLambda <: Optimizer
     α::Float64
     λ::Float64
     traces::IdDict
-    TDλ(α, λ) = new(α, λ, IdDict())
+    TDLambda(α, λ) = new(α, λ, IdDict())
 end
 
-function train!(gvfn::Flux.Recur{T}, opt::TDλ, h_init, states, env_state_tp1) where {T <: AbstractGVFLayer}
+function train!(gvfn::Flux.Recur{T}, opt::TDLambda, h_init, states, env_state_tp1) where {T <: AbstractGVFLayer}
 
     α = opt.α
     λ = opt.λ

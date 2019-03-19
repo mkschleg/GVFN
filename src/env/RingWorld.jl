@@ -5,7 +5,7 @@ using Random
 # import JuliaRL.reset!, JuliaRL.environment_step!, JuliaRL.get_reward
 
 """
- CycleWorld
+ RingWorld
 
    1 -> 0 -> 0 -> ... -> 0 -|
    ^------------------------|
@@ -15,7 +15,8 @@ actions: Progress
 
 """
 
-mutable struct CycleWorld <: AbstractEnvironment
+
+mutable struct RingWorld <: AbstractEnvironment
     chain_length::Int64
     agent_state::Int64
     actions::AbstractSet
@@ -23,7 +24,7 @@ mutable struct CycleWorld <: AbstractEnvironment
     CycleWorld(chain_length::Int64; rng=Random.GLOBAL_RNG, partially_observable=true) =
         new(chain_length,
             0,
-            Set(1:1),
+            Set(1:2),
             partially_observable)
 end
 

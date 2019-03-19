@@ -23,9 +23,7 @@ function test_GVFN_tdlambda()
 
     rng = Random.MersenneTwister(10)
 
-    opt = TDλ(0.6, 0.9)
-    discount = (args...)->0.0
-    cumulant(i) = (s_tp1, p_tp1)-> i==1 ? s_tp1[1] : p_tp1[i-1]
+    opt = TDLambda(0.6, 0.9)
 
     gvfs = [[GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())];
             [GVF(PredictionCumulant(i-1), ConstantDiscount(0.0), NullPolicy()) for i in 2:6];
@@ -53,7 +51,7 @@ function test_GVFN_tdlambda()
         end
         push!(state_list, build_features(s_tp1))
 
-        print(step, "\r")
+        # print(step, "\r")
 
         train!(gvfn, opt, hidden_state_init, state_list, s_tp1)
 
