@@ -9,7 +9,7 @@ using Flux.Tracker
 using Statistics
 import LinearAlgebra.Diagonal
 using Random
-# using ProgressMeter
+using ProgressMeter
 using FileIO
 using ArgParse
 using Random
@@ -47,7 +47,15 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         "--alg"
         help="Algorithm"
         default="TDLambda"
-        "--params"
+        "--luparams"
+        help="Parameters"
+        arg_type=Float64
+        default=[0.5, 0.9]
+        nargs='+'
+        "--opt"
+        help="Optimizer"
+        default="Descent"
+        "--optparams"
         help="Parameters"
         arg_type=Float64
         default=[0.5, 0.9]
@@ -109,8 +117,6 @@ function main_experiment(args::Vector{String})
 
     savefile = parsed["savefile"]
     savepath = dirname(savefile)
-    # println(args)
-    # println(savefile)
 
     if savepath != ""
         if !isdir(savepath)
@@ -131,16 +137,28 @@ function main_experiment(args::Vector{String})
     num_gvfs = length(horde)
 
     alg_string = parsed["alg"]
-    opt_func = getproperty(GVFN, Symbol(alg_string))
-    opt = opt_func(Float64.(parsed["params"])...)
+    gvfn_lu_func = getproperty(GVFN, Symbol(alg_string))
+    lu = gvfn_lu_func(Float64.(parsed["luparams"])...)
     τ=parsed["truncation"]
 
+    opt_string = parsed["opt"]
+    opt_func = getproperty(Flux, Symbol(opt_string))
+    opt = opt_func(Float64.(parsed["optparams"])...)
+
     pred_strg = zeros(num_steps, num_gvfs)
+    out_pred_strg = zeros(num_steps)
     err_strg = zeros(num_steps, num_gvfs)
+    out_err_strg = zeros(num_steps)
 
     _, s_t = start!(env)
 
     gvfn = GVFNetwork(num_gvfs, 3, horde; init=(dims...)->0.01*randn(rng, Float32, dims...))
+    model = Chain(StopGradient(gvfn), Flux.Dense(num_gvfs, 1))
+
+    # out_model = Flux.Dense(num_gvfs, 1)
+    out_horde = Horde([GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())])
+    out_opt = Descent(0.1)
+    out_lu = TD()
 
     state_list = [zeros(3) for t in 1:τ]
     popfirst!(state_list)
@@ -148,6 +166,7 @@ function main_experiment(args::Vector{String})
     hidden_state_init = zeros(num_gvfs)
 
     for step in 1:num_steps
+
         _, s_tp1, _, _ = step!(env, 1)
 
         if length(state_list) == (τ+1)
@@ -155,18 +174,30 @@ function main_experiment(args::Vector{String})
         end
         push!(state_list, build_features(s_tp1))
 
-        train!(gvfn, opt, hidden_state_init, state_list, s_tp1)
+        train!(gvfn, opt, lu, hidden_state_init, state_list, s_tp1)
+        train!(model, out_horde, out_opt, out_lu, state_list[end-1:end], s_tp1, τ==1 ? hidden_state_init : preds[end-2])
 
         reset!(gvfn, hidden_state_init)
         preds = gvfn.(state_list)
+
+        if τ == 1
+            reset!(gvfn, hidden_state_init)
+        else
+            reset!(gvfn, preds[end-2])
+        end
+        # reset!(gvfn, preds[end-2])
+        out_preds = model.(state_list[end-1:end])
+
         pred_strg[step, :] .= preds[end].data
         err_strg[step, :] .= preds[end].data - oracle(env, parsed["horde"], parsed["gamma"])
+        out_pred_strg[step] = out_preds[end].data[1]
+        out_err_strg[step] = out_pred_strg[step][1] - oracle(env, parsed["horde"], parsed["gamma"])[1]
 
         s_t .= s_tp1
         hidden_state_init .= Flux.data(preds[1])
     end
 
-    results = Dict(["predictions"=>pred_strg, "error"=>err_strg])
+    results = Dict(["predictions"=>pred_strg, "error"=>err_strg, "out_pred"=>out_pred_strg, "out_err_strg"=>out_err_strg])
     save(savefile, results)
     # return pred_strg, err_strg
 end
