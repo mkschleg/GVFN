@@ -140,5 +140,7 @@ function get(gvfh::Horde, state_t, action_t, state_tp1, action_tp1, preds_tp1)
 end
 
 get(gvfh::Horde, state_tp1, preds_tp1) = get(gvfh::Horde, nothing, nothing, state_tp1, nothing, preds_tp1)
+get(gvfh::Horde, action_t, state_tp1, preds_tp1) = get(gvfh::Horde, nothing, action_t, state_tp1, nothing, preds_tp1)
+get(gvfh::Horde, state_t, action_t, state_tp1, preds_tp1) = get(gvfh::Horde, state_t, action_t, state_tp1, nothing, preds_tp1)
 
 @forward Horde.gvfs Base.length

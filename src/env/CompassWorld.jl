@@ -63,10 +63,11 @@ mutable struct CompassWorld <: AbstractEnvironment
 end
 
 function JuliaRL.reset!(env::CompassWorld; rng = Random.GLOBAL_RNG, kwargs...)
-    env.agent_state = (x=rand(rng, 1:env.world_dims.width), y=rand(rng, 1:env.world_dims.height), dir=rand(rng, 1:4))
+    env.agent_state = (x=rand(rng, 1:env.world_dims.width), y=rand(rng, 1:env.world_dims.height), dir=rand(rng, 0:3))
 end
 
 JuliaRL.get_actions(env::CompassWorld) = env.actions
+get_num_features(env::CompassWorld) = env.partially_observable ? 6 : 3
 
 function JuliaRL.environment_step!(env::CompassWorld, action::Int64; rng = Random.GLOBAL_RNG, kwargs...)
     # actions 1 == Turn Left

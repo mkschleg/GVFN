@@ -31,8 +31,10 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         help="save file for experiment"
         arg_type=String
         default="temp.jld"
+        "--rnn"
+        help="whether we are using RNNs"
+        action=:store_true
     end
-
 
     #Cycle world
     @add_arg_table as begin
@@ -42,28 +44,49 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         default=6
     end
 
-    # Algorithms
+    # Out Model Settings
+    # @add_arg_table as begin
+    #     "--"
+    # end
+
+    # shared settings
     @add_arg_table as begin
-        "--alg"
-        help="Algorithm"
-        default="TDLambda"
-        "--luparams"
-        help="Parameters"
-        arg_type=Float64
-        default=[0.5, 0.9]
-        nargs='+'
-        "--opt"
-        help="Optimizer"
-        default="Descent"
-        "--optparams"
-        help="Parameters"
-        arg_type=Float64
-        default=[0.5, 0.9]
-        nargs='+'
         "--truncation", "-t"
         help="Truncation parameter for bptt"
         arg_type=Int64
         default=1
+    end
+
+
+    # RNN Settings
+    @add_arg_table as begin
+        "--rnnsize"
+        help="Number of hidden units"
+        arg_type=Int64
+        default=6
+        "--rnntype"
+        help="Type of RNN"
+        arg_type=String
+        default="RNN"
+    end
+
+    # GVFN 
+    @add_arg_table as begin
+        "--gvfnalg"
+        help="Algorithm"
+        default="TDLambda"
+        "--gvfnparams"
+        help="Parameters"
+        arg_type=Float64
+        nargs='+'
+        "--gvfnopt"
+        help="Optimizer"
+        default="Descent"
+        "--gvfnoptparams"
+        help="Parameters"
+        arg_type=Float64
+        default=[]
+        nargs='+'
         "--horde"
         help="The horde used for training"
         default="gamma_chain"
@@ -76,6 +99,11 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
     return as
 end
 
+
+function onestep(chain_length::Integer)
+    gvfs = [GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())]
+    return Horde(gvfs)
+end
 
 function chain(chain_length::Integer)
     gvfs = [[GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())];
@@ -136,14 +164,14 @@ function main_experiment(args::Vector{String})
 
     num_gvfs = length(horde)
 
-    alg_string = parsed["alg"]
+    alg_string = parsed["gvfnalg"]
     gvfn_lu_func = getproperty(GVFN, Symbol(alg_string))
-    lu = gvfn_lu_func(Float64.(parsed["luparams"])...)
+    lu = gvfn_lu_func(Float64.(parsed["gvfnparams"])...)
     τ=parsed["truncation"]
 
-    opt_string = parsed["opt"]
+    opt_string = parsed["gvfnopt"]
     opt_func = getproperty(Flux, Symbol(opt_string))
-    opt = opt_func(Float64.(parsed["optparams"])...)
+    opt = opt_func(Float64.(parsed["gvfnoptparams"])...)
 
     pred_strg = zeros(num_steps, num_gvfs)
     out_pred_strg = zeros(num_steps)
@@ -152,10 +180,8 @@ function main_experiment(args::Vector{String})
 
     _, s_t = start!(env)
 
-    gvfn = GVFNetwork(num_gvfs, 3, horde; init=(dims...)->0.01*randn(rng, Float32, dims...))
-    model = Chain(StopGradient(gvfn), Flux.Dense(num_gvfs, 1))
-
-    # out_model = Flux.Dense(num_gvfs, 1)
+    gvfn = GVFNetwork(num_gvfs, 3, horde; init=(dims...)->0.001*randn(rng, Float32, dims...))
+    model = Flux.Dense(num_gvfs, 1)
     out_horde = Horde([GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())])
     out_opt = Descent(0.1)
     out_lu = TD()
@@ -165,7 +191,7 @@ function main_experiment(args::Vector{String})
     push!(state_list, build_features(s_t))
     hidden_state_init = zeros(num_gvfs)
 
-    for step in 1:num_steps
+    @showprogress 0.1 "Step: " for step in 1:num_steps
 
         _, s_tp1, _, _ = step!(env, 1)
 
@@ -174,22 +200,13 @@ function main_experiment(args::Vector{String})
         end
         push!(state_list, build_features(s_tp1))
 
-        train!(gvfn, opt, lu, hidden_state_init, state_list, s_tp1)
-        train!(model, out_horde, out_opt, out_lu, state_list[end-1:end], s_tp1, τ==1 ? hidden_state_init : preds[end-2])
+        preds = train!(gvfn, opt, lu, hidden_state_init, state_list, s_tp1)
+        train!(model, out_horde, out_opt, out_lu, preds, s_tp1)
 
-        reset!(gvfn, hidden_state_init)
-        preds = gvfn.(state_list)
+        out_preds = model.(preds)
 
-        if τ == 1
-            reset!(gvfn, hidden_state_init)
-        else
-            reset!(gvfn, preds[end-2])
-        end
-        # reset!(gvfn, preds[end-2])
-        out_preds = model.(state_list[end-1:end])
-
-        pred_strg[step, :] .= preds[end].data
-        err_strg[step, :] .= preds[end].data - oracle(env, parsed["horde"], parsed["gamma"])
+        pred_strg[step, :] .= Flux.data(preds[end])
+        err_strg[step, :] .= Flux.data(preds[end]) - oracle(env, parsed["horde"], parsed["gamma"])
         out_pred_strg[step] = out_preds[end].data[1]
         out_err_strg[step] = out_pred_strg[step][1] - oracle(env, parsed["horde"], parsed["gamma"])[1]
 

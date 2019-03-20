@@ -20,6 +20,7 @@ export
     policy,
     Horde,
     NullPolicy,
+    PersistentPolicy,
     ConstantDiscount,
     StateTerminationDiscount,
     FeatureCumulant,
@@ -27,7 +28,7 @@ export
 
 include("GVF.jl")
 
-export GVFNetwork, reset!, get
+export GVFNetwork, GVFActionNetwork, reset!, get
 include("GVFNetwork.jl")
 
 export RTD, RTD_jacobian, TDLambda, TD, train!

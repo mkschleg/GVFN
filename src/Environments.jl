@@ -1,7 +1,7 @@
 
 
 
-export CompassWorld
+export CompassWorld, get_num_features
 include("env/CompassWorld.jl")
 
 export CycleWorld
