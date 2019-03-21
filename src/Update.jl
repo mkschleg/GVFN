@@ -33,7 +33,7 @@ function train!(gvfn::Flux.Recur{T}, opt, lu::TDLambda, h_init, states, env_stat
     cumulants, discounts, π_prob = get_question_parameters(gvfn.cell, env_state_tp1, preds_tilde)
     γ_t = get!(lu.γ_t, gvfn, zeros(Float64, size(discounts)...))::Array{Float64, 1}
 
-    ρ = π_prob/b_prob
+    ρ = π_prob./b_prob
 
     targets = cumulants .+ discounts.*preds_tilde
     δ = targets .- preds_t
@@ -41,7 +41,7 @@ function train!(gvfn::Flux.Recur{T}, opt, lu::TDLambda, h_init, states, env_stat
 
     for weights in Params([gvfn.cell.Wx, gvfn.cell.Wh])
         e = get!(lu.traces, weights, zeros(typeof(Flux.data(weights[1])), size(weights)...))::Array{typeof(Flux.data(weights[1])), 2}
-        e .= ρ.*(convert(Array{Float64, 2}, Diagonal(γ_t)) * λ * e - grads[weights].data)
+        e .= ρ.*(e.*(λ.*γ_t) - grads[weights].data)
         Flux.Tracker.update!(opt, weights, e.*(δ))
     end
 
@@ -91,7 +91,7 @@ end
 function train!(model, horde::AbstractHorde, opt, lu::TD, state_seq, env_state_tp1, action_t=nothing, b_prob=1.0)
 
 
-    preds = model.(state_seq)
+    preds = model.(state_seq[end-1:end])
 
     # println(length(env_state_tp1))
     c, γ, π_prob = get(horde, action_t, env_state_tp1, Flux.data(preds[end]))
