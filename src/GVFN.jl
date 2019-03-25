@@ -13,6 +13,15 @@ export jacobian, glorot_uniform, glorot_normal, StopGradient
 include("util.jl")
 
 export
+    SingleLayer,
+    Linear,
+    deriv,
+    sigmoid,
+    sigmoid′
+
+include("Layers.jl")
+
+export
     GVF,
     get,
     cumulant,

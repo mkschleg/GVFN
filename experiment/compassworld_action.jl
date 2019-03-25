@@ -195,8 +195,7 @@ function get_action(rng=Random.GLOBAL_RNG)
 end
 
 # build_features(state) = state
-onehot(size, idx) = begin; a=zeros(size);a[idx] = 1.0; return a end;
-build_features(state, action) = [[1.0]; state; 1.0.-state; onehot(3, action); 1.0.-onehot(3,action)]
+build_features(state) = [[1.0]; state; 1.0.-state]
 
 # Flux.σ(x::AbstractArray) = Flux.σ.(x)
 
@@ -259,7 +258,7 @@ function main_experiment(args::Vector{String})
         act = clip
     end
 
-    gvfn = GVFNetwork(num_gvfs, 6*2 + 1 + 6, horde; init=(dims...)->0.0001.*(rand(rng, Float64, dims...).-0.5), σ_int=act)
+    gvfn = GVFActionNetwork(num_gvfs, 3, 6*2 + 1, horde; init=(dims...)->0.0001.*(rand(rng, Float64, dims...).-0.5), σ_int=act)
 
     out_horde = forward()
     out_opt = Descent(0.1)
@@ -267,15 +266,14 @@ function main_experiment(args::Vector{String})
     model = SingleLayer(num_gvfs, length(out_horde), sigmoid, sigmoid′)
 
     _, s_t = start!(env)
-    ϕ = build_features(s_t, 1)
-    state_list = CircularBuffer{typeof(ϕ)}(τ+1)
-    
+    ϕ = build_features(s_t)
+    state_list = CircularBuffer{Tuple{Int64, Array{Float64, 1}}}(τ+1)
+    fill!(state_list, (1, zero(ϕ)))
+    push!(state_list, (1, build_features(s_t)))
     hidden_state_init = zeros(num_gvfs)
 
     action_state = ""
     action_state, a_tm1 = get_action(action_state, s_t, rng)
-    fill!(state_list, zero(ϕ))
-    push!(state_list, build_features(s_t, a_tm1[1]))
 
     @showprogress 0.1 "Step: " for step in 1:num_steps
     # for step in 1:num_steps
@@ -285,7 +283,7 @@ function main_experiment(args::Vector{String})
 
         _, s_tp1, _, _ = step!(env, a_t[1])
 
-        push!(state_list, build_features(s_tp1, a_t[1]))
+        push!(state_list, (a_t[1], build_features(s_tp1)))
 
         preds = train!(gvfn, opt, lu, hidden_state_init, state_list, s_tp1, a_t[1], a_t[2])
         # preds =

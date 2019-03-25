@@ -55,17 +55,17 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         help="Truncation parameter for bptt"
         arg_type=Int64
         default=1
+        "--horde"
+        help="The horde used for training"
+        default="gamma_chain"
+        "--gamma"
+        help="The gamma value for the gamma_chain horde"
+        arg_type=Float64
+        default=0.9
     end
 
-    # GVFN 
+    # RNN
     @add_arg_table as begin
-        "--alg"
-        help="Algorithm"
-        default="TDLambda"
-        "--params"
-        help="Parameters"
-        arg_type=Float64
-        nargs='+'
         "--opt"
         help="Optimizer"
         default="Descent"
@@ -74,13 +74,12 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         arg_type=Float64
         default=[]
         nargs='+'
-        "--horde"
-        help="The horde used for training"
-        default="gamma_chain"
-        "--gamma"
-        help="The gamma value for the gamma_chain horde"
-        arg_type=Float64
-        default=0.9
+        "--cell"
+        help="Cell"
+        default="RNNCell"
+        "--numhidden"
+        help="Number of hidden units in cell"
+        default=6
     end
 
     return as
@@ -116,6 +115,11 @@ function oracle(env::CycleWorld, horde_str, γ=0.9)
         ret = zeros(chain_length + 1)
         ret[chain_length - state] = 1
         ret[end] = γ^(chain_length - state - 1)
+    elseif horde_str == "onestep"
+        #TODO: Hack fix.
+        tmp = zeros(chain_length + 1)
+        ret[chain_length - state] = 1
+        ret = [tmp[1]]
     else
         throw("Bug Found")
     end
@@ -147,39 +151,31 @@ function main_experiment(args::Vector{String})
     horde = chain(parsed["chain"])
     if parsed["horde"] == "gamma_chain"
         horde = gamma_chain(parsed["chain"], parsed["gamma"])
+    elseif parsed["horde"] == "onestep"
+        horde = onestep(parsed["chain"])
     end
 
+    τ=parsed["truncation"]
     num_gvfs = length(horde)
 
-    alg_string = parsed["alg"]
-    gvfn_lu_func = getproperty(GVFN, Symbol(alg_string))
-    lu = gvfn_lu_func(Float64.(parsed["params"])...)
-    τ=parsed["truncation"]
-
     opt_string = parsed["opt"]
-
     opt_func = getproperty(Flux, Symbol(opt_string))
     opt = opt_func(Float64.(parsed["optparams"])...)
 
-    pred_strg = zeros(num_steps, num_gvfs)
-    out_pred_strg = zeros(num_steps)
-    err_strg = zeros(num_steps, num_gvfs)
-    out_err_strg = zeros(num_steps)
+    rnn = Flux.RNNCell(3, parsed["numhidden"])
+    model_out = Dense(parsed["numhidden"], length(horde))
+
+    out_pred_strg = zeros(num_steps, num_gvfs)
+    out_err_strg = zeros(num_steps, num_gvfs)
 
     _, s_t = start!(env)
-
-    gvfn = GVFNetwork(num_gvfs, 3, horde; init=(dims...)->0.001*randn(rng, Float32, dims...), σ_int=Flux.σ)
-
-    model = SingleLayer(num_gvfs, 1, sigmoid, sigmoid′)
-
-    out_horde = Horde([GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())])
-    out_opt = Flux.Descent(0.5)
-    out_lu = TD()
 
     state_list = CircularBuffer{Array{Float64, 1}}(τ+1)
     fill!(state_list, zeros(3))
     push!(state_list, build_features(s_t))
     hidden_state_init = zeros(num_gvfs)
+
+    hidden_state = [zeros(3) for i in 1:τ]
 
     @showprogress 0.1 "Step: " for step in 1:num_steps
     # for step in 1:num_steps
@@ -188,15 +184,17 @@ function main_experiment(args::Vector{String})
 
         push!(state_list, build_features(s_tp1))
 
-        preds = train!(gvfn, opt, lu, hidden_state_init, state_list, s_tp1)
-        train!(model, out_horde, out_opt, out_lu, Flux.data.(preds), s_tp1)
+        for 1:τ
 
-        out_preds = model(preds[end])
+        end
 
-        pred_strg[step, :] .= Flux.data(preds[end])
-        err_strg[step, :] .= Flux.data(preds[end]) - oracle(env, parsed["horde"], parsed["gamma"])
-        out_pred_strg[step] = Flux.data(out_preds)[1]
-        out_err_strg[step] = out_pred_strg[step][1] - oracle(env, parsed["horde"], parsed["gamma"])[1]
+
+        # preds = train!(gvfn, opt, lu, hidden_state_init, state_list, s_tp1)
+        # train!(model, out_horde, out_opt, out_lu, Flux.data.(preds), s_tp1)
+        # out_preds = model(preds[end])
+
+        out_pred_strg[step,:] = Flux.data(out_preds)
+        out_err_strg[step] = out_pred_strg[step] - oracle(env, parsed["horde"], parsed["gamma"])[1]
 
         s_t .= s_tp1
         hidden_state_init .= Flux.data(preds[1])
