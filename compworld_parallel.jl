@@ -24,7 +24,7 @@ function main()
     arg_dict = Dict([
         "horde"=>["rafols", "forward"],
         "alpha"=>alphas,
-        "truncation"=>[1,2,3,4,6,8,10,16,24]
+        "truncation"=>[1,2,3,4,6,8,10,16,24],
         "seed"=>collect(1:5)
     ])
 
