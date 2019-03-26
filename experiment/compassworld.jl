@@ -247,8 +247,8 @@ function main_experiment(args::Vector{String})
     opt_func = getproperty(Flux, Symbol(opt_string))
     opt = opt_func(Float64.(parsed["optparams"])...)
 
-    pred_strg = zeros(num_steps, num_gvfs)
-    err_strg = zeros(num_steps, 5)
+    # pred_strg = zeros(num_steps, num_gvfs)
+    # err_strg = zeros(num_steps, 5)
     out_pred_strg = zeros(num_steps, 5)
     out_err_strg = zeros(num_steps, 5)
 
@@ -293,13 +293,8 @@ function main_experiment(args::Vector{String})
         preds = gvfn.(state_list)
         train!(model, out_horde, out_opt, out_lu, Flux.data.(preds), s_tp1, a_t[1], a_t[2])
 
-        # reset!(gvfn, hidden_state_init)
-        # preds = gvfn.(state_list)
-
         out_preds = model(preds[end])
 
-        pred_strg[step, :] .= Flux.data(preds[end])
-        err_strg[step, :] .= Flux.data(preds[end])[((8*collect(0:4)).+4)] .- oracle(env, "forward")
         out_pred_strg[step, :] .= Flux.data(out_preds)
         out_err_strg[step, :] .= out_pred_strg[step, :] .- oracle(env, "forward")
 
@@ -308,8 +303,8 @@ function main_experiment(args::Vector{String})
 
     end
 
-    results = Dict(["predictions"=>pred_strg, "error"=>err_strg, "out_pred"=>out_pred_strg, "out_err_strg"=>out_err_strg])
-    # save(savefile, results)
+    results = Dict(["out_pred"=>out_pred_strg, "out_err_strg"=>out_err_strg])
+    save(savefile, results)
 end
 
 Base.@ccallable function julia_main(ARGS::Vector{String})::Cint

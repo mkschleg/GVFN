@@ -1,6 +1,6 @@
 __precompile__(true)
 
-module CompassWorldExperiment
+module CompassWorldExperiment_Action
 
 using GVFN: CycleWorld, step!, start!
 using GVFN
@@ -306,8 +306,9 @@ function main_experiment(args::Vector{String})
 
     end
 
-    results = Dict(["predictions"=>pred_strg, "error"=>err_strg, "out_pred"=>out_pred_strg, "out_err_strg"=>out_err_strg])
-    # save(savefile, results)
+    # results = Dict(["predictions"=>pred_strg, "error"=>err_strg, "out_pred"=>out_pred_strg, "out_err_strg"=>out_err_strg])
+    results = Dict(["out_pred"=>out_pred_strg, "out_err_strg"=>out_err_strg])
+    save(savefile, results)
 end
 
 Base.@ccallable function julia_main(ARGS::Vector{String})::Cint
