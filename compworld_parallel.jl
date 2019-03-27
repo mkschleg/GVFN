@@ -33,7 +33,7 @@ function make_arguments_rtd(args::Dict{String, String})
     alpha = args["alpha"]
     truncation = args["truncation"]
     seed = args["seed"]
-    save_file = "compassworld_gvfn/$(horde)/RTD/$(optimizer)_alpha_$(alpha)_truncation_$(truncation)/run_$(seed).jld2"
+    save_file = "compassworld_gvfn/$(horde)/$(learning_update)/$(optimizer)_alpha_$(alpha)_truncation_$(truncation)/run_$(seed).jld2"
     new_args=["--horde", horde, "--truncation", truncation, "--opt", optimizer, "--optparams", alpha, "--seed", seed, "--savefile", save_file]
     return new_args
 end
@@ -43,7 +43,7 @@ function make_arguments_tdlambda(args::Dict{String, String})
     alpha = args["alpha"]
     lambda = args["lambda"]
     seed = args["seed"]
-    save_file = "compassworld_gvfn/$(horde)/RTD/$(optimizer)_alpha_$(alpha)_lambda_$(lambda)/run_$(seed).jld2"
+    save_file = "compassworld_gvfn/$(horde)/$(learning_update)/$(optimizer)_alpha_$(alpha)_lambda_$(lambda)/run_$(seed).jld2"
     new_args=["--horde", horde, "--luparams", lambda, "--opt", optimizer, "--optparams", alpha, "--seed", seed, "--savefile", save_file]
     return new_args
 end
