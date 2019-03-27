@@ -50,14 +50,18 @@ end
 
 function main()
 
-    arg_dict = Dict([
-        "horde"=>["rafols", "forward"],
-        "alpha"=>alphas,
-        "truncation"=>truncations,
-        "seed"=>collect(1:2)
-    ])
-    arg_list = ["horde", "alpha", "truncation", "seed"]
-    if learning_update == "TDLambda"
+    arg_dict = Dict{String, Any}()
+    arg_list = Array{String}()
+
+    if learning_update == "RTD"
+        arg_dict = Dict([
+            "horde"=>["rafols", "forward"],
+            "alpha"=>alphas,
+            "truncation"=>truncations,
+            "seed"=>collect(1:2)
+        ])
+        arg_list = ["horde", "alpha", "truncation", "seed"]
+    elseif learning_update == "TDLambda"
         arg_dict = Dict([
             "horde"=>["rafols", "forward"],
             "alpha"=>alphas,
