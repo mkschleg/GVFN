@@ -53,11 +53,21 @@ function main()
     arg_dict = Dict([
         "horde"=>["rafols", "forward"],
         "alpha"=>alphas,
-        "truncation"=>[1, 10, 24],
-        "seed"=>collect(1:5)
+        "truncation"=>truncations,
+        "seed"=>collect(1:2)
     ])
-
     arg_list = ["horde", "alpha", "truncation", "seed"]
+    if learning_update == "TDLambda"
+        arg_dict = Dict([
+            "horde"=>["rafols", "forward"],
+            "alpha"=>alphas,
+            "lambda"=>lambdas,
+            "seed"=>collect(1:2)
+        ])
+        arg_list = ["horde", "alpha", "lambda", "seed"]
+    end
+
+    
     static_args = ["--alg", learning_update, "--steps", "5000000"]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=learning_update == "RTD" ? make_arguments_rtd : make_arguments_tdlambda)
     parallel_experiment_args("experiment/compassworld.jl", args_iterator; exp_module_name=:CompassWorldExperiment, exp_func_name=:main_experiment, num_workers=8)
