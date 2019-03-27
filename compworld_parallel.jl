@@ -51,7 +51,7 @@ end
 function main()
 
     arg_dict = Dict{String, Any}()
-    arg_list = Array{String}()
+    arg_list = Array{String, 1}()
 
     if learning_update == "RTD"
         arg_dict = Dict([
