@@ -9,8 +9,8 @@ println("Hello Wolrd...")
 
 #------ Learning Updates -------#
 
-const learning_update = "RTD"
-const truncations = [1, 10, 24]
+# const learning_update = "RTD"
+# const truncations = [1, 10, 24]
 
 const learning_update = "TDLambda"
 const lambdas = 0.0:0.1:0.9
@@ -43,7 +43,7 @@ function make_arguments_tdlambda(args::Dict{String, String})
     alpha = args["alpha"]
     lambda = args["lambda"]
     seed = args["seed"]
-    save_file = "compassworld_gvfn/$(horde)/RTD/$(optimizer)_alpha_$(alpha)_truncation_$(truncation)/run_$(seed).jld2"
+    save_file = "compassworld_gvfn/$(horde)/RTD/$(optimizer)_alpha_$(alpha)_lambda_$(lambda)/run_$(seed).jld2"
     new_args=["--horde", horde, "--luparams", lambda, "--opt", optimizer, "--optparams", alpha, "--seed", seed, "--savefile", save_file]
     return new_args
 end
@@ -69,7 +69,7 @@ function main()
 
     
     static_args = ["--alg", learning_update, "--steps", "5000000"]
-    args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=learning_update == "RTD" ? make_arguments_rtd : make_arguments_tdlambda)
+    args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=(learning_update == "RTD" ? make_arguments_rtd : make_arguments_tdlambda))
     parallel_experiment_args("experiment/compassworld.jl", args_iterator; exp_module_name=:CompassWorldExperiment, exp_func_name=:main_experiment, num_workers=8)
 
 end
