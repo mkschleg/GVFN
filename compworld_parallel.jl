@@ -35,7 +35,7 @@ function main()
     arg_list = Array{String, 1}()
 
     arg_dict = Dict([
-        "horde"=>["onestep", "chain"],
+        "horde"=>["forward"],
         "alpha"=>alphas,
         "truncation"=>[1, 8, 10, 16, 24],
         "cell"=>["RNN", "LSTM", "GRU"],
