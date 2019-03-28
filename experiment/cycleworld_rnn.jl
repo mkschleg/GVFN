@@ -201,7 +201,12 @@ function main_experiment(args::Vector{String})
 
         push!(state_list, build_features(s_tp1))
         # println(hidden_state_init)
-        reset!(rnn, hidden_state_init)
+        if parsed["cell"] == "LSTM"
+            reset!(rnn, hidden_state_init)
+        else
+            reset!(rnn, hidden_state_init[1])
+        end
+        # reset!(rnn, hidden_state_init)
 
         preds = model.(state_list)
 
@@ -215,7 +220,12 @@ function main_experiment(args::Vector{String})
             Flux.Tracker.update!(opt, weights, -grads[weights])
         end
 
-        reset!(rnn, hidden_state_init)
+        if parsed["cell"] == "LSTM"
+            reset!(rnn, hidden_state_init)
+        else
+            reset!(rnn, hidden_state_init[1])
+        end
+        # reset!(rnn, hidden_state_init)
         preds = model.(state_list)
 
         # println(oracle(env, parsed["horde"], parsed["gamma"]))
@@ -224,7 +234,12 @@ function main_experiment(args::Vector{String})
 
         s_t .= s_tp1
         # println(rnn.cell(hidden_state_init, state_list[1]))
-        hidden_state_init = Flux.data.(rnn.cell(hidden_state_init, state_list[1]))[1]
+        # hidden_state_init = Flux.data.(rnn.cell(hidden_state_init, state_list[1]))[1]
+        if parsed["cell"] == "LSTM"
+            hidden_state_init = Flux.data.(rnn.cell(hidden_state_init, state_list[1]))
+        else
+            hidden_state_init = Flux.data.(rnn.cell(hidden_state_init[1], state_list[1]))
+        end
     end
 
     results = Dict(["out_pred"=>out_pred_strg, "out_err_strg"=>out_err_strg])

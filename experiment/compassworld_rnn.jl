@@ -81,7 +81,7 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         default="RNNCell"
         "--numhidden"
         help="Number of hidden units in cell"
-        default=6
+        default=45
     end
 
     return as
@@ -262,6 +262,7 @@ function main_experiment(args::Vector{String})
     model = Flux.Chain(rnn, Flux.Dense(parsed["numhidden"], length(horde)))
 
     hidden_state_init = Flux.data(Flux.hidden(rnn.cell))
+    println(hidden_state_init)
     state_list = CircularBuffer{typeof(ϕ)}(τ+1)
 
     action_state = ""
@@ -269,9 +270,9 @@ function main_experiment(args::Vector{String})
     fill!(state_list, zero(ϕ))
     push!(state_list, build_features(s_t, a_tm1[1]))
 
-    
-    @showprogress 0.1 "Step: " for step in 1:num_steps
-        # for step in 1:num_steps
+    hidden_state_init = Flux.data.(rnn.cell(hidden_state_init, state_list[1]))
+    # @showprogress 0.1 "Step: " for step in 1:num_steps
+    for step in 1:num_steps
         if parsed["verbose"]
             print(step, "\r")
         end
@@ -282,29 +283,44 @@ function main_experiment(args::Vector{String})
 
         push!(state_list, build_features(s_tp1, a_t[1]))
 
-        reset!(rnn, hidden_state_init)
+        if parsed["cell"] == "LSTM"
+            reset!(rnn, hidden_state_init)
+        else
+            reset!(rnn, hidden_state_init[1])
+        end
 
         preds = model.(state_list)
 
         cumulants, discounts, π_prob = get(horde, s_tp1, Flux.data(preds[end]))
 
-        J = GVFN.offpolicy_tdloss(preds[end-1], cumulants, discounts, Flux.data(preds[end]))
+        ρ = π_prob./a_t[2]
 
+        J = GVFN.offpolicy_tdloss(ρ, preds[end-1], cumulants, discounts, Flux.data(preds[end]))
+        # println(J)
         grads = Flux.Tracker.gradient(()->J, Flux.params(model))
 
         for weights in Flux.params(model)
             Flux.Tracker.update!(opt, weights, -grads[weights])
         end
 
-        reset!(rnn, hidden_state_init)
+        if parsed["cell"] == "LSTM"
+            reset!(rnn, hidden_state_init)
+        else
+            reset!(rnn, hidden_state_init[1])
+        end
+
         preds = model.(state_list)
 
-        out_pred_strg[step, :] .= Flux.data(out_preds)
+        out_pred_strg[step, :] .= Flux.data(preds[end])
         out_err_strg[step, :] .= out_pred_strg[step, :] .- oracle(env, "forward")
 
         s_t .= s_tp1
-        hidden_state_init .= Flux.data(preds[1])
-        hidden_state_init = Flux.data.(rnn.cell(hidden_state_init, state_list[1]))[1]
+
+        if parsed["cell"] == "LSTM"
+            hidden_state_init = Flux.data.(rnn.cell(hidden_state_init, state_list[1]))
+        else
+            hidden_state_init = Flux.data.(rnn.cell(hidden_state_init[1], state_list[1]))
+        end
     end
 
     results = Dict(["out_pred"=>out_pred_strg, "out_err_strg"=>out_err_strg])
