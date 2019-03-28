@@ -12,9 +12,9 @@ tderror(v_t, c, γ_tp1, ṽ_tp1) =
 
 #slow for some reason...
 offpolicy_tdloss(ρ_t, v_t, c, γ_tp1, ṽ_tp1) =
-    (ρ_t*((v_t .- (c .+ γ_tp1.*ṽ_tp1)).^2)')[1] * 1 // length(ṽ_tp1)
+    (ρ_t.*((v_t .- (c .+ γ_tp1.*ṽ_tp1)).^2)) * 1 // length(ṽ_tp1)
 
-tdloss(v_t, c, γ_tp1, ṽ_tp1::Array{Float64, 1}) =
+tdloss(v_t, c, γ_tp1, ṽ_tp1) =
     0.5*Flux.mse(v_t, Flux.data(c .+ γ_tp1.*ṽ_tp1))
 
 

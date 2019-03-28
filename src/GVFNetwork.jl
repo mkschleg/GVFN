@@ -38,6 +38,7 @@ GVFNetwork(args...; kwargs...) = Flux.Recur(GVFRLayer(args...; kwargs...))
 
 function reset!(m, h_init)
     Flux.reset!(m)
+    # println("Hidden state: ", m.state)
     m.state.data .= h_init
 end
 

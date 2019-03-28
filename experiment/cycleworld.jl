@@ -105,6 +105,11 @@ function gamma_chain(chain_length::Integer, γ::AbstractFloat)
     return Horde(gvfs)
 end
 
+function gammas(chain_length::Integer)
+    gvfs = [GVF(FeatureCumulant(1), StateTerminationDiscount(γ, ((env_state)->env_state[1] == 1)), NullPolicy()) for γ in 0.0:0.1:0.9]
+    return Horde(gvfs)
+end
+
 function oracle(env::CycleWorld, horde_str, γ=0.9)
     chain_length = env.chain_length
     state = env.agent_state
@@ -116,6 +121,8 @@ function oracle(env::CycleWorld, horde_str, γ=0.9)
         ret = zeros(chain_length + 1)
         ret[chain_length - state] = 1
         ret[end] = γ^(chain_length - state - 1)
+    elseif horde_str == "gammas"
+        ret = collect(0.0:0.1:0.9).^(chain_length - state - 1)
     else
         throw("Bug Found")
     end
@@ -147,6 +154,8 @@ function main_experiment(args::Vector{String})
     horde = chain(parsed["chain"])
     if parsed["horde"] == "gamma_chain"
         horde = gamma_chain(parsed["chain"], parsed["gamma"])
+    elseif parsed["horde"] == "gammas"
+        horde = gammas(parsed["chain"])
     end
 
     num_gvfs = length(horde)
@@ -188,7 +197,11 @@ function main_experiment(args::Vector{String})
 
         push!(state_list, build_features(s_tp1))
 
-        preds = train!(gvfn, opt, lu, hidden_state_init, state_list, s_tp1)
+        train!(gvfn, opt, lu, hidden_state_init, state_list, s_tp1)
+
+        reset!(gvfn, hidden_state_init)
+        preds = gvfn.(state_list)
+
         train!(model, out_horde, out_opt, out_lu, Flux.data.(preds), s_tp1)
 
         out_preds = model(preds[end])

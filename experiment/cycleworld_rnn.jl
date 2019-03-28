@@ -1,6 +1,6 @@
 __precompile__(true)
 
-module CycleWorldExperiment
+module CycleWorldRNNExperiment
 
 using GVFN: CycleWorld, step!, start!
 using GVFN
@@ -39,6 +39,8 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         help="save file for experiment"
         arg_type=String
         default="temp.jld"
+        "--verbose"
+        action=:store_true
     end
 
     #Cycle world
@@ -76,7 +78,7 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         nargs='+'
         "--cell"
         help="Cell"
-        default="RNNCell"
+        default="RNN"
         "--numhidden"
         help="Number of hidden units in cell"
         default=6
@@ -118,7 +120,7 @@ function oracle(env::CycleWorld, horde_str, γ=0.9)
     elseif horde_str == "onestep"
         #TODO: Hack fix.
         tmp = zeros(chain_length + 1)
-        ret[chain_length - state] = 1
+        tmp[chain_length - state] = 1
         ret = [tmp[1]]
     else
         throw("Bug Found")
@@ -128,6 +130,13 @@ function oracle(env::CycleWorld, horde_str, γ=0.9)
 end
 
 build_features(s) = [1.0, s[1], 1-s[1]]
+
+function Flux.reset!(recur, hidden_state_init::Tuple)
+    Flux.reset!(recur)
+    for (idx, v) in enumerate(hidden_state_init)
+        recur.state[idx].data = v[idx]
+    end
+end
 
 function main_experiment(args::Vector{String})
 
@@ -162,8 +171,9 @@ function main_experiment(args::Vector{String})
     opt_func = getproperty(Flux, Symbol(opt_string))
     opt = opt_func(Float64.(parsed["optparams"])...)
 
-    rnn = Flux.RNNCell(3, parsed["numhidden"])
-    model_out = Dense(parsed["numhidden"], length(horde))
+    cell_func = getproperty(Flux, Symbol(parsed["cell"]))
+    rnn = cell_func(3, parsed["numhidden"])
+    model = Flux.Chain(rnn, Flux.Dense(parsed["numhidden"], length(horde)))
 
     out_pred_strg = zeros(num_steps, num_gvfs)
     out_err_strg = zeros(num_steps, num_gvfs)
@@ -173,35 +183,52 @@ function main_experiment(args::Vector{String})
     state_list = CircularBuffer{Array{Float64, 1}}(τ+1)
     fill!(state_list, zeros(3))
     push!(state_list, build_features(s_t))
-    hidden_state_init = zeros(num_gvfs)
 
-    hidden_state = [zeros(3) for i in 1:τ]
+    hidden_state_init = Flux.data(Flux.hidden(rnn.cell))
 
-    @showprogress 0.1 "Step: " for step in 1:num_steps
-    # for step in 1:num_steps
 
+    # hidden_state = [zeros(3) for i in 1:τ]
+
+    # @showprogress 0.1 "Step: " for step in 1:num_steps
+    for step in 1:num_steps
+
+        # if parsed["verbose"]
+        #     if step % 1000 == 0
+        #         print(step, "\r")
+        #     end
+        # end
         _, s_tp1, _, _ = step!(env, 1)
 
         push!(state_list, build_features(s_tp1))
+        # println(hidden_state_init)
+        reset!(rnn, hidden_state_init)
 
-        for 1:τ
+        preds = model.(state_list)
 
+        cumulants, discounts, π_prob = get(horde, s_tp1, Flux.data(preds[end]))
+
+        δ = GVFN.tdloss(preds[end-1], cumulants, discounts, Flux.data(preds[end]))
+
+        grads = Flux.Tracker.gradient(()->δ, Flux.params(model))
+
+        for weights in Flux.params(model)
+            Flux.Tracker.update!(opt, weights, -grads[weights])
         end
 
+        reset!(rnn, hidden_state_init)
+        preds = model.(state_list)
 
-        # preds = train!(gvfn, opt, lu, hidden_state_init, state_list, s_tp1)
-        # train!(model, out_horde, out_opt, out_lu, Flux.data.(preds), s_tp1)
-        # out_preds = model(preds[end])
-
-        out_pred_strg[step,:] = Flux.data(out_preds)
-        out_err_strg[step] = out_pred_strg[step] - oracle(env, parsed["horde"], parsed["gamma"])[1]
+        # println(oracle(env, parsed["horde"], parsed["gamma"]))
+        out_pred_strg[step,:] = Flux.data(preds[end])
+        out_err_strg[step, :] = out_pred_strg[step, :] .- oracle(env, parsed["horde"], parsed["gamma"])
 
         s_t .= s_tp1
-        hidden_state_init .= Flux.data(preds[1])
+        # println(rnn.cell(hidden_state_init, state_list[1]))
+        hidden_state_init = Flux.data.(rnn.cell(hidden_state_init, state_list[1]))[1]
     end
 
-    results = Dict(["predictions"=>pred_strg, "error"=>err_strg, "out_pred"=>out_pred_strg, "out_err_strg"=>out_err_strg])
-    # save(savefile, results)
+    results = Dict(["out_pred"=>out_pred_strg, "out_err_strg"=>out_err_strg])
+    save(savefile, results)
     # return pred_strg, err_strg
 end
 
