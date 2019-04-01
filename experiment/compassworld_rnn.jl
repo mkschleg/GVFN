@@ -271,7 +271,6 @@ function main_experiment(args::Vector{String})
     push!(state_list, build_features(s_t, a_tm1[1]))
 
     hidden_state_init = Flux.data.(rnn.cell(hidden_state_init, state_list[1]))
-    # @showprogress 0.1 "Step: " for step in 1:num_steps
     for step in 1:num_steps
         if parsed["verbose"]
             print(step, "\r")
