@@ -23,7 +23,7 @@ include("Layers.jl")
 
 export
     GVF,
-    get,
+    # get, get!,
     cumulant,
     discount,
     policy,

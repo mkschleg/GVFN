@@ -248,13 +248,6 @@ function main_experiment(args::Vector{String})
     out_pred_strg = zeros(num_steps, num_gvfs)
     out_err_strg = zeros(num_steps, num_gvfs)
 
-    # gvfn = GVFNetwork(num_gvfs, 6*2 + 1 + 6, horde; init=(dims...)->0.0001.*(rand(rng, Float64, dims...).-0.5), σ_int=act)
-
-    # out_horde = forward()
-    # out_opt = Descent(0.1)
-    # out_lu = TD()
-    # model = SingleLayer(num_gvfs, length(out_horde), sigmoid, sigmoid′)
-
     _, s_t = start!(env)
     ϕ = build_features(s_t, 1)
 
@@ -262,7 +255,7 @@ function main_experiment(args::Vector{String})
     model = Flux.Chain(rnn, Flux.Dense(parsed["numhidden"], length(horde)))
 
     hidden_state_init = Flux.data(Flux.hidden(rnn.cell))
-    println(hidden_state_init)
+    # println(hidden_state_init)
     state_list = CircularBuffer{typeof(ϕ)}(τ+1)
 
     action_state = ""
@@ -271,9 +264,21 @@ function main_experiment(args::Vector{String})
     push!(state_list, build_features(s_t, a_tm1[1]))
 
     hidden_state_init = Flux.data.(rnn.cell(hidden_state_init, state_list[1]))
+
+    ρ = zeros(Float32, num_gvfs)
+    cumulants = zeros(Float32, num_gvfs)
+    discounts = zeros(Float32, num_gvfs)
+    π_prob = zeros(Float32, num_gvfs)
+    preds_tilde = zeros(Float32, num_gvfs)
+
+    preds = model.(state_list)
+
+
     for step in 1:num_steps
         if parsed["verbose"]
-            print(step, "\r")
+            if step%10000 == 0
+                print(step, "\r")
+            end
         end
         action_state, a_t = get_action(action_state, s_t, rng)
         # a_t = get_action()
@@ -288,15 +293,16 @@ function main_experiment(args::Vector{String})
             reset!(rnn, hidden_state_init[1])
         end
 
-        preds = model.(state_list)
+        preds .= model.(state_list)
+        preds_tilde .= Flux.data(preds[end])
+        # println(typeof(preds), length(preds))
 
-        cumulants, discounts, π_prob = get(horde, s_tp1, Flux.data(preds[end]))
+        # cumulants, discounts, π_prob = get(horde, s_tp1, Flux.data(preds[end]))
+        get!(cumulants, discounts, π_prob, horde, a_t[1], s_tp1, preds_tilde)
 
-        ρ = π_prob./a_t[2]
+        ρ .= π_prob./a_t[2]
 
-        J = GVFN.offpolicy_tdloss(ρ, preds[end-1], cumulants, discounts, Flux.data(preds[end]))
-        # println(J)
-        grads = Flux.Tracker.gradient(()->J, Flux.params(model))
+        grads = Flux.Tracker.gradient(()->GVFN.offpolicy_tdloss(ρ, preds[end-1], cumulants, discounts, preds_tilde), Flux.params(model))
 
         for weights in Flux.params(model)
             Flux.Tracker.update!(opt, weights, -grads[weights])
@@ -308,7 +314,7 @@ function main_experiment(args::Vector{String})
             reset!(rnn, hidden_state_init[1])
         end
 
-        preds = model.(state_list)
+        preds .= model.(state_list)
 
         out_pred_strg[step, :] .= Flux.data(preds[end])
         out_err_strg[step, :] .= out_pred_strg[step, :] .- oracle(env, "forward")
