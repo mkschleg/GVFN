@@ -29,7 +29,7 @@ function plot_gvfn_descent(network, algorithm, alphas, truncation, num_runs; n=1
     end
 end
 
-function plot_rnn_descent(network, cell, alphas, truncation, num_runs; n=1000)
+function plot_rnn_compassworld(network, cell, alphas, truncation, num_runs; n=1000, optimizer="Descent")
     gr()
     dir = "compassworld_rnn/$(network)/$(cell)"
     plt = nothing
@@ -37,7 +37,7 @@ function plot_rnn_descent(network, cell, alphas, truncation, num_runs; n=1000)
         for τ in truncation
             runs = Array{Array{Float64, 1}, 1}()
             for r in 1:num_runs
-                file_loc = joinpath(dir, "Descent_alpha_$(α)_truncation_$(τ)/run_$(r).jld2")
+                file_loc = joinpath(dir, "$(optimizer)_alpha_$(α)_truncation_$(τ)/run_$(r).jld2")
                 d = load(file_loc)
                 push!(runs, mean(reshape(sqrt.(mean(d["out_err_strg"].^2; dims=2)), n, Integer(size(d["out_err_strg"])[1]/n)); dims=1)[1,:])
             end
@@ -47,7 +47,7 @@ function plot_rnn_descent(network, cell, alphas, truncation, num_runs; n=1000)
                 plot!(mean(runs), lab="alpha: $(α), truncations: $(τ)")
             end
         end
-        savefig(plt, "$(network)_$(cell).pdf")
+        savefig(plt, "$(network)_$(cell)_$(optimizer).pdf")
     end
 end
 
