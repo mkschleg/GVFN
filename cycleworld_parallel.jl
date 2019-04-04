@@ -1,11 +1,11 @@
 #!/usr/local/bin/julia
 
 using Pkg
-import Reproduce: ArgIterator, job
+import Reproduce: ArgIterator
 # cd("..")
 Pkg.activate(".")
 
-# include("parallel_experiment_new.jl")
+include("parallel_experiment_new.jl")
 
 #------ Learning Updates -------#
 
@@ -38,7 +38,7 @@ function make_arguments(args::Dict{String, String})
     truncation = args["truncation"]
     seed = args["seed"]
     save_file = "$(save_loc)/$(horde)/$(cell)/$(optimizer)_alpha_$(alpha)_truncation_$(truncation)/run_$(seed).jld2"
-    new_args=["--horde", horde, "--truncation", truncation, "--opt", optimizer, "--optparams", alpha, "--seed", seed, "--savefile", save_file]
+    new_args=["--horde", horde, "--truncation", truncation, "--opt", optimizer, "--optparams", alpha, "--cell", cell, "--seed", seed, "--savefile", save_file]
     return new_args
 end
 
@@ -55,7 +55,7 @@ function main()
     ])
     arg_list = ["horde", "cell", "alpha", "truncation", "seed"]
 
-    static_args = ["--steps", "200000"]
+    static_args = ["--steps", "20"]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments)
 
     # res_dir::String,
