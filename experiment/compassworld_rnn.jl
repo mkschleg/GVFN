@@ -251,7 +251,7 @@ function main_experiment(args::Vector{String})
 
 
     cell_func = getproperty(Flux, Symbol(parsed["cell"]))
-    rnn = cell_func(3, parsed["numhidden"])
+    rnn = cell_func(length(ϕ), parsed["numhidden"])
     model = Flux.Chain(rnn, Flux.Dense(parsed["numhidden"], length(horde)))
     # rnn = Flux.RNN(length(ϕ), parsed["numhidden"])
     # model = Flux.Chain(rnn, Flux.Dense(parsed["numhidden"], length(horde)))
@@ -266,6 +266,7 @@ function main_experiment(args::Vector{String})
     push!(state_list, build_features(s_t, a_tm1[1]))
 
     # hidden_state_init = Flux.data.(rnn.cell(hidden_state_init, state_list[1]))
+    # println(size(rnn.state), " ", size(state_list[1]))
     hidden_state_init = Flux.data.(rnn.cell(rnn.state, state_list[1]))
 
     ρ = zeros(Float32, num_gvfs)
