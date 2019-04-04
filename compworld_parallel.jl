@@ -1,7 +1,7 @@
 #!/usr/local/bin/julia
 
 using Pkg
-import Reproduce: ArgIterator, job
+import Reproduce: ArgIterator, job, create_experiment_dir
 # cd("..")
 Pkg.activate(".")
 # include("parallel_experiment.jl")
