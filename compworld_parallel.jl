@@ -1,17 +1,18 @@
 #!/usr/local/bin/julia
 
 using Pkg
+import Reproduce: ArgIterator, job
 # cd("..")
 Pkg.activate(".")
-include("parallel_experiment.jl")
+# include("parallel_experiment.jl")
 
-println("Hello Wolrd...")
+# println("Hello Wolrd...")
 
 #------ Optimizers ----------#
 
 # Parameters for the SGD Algorithm
-const optimizer = "Descent"
-const alphas = [0.001,0.01,0.1]
+const optimizer = "ADAM"
+const alphas = [0.00001]
 # const alphas = 0.1*1.5.^(-6:1)
 
 # # Parameters for the RMSProp Optimizer
