@@ -216,7 +216,7 @@ function main_experiment(args::Vector{String})
 
     as = arg_parse()
     parsed = parse_args(args, as)
-
+    
     savefile = parsed["savefile"]
     savepath = dirname(savefile)
     # println(args)
@@ -277,8 +277,8 @@ function main_experiment(args::Vector{String})
     fill!(state_list, zero(ϕ))
     push!(state_list, build_features(s_t, a_tm1[1]))
 
-    @showprogress 0.1 "Step: " for step in 1:num_steps
-    # for step in 1:num_steps
+    # @showprogress 0.1 "Step: " for step in 1:num_steps
+    for step in 1:num_steps
         # print(step, "\r")
         action_state, a_t = get_action(action_state, s_t, rng)
         # a_t = get_action()
