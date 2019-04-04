@@ -5,7 +5,6 @@ using Logging
 # using ArgParse
 
 
-
 struct ArgIterator
     dict::Dict
     stable_arg::Vector{String}
@@ -102,14 +101,22 @@ function parallel_experiment_args(experiment_file, args_iter; exp_module_name=:M
         mod_str = string(exp_module_name)
         func_str = string(exp_func_name)
         @everywhere global exp_file=$experiment_file
+        @everywhere begin
+            try
+                id = myid()
+            catch
+                @info "myid not defined?"
+                id = 1
+            end
+        end
         # @everywhere global exp_mod_name=$str
         # @everywhere global exp_f_name=$exp_func_name
         @everywhere begin
             include(exp_file)
-            @info "$(exp_file) included on process $(myid())"
+            @info "$(exp_file) included on process $(id)"
             exp_func = getfield(getfield(Main, Symbol($mod_str)), Symbol($func_str))
             experiment(args) = exp_func(args)
-            @info "Experiment built on process $(myid())"
+            @info "Experiment built on process $(id)"
         end
 
         n = length(args_iter)

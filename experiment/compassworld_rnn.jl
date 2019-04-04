@@ -215,8 +215,6 @@ function main_experiment(args::Vector{String})
 
     savefile = parsed["savefile"]
     savepath = dirname(savefile)
-    # println(args)
-    # println(savefile)
 
     if savepath != ""
         if !isdir(savepath)
@@ -251,8 +249,12 @@ function main_experiment(args::Vector{String})
     _, s_t = start!(env)
     ϕ = build_features(s_t, 1)
 
-    rnn = Flux.RNN(length(ϕ), parsed["numhidden"])
+
+    cell_func = getproperty(Flux, Symbol(parsed["cell"]))
+    rnn = cell_func(3, parsed["numhidden"])
     model = Flux.Chain(rnn, Flux.Dense(parsed["numhidden"], length(horde)))
+    # rnn = Flux.RNN(length(ϕ), parsed["numhidden"])
+    # model = Flux.Chain(rnn, Flux.Dense(parsed["numhidden"], length(horde)))
 
     hidden_state_init = Flux.data(Flux.hidden(rnn.cell))
     # println(hidden_state_init)
@@ -263,7 +265,8 @@ function main_experiment(args::Vector{String})
     fill!(state_list, zero(ϕ))
     push!(state_list, build_features(s_t, a_tm1[1]))
 
-    hidden_state_init = Flux.data.(rnn.cell(hidden_state_init, state_list[1]))
+    # hidden_state_init = Flux.data.(rnn.cell(hidden_state_init, state_list[1]))
+    hidden_state_init = Flux.data.(rnn.cell(rnn.state, state_list[1]))
 
     ρ = zeros(Float32, num_gvfs)
     cumulants = zeros(Float32, num_gvfs)
@@ -281,23 +284,18 @@ function main_experiment(args::Vector{String})
             end
         end
         action_state, a_t = get_action(action_state, s_t, rng)
-        # a_t = get_action()
 
         _, s_tp1, _, _ = step!(env, a_t[1])
 
         push!(state_list, build_features(s_tp1, a_t[1]))
 
-        if parsed["cell"] == "LSTM"
-            reset!(rnn, hidden_state_init)
-        else
-            reset!(rnn, hidden_state_init[1])
-        end
+
+        reset!(rnn, hidden_state_init[1])
+
 
         preds .= model.(state_list)
         preds_tilde .= Flux.data(preds[end])
-        # println(typeof(preds), length(preds))
 
-        # cumulants, discounts, π_prob = get(horde, s_tp1, Flux.data(preds[end]))
         get!(cumulants, discounts, π_prob, horde, a_t[1], s_tp1, preds_tilde)
 
         ρ .= π_prob./a_t[2]
@@ -308,11 +306,7 @@ function main_experiment(args::Vector{String})
             Flux.Tracker.update!(opt, weights, -grads[weights])
         end
 
-        if parsed["cell"] == "LSTM"
-            reset!(rnn, hidden_state_init)
-        else
-            reset!(rnn, hidden_state_init[1])
-        end
+        reset!(rnn, hidden_state_init[1])
 
         preds .= model.(state_list)
 
@@ -321,11 +315,8 @@ function main_experiment(args::Vector{String})
 
         s_t .= s_tp1
 
-        if parsed["cell"] == "LSTM"
-            hidden_state_init = Flux.data.(rnn.cell(hidden_state_init, state_list[1]))
-        else
-            hidden_state_init = Flux.data.(rnn.cell(hidden_state_init[1], state_list[1]))
-        end
+        hidden_state_init = Flux.data.(rnn.cell(hidden_state_init[1], state_list[1]))
+
     end
 
     results = Dict(["out_pred"=>out_pred_strg, "out_err_strg"=>out_err_strg])

@@ -131,14 +131,16 @@ end
 
 build_features(s) = [1.0, s[1], 1-s[1]]
 
-function Flux.reset!(recur, hidden_state_init::Tuple)
-    Flux.reset!(recur)
-    for (idx, v) in enumerate(hidden_state_init)
-        recur.state[idx].data = v[idx]
-    end
-end
+# function Flux.reset!(recur, hidden_state_init::Tuple)
+#     Flux.reset!(recur)
+#     for (idx, v) in enumerate(hidden_state_init)
+#         recur.state[idx].data = v[idx]
+#     end
+# end
 
 function main_experiment(args::Vector{String})
+
+    # println("Start!")
 
     as = arg_parse()
     parsed = parse_args(args, as)
@@ -184,12 +186,8 @@ function main_experiment(args::Vector{String})
     fill!(state_list, zeros(3))
     push!(state_list, build_features(s_t))
 
-    hidden_state_init = Flux.data(Flux.hidden(rnn.cell))
+    hidden_state_init = Flux.data.(rnn.cell(rnn.state, state_list[1]))
 
-
-    # hidden_state = [zeros(3) for i in 1:τ]
-
-    # @showprogress 0.1 "Step: " for step in 1:num_steps
     for step in 1:num_steps
 
         # if parsed["verbose"]
@@ -201,12 +199,9 @@ function main_experiment(args::Vector{String})
 
         push!(state_list, build_features(s_tp1))
         # println(hidden_state_init)
-        if parsed["cell"] == "LSTM"
-            reset!(rnn, hidden_state_init)
-        else
-            reset!(rnn, hidden_state_init[1])
-        end
-        # reset!(rnn, hidden_state_init)
+
+        reset!(rnn, hidden_state_init[1])
+
 
         preds = model.(state_list)
 
@@ -220,28 +215,20 @@ function main_experiment(args::Vector{String})
             Flux.Tracker.update!(opt, weights, -grads[weights])
         end
 
-        if parsed["cell"] == "LSTM"
-            reset!(rnn, hidden_state_init)
-        else
-            reset!(rnn, hidden_state_init[1])
-        end
-        # reset!(rnn, hidden_state_init)
+        reset!(rnn, hidden_state_init[1])
+
         preds = model.(state_list)
 
-        # println(oracle(env, parsed["horde"], parsed["gamma"]))
         out_pred_strg[step,:] = Flux.data(preds[end])
         out_err_strg[step, :] = out_pred_strg[step, :] .- oracle(env, parsed["horde"], parsed["gamma"])
 
         s_t .= s_tp1
-        # println(rnn.cell(hidden_state_init, state_list[1]))
-        # hidden_state_init = Flux.data.(rnn.cell(hidden_state_init, state_list[1]))[1]
-        if parsed["cell"] == "LSTM"
-            hidden_state_init = Flux.data.(rnn.cell(hidden_state_init, state_list[1]))
-        else
-            hidden_state_init = Flux.data.(rnn.cell(hidden_state_init[1], state_list[1]))
-        end
+
+        hidden_state_init = Flux.data.(rnn.cell(hidden_state_init[1], state_list[1]))
+
     end
 
+    # println("Made it here!")
     results = Dict(["out_pred"=>out_pred_strg, "out_err_strg"=>out_err_strg])
     save(savefile, results)
     # return pred_strg, err_strg
