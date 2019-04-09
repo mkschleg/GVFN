@@ -138,6 +138,12 @@ git-tree-sha1 = "60a1c6dc3278910716fcf87eb602968fdf72e44d"
 uuid = "34f1f09b-3a8b-5176-ab39-66d58a4d544e"
 version = "0.3.2"
 
+[[CodeTracking]]
+deps = ["InteractiveUtils", "Test", "UUIDs"]
+git-tree-sha1 = "f1800ddb104f045b30cbe24a50085b3cc1b9db05"
+uuid = "da1fd8a2-8d9e-5ec2-8556-3022fb5608a2"
+version = "0.5.6"
+
 [[CodecZlib]]
 deps = ["BinaryProvider", "Libdl", "Test", "TranscodingStreams"]
 git-tree-sha1 = "36bbf5374c661054d41410dc53ff752972583b9b"
@@ -297,7 +303,7 @@ git-tree-sha1 = "28e6dbf663fed71ea607414bc5f2f099d2831c0c"
 repo-rev = "53875a85a1331c26706c224d3747c7a94e5d913c"
 repo-url = "https://github.com/FluxML/Flux.jl.git"
 uuid = "587475ba-b771-5e3f-ad9e-33799f191a9c"
-version = "0.8.1+"
+version = "0.8.2+"
 
 [[ForwardDiff]]
 deps = ["CommonSubexpressions", "DiffResults", "DiffRules", "InteractiveUtils", "LinearAlgebra", "NaNMath", "Random", "SparseArrays", "SpecialFunctions", "StaticArrays", "Test"]
@@ -818,9 +824,9 @@ uuid = "0376cc21-f8a9-5fcf-8891-fde1415a4fd3"
 version = "0.2.0"
 
 [[Reproduce]]
-deps = ["ArgParse", "Blink", "ClusterManagers", "DataFrames", "Distributed", "FileIO", "Git", "Glob", "Interact", "JLD2", "Logging", "ProgressMeter", "Random", "Test"]
-git-tree-sha1 = "3dd8d5a338a72b89eb5cf09b29c4bc47c6fbbc20"
-repo-rev = "master"
+deps = ["ArgParse", "Blink", "ClusterManagers", "CodeTracking", "DataFrames", "Dates", "Distributed", "FileIO", "Git", "Glob", "Interact", "JLD2", "Logging", "ProgressMeter", "Random", "SharedArrays", "Test"]
+git-tree-sha1 = "40c46202632c09e8f393f39d1a94d99f55c55465"
+repo-rev = "develop"
 repo-url = "https://github.com/mkschleg/Reproduce.jl.git"
 uuid = "560a9c3a-0b8c-11e9-0329-d39dfcb85ed2"
 version = "0.1.0"
