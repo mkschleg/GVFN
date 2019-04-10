@@ -267,7 +267,13 @@ function main_experiment(args::Vector{String})
 
     # hidden_state_init = Flux.data.(rnn.cell(hidden_state_init, state_list[1]))
     # println(size(rnn.state), " ", size(state_list[1]))
-    hidden_state_init = Flux.data.(rnn.cell(rnn.state, state_list[1]))
+    hidden_state_init = nothing
+
+    if parsed["cell"] == "LSTM"
+        hidden_state_init = Flux.data.(rnn.cell(rnn.state, state_list[1])[1])
+    else
+        hidden_state_init = Flux.data(rnn.cell(rnn.state, state_list[1])[1])
+    end
 
     ρ = zeros(Float32, num_gvfs)
     cumulants = zeros(Float32, num_gvfs)
@@ -279,6 +285,10 @@ function main_experiment(args::Vector{String})
 
 
     for step in 1:num_steps
+        if step%100000 == 0
+            println("Garbage Clean!")
+            GC.gc()
+        end
         if parsed["verbose"]
             if step%10000 == 0
                 print(step, "\r")
@@ -291,7 +301,7 @@ function main_experiment(args::Vector{String})
         push!(state_list, build_features(s_tp1, a_t[1]))
 
 
-        reset!(rnn, hidden_state_init[1])
+        reset!(rnn, hidden_state_init)
 
 
         preds .= model.(state_list)
@@ -307,8 +317,8 @@ function main_experiment(args::Vector{String})
             Flux.Tracker.update!(opt, weights, -grads[weights])
         end
 
-        reset!(rnn, hidden_state_init[1])
-
+        reset!(rnn, hidden_state_init)
+        Flux.truncate!(rnn)
         preds .= model.(state_list)
 
         out_pred_strg[step, :] .= Flux.data(preds[end])
@@ -316,7 +326,12 @@ function main_experiment(args::Vector{String})
 
         s_t .= s_tp1
 
-        hidden_state_init = Flux.data.(rnn.cell(hidden_state_init[1], state_list[1]))
+        if parsed["cell"] == "LSTM"
+            hidden_state_init = Flux.data.(rnn.cell(hidden_state_init, state_list[1])[1])
+        else
+            hidden_state_init = Flux.data(rnn.cell(hidden_state_init, state_list[1])[1])
+        end
+        # println(hidden_state_init)
 
     end
 

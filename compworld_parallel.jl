@@ -14,7 +14,8 @@ const save_loc = "compworld_rnn_sweep"
 # Parameters for the SGD Algorithm
 const optimizer = "ADAM"
 const alphas = [0.0001]
-const truncations = [10, 16, 24]
+# const truncations = [10, 16, 24]
+const truncations = [1, 5, 8]
 # const alphas = [0.0001, 0.001, 0.01]
 # const alphas = [0.001,0.01,0.1]
 
@@ -44,12 +45,14 @@ function main()
         "horde"=>["forward"],
         "alpha"=>alphas,
         "truncation"=>truncations,
-        "cell"=>["RNN", "LSTM", "GRU"],
+        # "cell"=>["RNN", "GRU", "LSTM"],
+        # "cell"=>["RNN", "GRU"],
+        "cell"=>["LSTM"],
         "seed"=>collect(1:2)
     ])
-    arg_list = ["horde", "cell", "alpha", "truncation", "seed"]
+    arg_list = ["horde", "alpha", "truncation", "seed", "cell"]
 
-    static_args = ["--steps", "50"]
+    static_args = ["--steps", "5000000"]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments)
 
     create_experiment_dir(save_loc,
@@ -58,7 +61,7 @@ function main()
                           exp_module_name=:CompassWorldRNNExperiment,
                           exp_func_name=:main_experiment
                           )
-    job("experiment/compassworld_rnn.jl", args_iterator; exp_module_name=:CompassWorldRNNExperiment, exp_func_name=:main_experiment, num_workers=4)
+    job("experiment/compassworld_rnn.jl", args_iterator; exp_module_name=:CompassWorldRNNExperiment, exp_func_name=:main_experiment, num_workers=6)
 
 end
 
