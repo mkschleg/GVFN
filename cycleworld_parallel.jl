@@ -5,32 +5,14 @@ import Reproduce: ArgIterator, job, create_experiment_dir
 # cd("..")
 Pkg.activate(".")
 
-# include("parallel_experiment_new.jl")
-
-#------ Learning Updates -------#
-
-# const learning_update = "RTD"
-# const truncations = [1, 10, 24]
-
-# const learning_update = "TDLambda"
-# const lambdas = 0.0:0.1:0.9
-# # const truncations = [1, 10, 24]
-
-
 const save_loc = "cycleworld_rnn_sweep"
-
-#------ Optimizers ----------#
-
-# Parameters for the SGD Algorithm
+const exp_file = "experiment/cycleworld_rnn.jl"
+const exp_module_name = :CycleWorldRNNExperiment
+const exp_func_name = :main_experiment
 const optimizer = "Descent"
-# const alphas = [0.001, 0.01, 0.1]
-# const alphas = [0.001; 0.1*1.5.^(-6:2:1)]
-const alphas = 0.1*1.5.^(1:2:6)
+const alphas = [0.001; 0.1*1.5.^(-6:2:6)]
 const truncations = [1, 2, 4, 6, 8, 10, 16]
 
-# # Parameters for the RMSProp Optimizer
-# const optimizer = "RMSProp"
-# const alphas = [0.0001, 0.001, 0.01]
 
 function make_arguments(args::Dict{String, String})
     horde = args["horde"]
@@ -46,13 +28,11 @@ end
 function main()
 
     arg_dict = Dict([
-        "horde"=>["onestep", "chain"],
-        "alpha"=>alphas,
+        "horde"=>["onestep"],
+        "alpha"=>[alphas[end]],
         "truncation"=>truncations,
-        # "truncation"=>collect(1:8),
-        # "truncation"=>[collect(1:8); [10, 16]],
-        # "cell"=>["RNN", "LSTM", "GRU"],
         "cell"=>["RNN", "LSTM", "GRU"],
+        # "cell"=>["RNN", "GRU"],
         "seed"=>collect(1:5)
     ])
     arg_list = ["horde", "cell", "alpha", "truncation", "seed"]
@@ -60,25 +40,10 @@ function main()
     static_args = ["--steps", "200000"]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments)
 
-    # res_dir::String,
-    # experiment_file::String,
-    # args_iter;
-    # exp_module_name=:Main,
-    # exp_func_name=:main_experiment,
-    # org_file=true, replace=false
-    # create_experiment_dir(save_loc,
-    #                       "experiment/cycleworld_rnn.jl",
-    #                       args_iterator;
-    #                       exp_module_name=:CycleWorldRNNExperiment,
-    #                       exp_func_name=:main_experiment
-    #                       )
-
+    create_experiment_dir(save_loc)
     # Run the experiment job.
-    job("experiment/cycleworld_rnn.jl", args_iterator; exp_module_name=:CycleWorldRNNExperiment, exp_func_name=:main_experiment, num_workers=6)
-
-    #     parallel_experiment_args("experiment/cycleworld_rnn.jl", args_iterator; exp_module_name=:CycleWorldRNNExperiment, exp_func_name=:main_experiment, num_workers=6)
-
-
+    ret = job("experiment/cycleworld_rnn.jl", save_loc, args_iterator; exp_module_name=exp_module_name, exp_func_name=exp_func_name, num_workers=6)
+    post_experiment(save_loc, ret)
 end
 
 
