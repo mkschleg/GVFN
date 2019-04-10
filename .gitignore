@@ -19,3 +19,6 @@ docs/site/
 
 builddir/
 data/
+outdir/
+
+.DS_Store
