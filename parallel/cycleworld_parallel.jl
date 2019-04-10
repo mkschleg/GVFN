@@ -1,16 +1,16 @@
 #!/usr/local/bin/julia
 
 using Pkg
-import Reproduce: ArgIterator, job, create_experiment_dir
-# cd("..")
+using Reproduce
+
 Pkg.activate(".")
 
-const save_loc = "cycleworld_rnn_sweep"
+const save_loc = "cycleworld_rnn_sweep_test"
 const exp_file = "experiment/cycleworld_rnn.jl"
 const exp_module_name = :CycleWorldRNNExperiment
 const exp_func_name = :main_experiment
 const optimizer = "Descent"
-const alphas = [0.001; 0.1*1.5.^(-6:2:6)]
+const alphas = [0.001; 0.1*1.5.^(-6:2:1); 0.1*1.5.^(1:2:3)]
 const truncations = [1, 2, 4, 6, 8, 10, 16]
 
 
@@ -28,7 +28,7 @@ end
 function main()
 
     arg_dict = Dict([
-        "horde"=>["onestep"],
+        "horde"=>["onestep", "chain"],
         "alpha"=>[alphas[end]],
         "truncation"=>truncations,
         "cell"=>["RNN", "LSTM", "GRU"],
@@ -37,13 +37,19 @@ function main()
     ])
     arg_list = ["horde", "cell", "alpha", "truncation", "seed"]
 
-    static_args = ["--steps", "200000"]
+    static_args = ["--steps", "20"]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments)
 
-    create_experiment_dir(save_loc)
-    # Run the experiment job.
-    ret = job("experiment/cycleworld_rnn.jl", save_loc, args_iterator; exp_module_name=exp_module_name, exp_func_name=exp_func_name, num_workers=6)
-    post_experiment(save_loc, ret)
+    # experiment = Experiment(save_loc)
+    experiment = Experiment(save_loc,
+                            exp_file,
+                            exp_module_name,
+                            exp_func_name,
+                            args_iterator)
+    create_experiment_dir(experiment)
+    add_experiment(experiment; settings_dir="settings")
+    ret = job(experiment; num_workers=6)
+    post_experiment(experiment, ret)
 end
 
 

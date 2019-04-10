@@ -826,7 +826,7 @@ version = "0.2.0"
 [[Reproduce]]
 deps = ["ArgParse", "Blink", "ClusterManagers", "CodeTracking", "DataFrames", "Dates", "Distributed", "FileIO", "Git", "Glob", "Interact", "JLD2", "Logging", "ProgressMeter", "Random", "SharedArrays", "Test"]
 git-tree-sha1 = "dec1f63a91d2bb66668974c33bb148a73f2aac89"
-repo-rev = "develop"
+repo-rev = "master"
 repo-url = "https://github.com/mkschleg/Reproduce.jl.git"
 uuid = "560a9c3a-0b8c-11e9-0329-d39dfcb85ed2"
 version = "0.1.0"
