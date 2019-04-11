@@ -37,11 +37,16 @@ export
 
 include("GVF.jl")
 
+
 export GVFNetwork, GVFActionNetwork, reset!, get
 include("GVFNetwork.jl")
 
 export RTD, RTD_jacobian, TDLambda, TD, train!
+include("Loss.jl")
 include("Update.jl")
+
+export Online_JointTD, OnlineTD_RNN, train_step!
+include("RNN.jl")
 
 
 end

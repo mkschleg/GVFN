@@ -23,7 +23,7 @@ function Flux.Optimise.apply!(o::Flux.RMSProp, x, Δ)
   @. Δ *= η / (√acc + Flux.Optimise.ϵ)
 end
 
-function arg_parse(as::ArgParseSettings = ArgParseSettings())
+function exp_settings(as::ArgParseSettings = ArgParseSettings())
 
     #Experiment
     @add_arg_table as begin
@@ -131,18 +131,9 @@ end
 
 build_features(s) = [1.0, s[1], 1-s[1]]
 
-# function Flux.reset!(recur, hidden_state_init::Tuple)
-#     Flux.reset!(recur)
-#     for (idx, v) in enumerate(hidden_state_init)
-#         recur.state[idx].data = v[idx]
-#     end
-# end
-
 function main_experiment(args::Vector{String})
 
-    # println("Start!")
-
-    as = arg_parse()
+    as = exp_settings()
     parsed = parse_args(args, as)
 
     savefile = parsed["savefile"]
@@ -175,8 +166,8 @@ function main_experiment(args::Vector{String})
 
     cell_func = getproperty(Flux, Symbol(parsed["cell"]))
     rnn = cell_func(3, parsed["numhidden"])
-    model = Flux.Chain(rnn, Flux.Dense(parsed["numhidden"], length(horde)))
-
+    # model = Flux.Chain(rnn, Flux.Dense(parsed["numhidden"], length(horde)))
+    out_model = Flux.Dense(parsed["numhidden"], length(horde))
     out_pred_strg = zeros(num_steps, num_gvfs)
     out_err_strg = zeros(num_steps, num_gvfs)
 
@@ -185,53 +176,29 @@ function main_experiment(args::Vector{String})
     state_list = CircularBuffer{Array{Float64, 1}}(τ+1)
     fill!(state_list, zeros(3))
     push!(state_list, build_features(s_t))
+    hidden_state_init = GVFN.get_initial_hidden_state(rnn)
 
-    hidden_state_init = Flux.data.(rnn.cell(rnn.state, state_list[1]))
+    lu = OnlineTD_RNN(state_list, hidden_state_init)
 
     for step in 1:num_steps
 
-        # if parsed["verbose"]
-        #     if step % 1000 == 0
-        #         print(step, "\r")
-        #     end
-        # end
+        if parsed["verbose"]
+            if step % 1000 == 0
+                print(step, "\r")
+            end
+        end
         _, s_tp1, _, _ = step!(env, 1)
 
-        push!(state_list, build_features(s_tp1))
-        # println(hidden_state_init)
-
-        reset!(rnn, hidden_state_init[1])
-
-
-        preds = model.(state_list)
-
-        cumulants, discounts, π_prob = get(horde, s_tp1, Flux.data(preds[end]))
-
-        δ = GVFN.tdloss(preds[end-1], cumulants, discounts, Flux.data(preds[end]))
-
-        grads = Flux.Tracker.gradient(()->δ, Flux.params(model))
-
-        for weights in Flux.params(model)
-            Flux.Tracker.update!(opt, weights, -grads[weights])
-        end
-
-        reset!(rnn, hidden_state_init[1])
-
-        preds = model.(state_list)
+        preds = train_step!(out_model, rnn, horde, opt, lu, build_features(s_tp1), s_tp1)
 
         out_pred_strg[step,:] = Flux.data(preds[end])
         out_err_strg[step, :] = out_pred_strg[step, :] .- oracle(env, parsed["horde"], parsed["gamma"])
 
-        s_t .= s_tp1
-
-        hidden_state_init = Flux.data.(rnn.cell(hidden_state_init[1], state_list[1]))
-
     end
 
-    # println("Made it here!")
     results = Dict(["out_pred"=>out_pred_strg, "out_err_strg"=>out_err_strg])
     save(savefile, results)
-    # return pred_strg, err_strg
+    # return results
 end
 
 Base.@ccallable function julia_main(ARGS::Vector{String})::Cint

@@ -139,7 +139,7 @@ function get(gvfh::Horde, state_t, action_t, state_tp1, action_tp1, preds_tp1)
     return C, Γ, Π_probs
 end
 
-function Base.get!(C, Γ, Π_probs, gvfh::Horde, state_t, action_t, state_tp1, action_tp1, preds_tp1)
+function Base.get!(C::Array{T, 1}, Γ::Array{T, 1}, Π_probs::Array{T, 1}, gvfh::Horde, state_t, action_t, state_tp1, action_tp1, preds_tp1) where {T<:AbstractFloat}
     C .= map(gvf -> get(cumulant(gvf), state_t, action_t, state_tp1, action_tp1, preds_tp1), gvfh.gvfs)
     Γ .= map(gvf -> get(discount(gvf), state_t, action_t, state_tp1, action_tp1, preds_tp1), gvfh.gvfs)
     Π_probs .= map(gvf -> get(policy(gvf), state_t, action_t, state_tp1, action_tp1, preds_tp1), gvfh.gvfs)

@@ -44,6 +44,7 @@ end
 
 function reset!(m::Flux.Recur{T}, h_init) where {T<:Flux.LSTMCell}
     Flux.reset!(m)
+    # println(h_init)
     m.state[1].data .= Flux.data(h_init[1])
     m.state[2].data .= Flux.data(h_init[2])
 end

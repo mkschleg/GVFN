@@ -33,18 +33,11 @@ end
 
 JuliaRL.get_actions(env::CycleWorld) = env.actions
 
-function JuliaRL.environment_step!(env::CycleWorld, action::Int64; rng = Random.GLOBAL_RNG, kwargs...)
-    # actions 1 == Turn Left
-    # actions 2 == Turn Right
-    # actions 3 == Up
-    # JuliaRL.step()
+JuliaRL.environment_step!(env::CycleWorld, action::Int64; rng = Random.GLOBAL_RNG, kwargs...) = 
     env.agent_state = (env.agent_state + 1) % env.chain_length
-    # JuliaRL
-end
 
-function JuliaRL.get_reward(env::CycleWorld) # -> get the reward of the environment
-    return 0
-end
+
+JuliaRL.get_reward(env::CycleWorld) = 0 # -> get the reward of the environment
 
 function JuliaRL.get_state(env::CycleWorld) # -> get state of agent
     if env.partially_observable
@@ -54,9 +47,7 @@ function JuliaRL.get_state(env::CycleWorld) # -> get state of agent
     end
 end
 
-function fully_observable_state(env::CycleWorld)
-    return [env.agent_state]
-end
+fully_observable_state(env::CycleWorld) = [env.agent_state]
 
 function partially_observable_state(env::CycleWorld)
     state = zeros(1)
@@ -79,3 +70,71 @@ function Base.show(io::IO, env::CycleWorld)
     println(model)
     # println(env.agent_state)
 end
+
+module CycleWorldUtils
+
+import ..
+
+
+function settings!(as::ArgParseSettings)
+    @add_arg_table as begin
+        "--chain"
+        help="The length of the cycle world chain"
+        arg_type=Int64
+        default=6
+    end
+end
+
+function onestep(chain_length::Integer)
+    gvfs = [GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())]
+    return Horde(gvfs)
+end
+
+function chain(chain_length::Integer)
+    gvfs = [[GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())];
+            [GVF(PredictionCumulant(i-1), ConstantDiscount(0.0), NullPolicy()) for i in 2:chain_length]]
+    return Horde(gvfs)
+end
+
+function gamma_chain(chain_length::Integer, γ::AbstractFloat)
+    gvfs = [[GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())];
+            [GVF(PredictionCumulant(i-1), ConstantDiscount(0.0), NullPolicy()) for i in 2:chain_length];
+            [GVF(FeatureCumulant(1), StateTerminationDiscount(0.9, ((env_state)->env_state[1] == 1)), NullPolicy())]]
+    return Horde(gvfs)
+end
+
+function get_horde(horde_str::AbstractString)
+    horde = chain(parsed["chain"])
+    if parsed["horde"] == "gamma_chain"
+        horde = gamma_chain(parsed["chain"], parsed["gamma"])
+    elseif parsed["horde"] == "onestep"
+        horde = onestep(parsed["chain"])
+    end
+    return horde
+end
+
+function oracle(env::CycleWorld, horde_str, γ=0.9)
+    chain_length = env.chain_length
+    state = env.agent_state
+    ret = Array{Float64,1}()
+    if horde_str == "chain"
+        ret = zeros(chain_length)
+        ret[chain_length - state] = 1
+    elseif horde_str == "gamma_chain"
+        ret = zeros(chain_length + 1)
+        ret[chain_length - state] = 1
+        ret[end] = γ^(chain_length - state - 1)
+    elseif horde_str == "onestep"
+        #TODO: Hack fix.
+        tmp = zeros(chain_length + 1)
+        tmp[chain_length - state] = 1
+        ret = [tmp[1]]
+    else
+        throw("Bug Found")
+    end
+
+    return ret
+end
+
+end
+
