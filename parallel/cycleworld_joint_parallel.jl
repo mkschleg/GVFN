@@ -5,39 +5,50 @@ using Reproduce
 
 Pkg.activate(".")
 
-const save_loc = "cycleworld_rnn_sweep_test"
-const exp_file = "experiment/cycleworld_rnn.jl"
-const exp_module_name = :CycleWorldRNNExperiment
+const save_loc = "cycleworld_joint_sweep"
+const exp_file = "experiment/cycleworld_joint.jl"
+const exp_module_name = :CycleWorldJointExperiment
 const exp_func_name = :main_experiment
-const optimizer = "Descent"
-const alphas = [0.001; 0.1*1.5.^(-6:2:1); 0.1*1.5.^(1:2:3)]
-const truncations = [1, 2, 4, 6, 8, 10, 16]
+const optimizer = "ADAM"
+# const alphas = [0.001; 0.1*1.5.^(-6:2:1); 0.1*1.5.^(1:2:3)]
+const alphas = [0.01]
+const betas = 0.0:0.1:1.0
+const truncations = [1, 2, 4, 6, 8, 10]
 
+const num_steps = 200000
 
 function make_arguments(args::Dict{String, String})
     horde = args["horde"]
     alpha = args["alpha"]
+    beta = args["beta"]
     cell = args["cell"]
     truncation = args["truncation"]
     seed = args["seed"]
-    save_file = "$(save_loc)/$(horde)/$(cell)/$(optimizer)_alpha_$(alpha)_truncation_$(truncation)/run_$(seed).jld2"
     new_args=["--horde", horde, "--truncation", truncation, "--opt", optimizer, "--optparams", alpha, "--cell", cell, "--seed", seed, "--savefile", save_file]
     return new_args
 end
 
 function main()
 
+    as = ArgParseSettings()
+    @add_arg_table as begin
+        "numworkers"
+        arg_type=Int64
+        default=1
+    end
+    parsed = parse_args(as)
+    num_workers = parsed["numworkers"]
+
     arg_dict = Dict([
-        "horde"=>["onestep", "chain"],
-        "alpha"=>[alphas[end]],
+        "horde"=>["onestep", "chain", "gamma_chain"],
+        "alpha"=>alphas,
         "truncation"=>truncations,
-        "cell"=>["RNN", "LSTM", "GRU"],
-        # "cell"=>["RNN", "GRU"],
+        "cell"=>["RNN"],
+        "beta"=>betas
         "seed"=>collect(1:5)
     ])
-    arg_list = ["horde", "cell", "alpha", "truncation", "seed"]
-
-    static_args = ["--steps", "20"]
+    arg_list = ["horde", "cell", "alpha", "beta", "truncation", "seed"]
+    static_args = ["--steps", string(num_steps), "--exp_loc", save_loc, "--gamma", "0.9"]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments)
 
     # experiment = Experiment(save_loc)
@@ -49,7 +60,7 @@ function main()
 
     create_experiment_dir(experiment)
     add_experiment(experiment; settings_dir="settings")
-    ret = job(experiment; num_workers=6)
+    ret = job(experiment; num_workers=num_workers)
     post_experiment(experiment, ret)
 end
 

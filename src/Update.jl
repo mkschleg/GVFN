@@ -5,20 +5,6 @@ using Flux.Tracker: update!
 
 using Flux.Optimise: apply!
 
-
-
-tderror(v_t, c, γ_tp1, ṽ_tp1) =
-    (v_t .- (c .+ γ_tp1.*ṽ_tp1))
-
-function offpolicy_tdloss(ρ_t::Array{T, 1}, v_t::TrackedArray, c::Array{T, 1}, γ_tp1::Array{T, 1}, ṽ_tp1::Array{T, 1}) where {T<:AbstractFloat}
-    target = T.(c .+ γ_tp1.*ṽ_tp1)
-    return (T(0.5))*sum(ρ_t.*((v_t .- target).^2)) * (1//length(ρ_t))
-end
-
-tdloss(v_t, c, γ_tp1, ṽ_tp1) =
-    0.5*Flux.mse(v_t, Flux.data(c .+ γ_tp1.*ṽ_tp1))
-
-
 abstract type AbstractUpdate end
 
 function train!(gvfn::Flux.Recur{T}, lu::AbstractUpdate, h_init, state_seq, env_state_tp1) where {T <: AbstractGVFLayer} end
@@ -165,11 +151,11 @@ function train!(gvfn::Flux.Recur{T}, opt, lu::RTD, h_init, states, env_state_tp1
     preds_tilde = Flux.data(preds[end])
     cumulants, discounts, π_prob = get(gvfn.cell, action_t, env_state_tp1, preds_tilde)
     ρ = π_prob ./ b_prob
-    targets = cumulants .+ discounts.*preds_tilde
+    # targets = cumulants .+ discounts.*preds_tilde
     # δ = targets .- preds_t
-    grads = Tracker.gradient(()->tdloss(preds_t, cumulants, discounts, preds_tilde), prms)
+    grads = Tracker.gradient(()->offpolicy_tdloss(ρ, preds_t, cumulants, discounts, preds_tilde), prms)
     for weights in prms
-        Flux.Tracker.update!(opt, weights, -ρ.*grads[weights])
+        Flux.Tracker.update!(opt, weights, -grads[weights])
     end
 end
 

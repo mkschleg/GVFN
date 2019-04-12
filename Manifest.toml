@@ -731,9 +731,9 @@ version = "0.3.0"
 
 [[PlotUtils]]
 deps = ["Colors", "Dates", "Printf", "Random", "Reexport", "Test"]
-git-tree-sha1 = "5da9a79a138db46558e6e08f649865b4c1f1ce93"
+git-tree-sha1 = "8e87bbb778c26f575fbe47fd7a49c7b5ca37c0c6"
 uuid = "995b91a9-d308-5afd-9ec6-746e21dbc043"
-version = "0.5.7"
+version = "0.5.8"
 
 [[PlotlyBase]]
 deps = ["Dates", "DelimitedFiles", "DocStringExtensions", "JSON", "LaTeXStrings", "Logging", "Requires", "Statistics", "Test", "UUIDs"]
@@ -768,10 +768,10 @@ uuid = "92933f4c-e287-5a05-a399-4b506db050ca"
 version = "0.9.0"
 
 [[PyCall]]
-deps = ["Conda", "Dates", "Libdl", "LinearAlgebra", "MacroTools", "Serialization", "Statistics", "Test", "VersionParsing"]
-git-tree-sha1 = "5a65d9bfd7099c2baa13d2aecf3cde752092a95b"
+deps = ["Conda", "Dates", "Libdl", "LinearAlgebra", "MacroTools", "Pkg", "Serialization", "Statistics", "Test", "VersionParsing"]
+git-tree-sha1 = "6e5bac1b1faf3575731a6a5b76f638f2389561d3"
 uuid = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
-version = "1.91.1"
+version = "1.91.2"
 
 [[QuadGK]]
 deps = ["DataStructures", "LinearAlgebra", "Test"]
@@ -824,9 +824,9 @@ uuid = "0376cc21-f8a9-5fcf-8891-fde1415a4fd3"
 version = "0.2.0"
 
 [[Reproduce]]
-deps = ["ArgParse", "Blink", "ClusterManagers", "CodeTracking", "DataFrames", "Dates", "Distributed", "FileIO", "Git", "Glob", "Interact", "JLD2", "Logging", "ProgressMeter", "Random", "SharedArrays", "Test"]
-git-tree-sha1 = "dec1f63a91d2bb66668974c33bb148a73f2aac89"
-repo-rev = "master"
+deps = ["ArgParse", "Blink", "ClusterManagers", "CodeTracking", "DataFrames", "Dates", "Distributed", "FileIO", "Git", "Glob", "Interact", "JLD2", "Logging", "ProgressMeter", "Random", "Reexport", "SharedArrays", "Test"]
+git-tree-sha1 = "5d43939dbbfbd369eb3c90b63b12755c7b5d8da3"
+repo-rev = "develop"
 repo-url = "https://github.com/mkschleg/Reproduce.jl.git"
 uuid = "560a9c3a-0b8c-11e9-0329-d39dfcb85ed2"
 version = "0.1.0"
@@ -1006,10 +1006,10 @@ uuid = "ea10d353-3f73-51f8-a26c-33c1cb351aa5"
 version = "0.5.8"
 
 [[WebIO]]
-deps = ["AssetRegistry", "Base64", "Compat", "FunctionalCollections", "JSON", "Logging", "Observables", "Random", "Requires", "Sockets", "Test", "UUIDs", "Widgets"]
-git-tree-sha1 = "c1f259d4c23f12262f4fa69263a4e54fbea77450"
+deps = ["AssetRegistry", "Base64", "Compat", "Distributed", "FunctionalCollections", "JSON", "Logging", "Observables", "Random", "Requires", "Sockets", "Test", "UUIDs", "Widgets"]
+git-tree-sha1 = "058c24dfd1b768c098f8d59879bab1a970ca482b"
 uuid = "0f1e0344-ec1d-5b48-a673-e5cf874b6c29"
-version = "0.7.0"
+version = "0.8.0"
 
 [[WebSockets]]
 deps = ["Base64", "Dates", "Distributed", "HTTP", "Logging", "Random", "Sockets", "Test"]

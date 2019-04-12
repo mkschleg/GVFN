@@ -15,6 +15,7 @@ using ArgParse
 using Random
 using DataStructures: CircularBuffer
 
+include("utils/util.jl")
 
 function Flux.Optimise.apply!(o::Flux.RMSProp, x, Δ)
   η, ρ = o.eta, o.rho
@@ -182,7 +183,7 @@ function main_experiment(args::Vector{String})
     model = SingleLayer(num_gvfs, 1, sigmoid, sigmoid′)
 
     out_horde = Horde([GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())])
-    out_opt = Flux.Descent(0.5)
+    out_opt = Flux.ADAM(0.01)
     out_lu = TD()
 
     state_list = CircularBuffer{Array{Float64, 1}}(τ+1)

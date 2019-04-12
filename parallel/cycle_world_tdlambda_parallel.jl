@@ -29,7 +29,7 @@ function main()
     static_args = ["--alg", "TDLambda", "--steps", "500000"]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments)
 
-    parallel_experiment_args("experiment/cycleworld.jl", args_iterator; exp_module_name=:CycleWorldExperiment, exp_func_name=:main_experiment, num_workers=5)
+    job("experiment/cycleworld.jl", args_iterator, "cycleworld_gvfn_julia"; exp_module_name=:CycleWorldExperiment, exp_func_name=:main_experiment, num_workers=5)
 
 end
 

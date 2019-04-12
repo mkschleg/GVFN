@@ -45,7 +45,7 @@ export RTD, RTD_jacobian, TDLambda, TD, train!
 include("Loss.jl")
 include("Update.jl")
 
-export Online_JointTD, OnlineTD_RNN, train_step!
+export OnlineJointTD, OnlineTD_RNN, train_step!
 include("RNN.jl")
 
 
