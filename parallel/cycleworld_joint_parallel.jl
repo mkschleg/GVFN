@@ -2,6 +2,7 @@
 
 using Pkg
 using Reproduce
+using Logging
 
 Pkg.activate(".")
 
@@ -15,7 +16,7 @@ const alphas = [0.01]
 const betas = 0.0:0.1:1.0
 const truncations = [1, 2, 4, 6, 8, 10]
 
-const num_steps = 20
+# const num_steps = 200000
 
 function make_arguments(args::Dict{String, String})
     horde = args["outhorde"]
@@ -35,10 +36,15 @@ function main()
         "numworkers"
         arg_type=Int64
         default=1
+        "--numsteps"
+        arg_type=Int64
+        default=200000
+        "--numjobs"
+        action=:store_true
     end
     parsed = parse_args(as)
     num_workers = parsed["numworkers"]
-
+    
     arg_dict = Dict([
         "outhorde"=>["onestep", "chain"],
         "alpha"=>alphas,
@@ -48,8 +54,13 @@ function main()
         "seed"=>collect(1:5)
     ])
     arg_list = ["outhorde", "cell", "alpha", "beta", "truncation", "seed"]
-    static_args = ["--steps", string(num_steps), "--exp_loc", save_loc, "--gvfnhorde", "gamma_chain", "--gvfngamma", "0.9"]
+    static_args = ["--steps", string(parsed[num_steps]), "--exp_loc", save_loc, "--gvfnhorde", "gamma_chain", "--gvfngamma", "0.9"]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments)
+
+    if parsed["numjobs"]
+        @info "This experiment has $(length(collect(args_iterator))) jobs."
+        exit(0)
+    end
 
     # experiment = Experiment(save_loc)
     experiment = Experiment(save_loc,
