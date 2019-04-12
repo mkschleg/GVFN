@@ -75,7 +75,7 @@ function main_experiment(args::Vector{String})
     save_loc=""
     if !parsed["working"]
         create_info!(parsed, parsed["exp_loc"]; filter_keys=["verbose", "working", "exp_loc"])
-        save_loc = get_save_loc(parsed["savefile"])
+        save_loc = Reproduce.get_save_dir(parsed)
     end
 
     num_steps = parsed["steps"]

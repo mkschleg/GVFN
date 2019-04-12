@@ -15,16 +15,16 @@ const alphas = [0.01]
 const betas = 0.0:0.1:1.0
 const truncations = [1, 2, 4, 6, 8, 10]
 
-const num_steps = 200000
+const num_steps = 20
 
 function make_arguments(args::Dict{String, String})
-    horde = args["horde"]
+    horde = args["outhorde"]
     alpha = args["alpha"]
     beta = args["beta"]
     cell = args["cell"]
     truncation = args["truncation"]
     seed = args["seed"]
-    new_args=["--horde", horde, "--truncation", truncation, "--opt", optimizer, "--optparams", alpha, "--cell", cell, "--seed", seed, "--savefile", save_file]
+    new_args=["--gvfnhorde", horde, "--truncation", truncation, "--opt", optimizer, "--optparams", alpha, "--cell", cell, "--seed", seed]
     return new_args
 end
 
@@ -40,15 +40,15 @@ function main()
     num_workers = parsed["numworkers"]
 
     arg_dict = Dict([
-        "horde"=>["onestep", "chain", "gamma_chain"],
+        "outhorde"=>["onestep", "chain"],
         "alpha"=>alphas,
         "truncation"=>truncations,
         "cell"=>["RNN"],
-        "beta"=>betas
+        "beta"=>betas,
         "seed"=>collect(1:5)
     ])
-    arg_list = ["horde", "cell", "alpha", "beta", "truncation", "seed"]
-    static_args = ["--steps", string(num_steps), "--exp_loc", save_loc, "--gamma", "0.9"]
+    arg_list = ["outhorde", "cell", "alpha", "beta", "truncation", "seed"]
+    static_args = ["--steps", string(num_steps), "--exp_loc", save_loc, "--gvfnhorde", "gamma_chain", "--gvfngamma", "0.9"]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments)
 
     # experiment = Experiment(save_loc)
