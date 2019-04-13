@@ -1,5 +1,5 @@
 #!/home/mkschleg/opt/bin/julia
-#SBATCH --array=1-360
+#SBATCH --array=1-100
 #SBATCH -o joint_out/%A_%a.out # Standard output
 #SBATCH -e joint_out/%A_%a.err # Standard error
 #SBATCH --mem=2000M # Memory request of 2 GB
@@ -12,7 +12,7 @@ Pkg.activate(".")
 using Reproduce
 using Logging
 
-const save_loc = "/home/mkschleg/scratch/cycleworld_joint_sweep"
+const save_loc = "cycleworld_joint_sweep"
 const exp_file = "experiment/cycleworld_joint.jl"
 const exp_module_name = :CycleWorldJointExperiment
 const exp_func_name = :main_experiment
