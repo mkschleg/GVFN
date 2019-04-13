@@ -1,12 +1,18 @@
-#!/usr/local/bin/julia
+#!/home/mkschleg/opt/bin/julia
+#SBATCH --array=1-360
+#SBATCH -o joint_out/%A_%a.out # Standard output
+#SBATCH -e joint_out/%A_%a.err # Standard error
+#SBATCH --mem=2000M # Memory request of 2 GB
+#SBATCH --time=01:00:00 # Running time of 1 hours
+#SBATCH --account=def-whitem
 
 using Pkg
+Pkg.activate(".")
+
 using Reproduce
 using Logging
 
-Pkg.activate(".")
-
-const save_loc = "cycleworld_joint_sweep"
+const save_loc = "/home/mkschleg/scratch/cycleworld_joint_sweep"
 const exp_file = "experiment/cycleworld_joint.jl"
 const exp_module_name = :CycleWorldJointExperiment
 const exp_func_name = :main_experiment
@@ -15,8 +21,6 @@ const optimizer = "ADAM"
 const alphas = [0.01]
 const betas = 0.0:0.2:1.0
 const truncations = [1, 2, 4, 6, 8, 10]
-
-# const num_steps = 200000
 
 function make_arguments(args::Dict{String, String})
     horde = args["outhorde"]
