@@ -63,6 +63,7 @@ function main()
 
     if parsed["numjobs"]
         @info "This experiment has $(length(collect(args_iterator))) jobs."
+        println(collect(args_iterator)[num_workers])
         exit(0)
     end
 

@@ -10,7 +10,7 @@ using Statistics
 import LinearAlgebra.Diagonal
 using Random
 using ProgressMeter
-using FileIO
+using FileIO, JLD2
 using Reproduce
 # using ArgParse
 using Random
@@ -133,7 +133,8 @@ function main_experiment(args::Vector{String})
 
     if !parsed["working"]
         savefile=joinpath(save_loc, "results.jld2")
-        save(savefile, results)
+        # save(savefile, results)
+        JLD2.@save savefile results
     else
         return results
     end
