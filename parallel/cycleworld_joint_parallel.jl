@@ -13,7 +13,7 @@ const exp_func_name = :main_experiment
 const optimizer = "ADAM"
 # const alphas = [0.001; 0.1*1.5.^(-6:2:1); 0.1*1.5.^(1:2:3)]
 const alphas = [0.01]
-const betas = 0.0:0.1:1.0
+const betas = 0.0:0.2:1.0
 const truncations = [1, 2, 4, 6, 8, 10]
 
 # const num_steps = 200000
@@ -59,6 +59,7 @@ function main()
 
     if parsed["numjobs"]
         @info "This experiment has $(length(collect(args_iterator))) jobs."
+        println(collect(args_iterator)[num_workers])
         exit(0)
     end
 
