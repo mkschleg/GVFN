@@ -50,7 +50,8 @@ function main()
     num_workers = parsed["numworkers"]
     
     arg_dict = Dict([
-        "outhorde"=>["onestep", "chain"],
+        # "outhorde"=>["onestep", "chain"],
+        "outhorde"=>["gamma_chain"],
         "alpha"=>alphas,
         "truncation"=>truncations,
         "cell"=>["RNN"],
