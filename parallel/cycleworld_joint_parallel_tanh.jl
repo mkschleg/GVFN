@@ -54,7 +54,7 @@ function main()
     
     arg_dict = Dict([
         # "outhorde"=>["onestep", "chain"],
-        "outhorde"=>["gamma_chain"],
+        "outhorde"=>["chain", "onestep", "gamma_chain"],
         "alpha"=>alphas,
         "truncation"=>truncations,
         "cell"=>["RNN"],
