@@ -53,6 +53,8 @@ function get_horde(horde_str::AbstractString, chain_length::Integer, gamma::Abst
         horde = gamma_chain(chain_length, gamma)
     elseif horde_str == "onestep"
         horde = onestep(chain_length)
+    elseif horde_str == "gammas"
+        horde = gammas(collect(0.0:0.1:0.9))
     end
     return horde
 end
@@ -75,6 +77,8 @@ function oracle(env::CycleWorld, horde_str, γ=0.9)
         tmp = zeros(chain_length + 1)
         tmp[chain_length - state] = 1
         ret = [tmp[1]]
+    elseif horde_str == "gammas"
+        ret = collect(0.0:0.1:0.9).^(chain_length - state - 1)
     else
         throw("Bug Found")
     end

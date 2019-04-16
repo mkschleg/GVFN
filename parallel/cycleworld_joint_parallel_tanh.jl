@@ -6,7 +6,7 @@ using Logging
 
 Pkg.activate(".")
 
-const save_loc = "cycleworld_joint_sweep"
+const save_loc = "cycleworld_joint_sweep_tanh"
 const exp_file = "experiment/cycleworld_joint.jl"
 const exp_module_name = :CycleWorldJointExperiment
 const exp_func_name = :main_experiment
@@ -54,7 +54,7 @@ function main()
         "seed"=>collect(1:5)
     ])
     arg_list = ["outhorde", "cell", "alpha", "beta", "truncation", "seed"]
-    static_args = ["--steps", string(parsed["numsteps"]), "--exp_loc", save_loc, "--gvfnhorde", "gamma_chain", "--gvfngamma", "0.9"]
+    static_args = ["--steps", string(parsed["numsteps"]), "--exp_loc", save_loc, "--gvfnhorde", "gamma_chain", "--gvfngamma", "0.9", "--act", "tanh"]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments)
 
     if parsed["numjobs"]

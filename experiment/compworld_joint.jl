@@ -61,10 +61,6 @@ function exp_settings(as::ArgParseSettings = ArgParseSettings(exc_handler=Reprod
         help="learning update mixture"
         arg_type=Float64
         default=1.0 # Full RNN
-        "--act"
-        help="Activation function for rnn layer"
-        arg_type=String
-        default="sigmoid"
     end
 
     return as
@@ -98,13 +94,7 @@ function main_experiment(args::Vector{String})
     τ=parsed["truncation"]
     opt = FluxUtils.get_optimizer(parsed)
 
-    rnn = FluxUtils.construct_rnn("RNN", 1, 1)
-    if parsed["cell"] == "RNN"
-        act = FluxUtils.get_activation(parsed["act"])
-        rnn = FluxUtils.construct_rnn(parsed["cell"], 2, length(gvfn_horde), act)#; init=(dims...)->Float32(0.001)*randn(rng, Float32, dims...))
-    else
-        rnn = FluxUtils.construct_rnn(parsed["cell"], 2, length(gvfn_horde))#; init=(dims...)->Float32(0.001)*randn(rng, Float32, dims...))
-    end
+    rnn = FluxUtils.construct_rnn(parsed["cell"], 2, length(gvfn_horde), Flux.σ)#; init=(dims...)->Float32(0.001)*randn(rng, Float32, dims...))
     out_model = Flux.Dense(num_hidden, length(out_horde), Flux.σ; initW=(dims...)->glorot_uniform(rng, dims...))
 
     h_state_strg = zeros(num_steps, num_hidden)
@@ -139,8 +129,7 @@ function main_experiment(args::Vector{String})
         out_err_strg[step, :] .= out_pred_strg[step, :] .- CycleWorldUtils.oracle(env, parsed["outhorde"], parsed["outgamma"])
     end
 
-    # results = Dict("out_pred"=>out_pred_strg, "out_err"=>out_err_strg, "hidden_state_err"=>h_state_err_strg, "hidden_state"=>h_state_strg)
-    results = Dict("out_pred"=>out_pred_strg, "hidden_state_err"=>h_state_err_strg)
+    results = Dict("out_pred"=>out_pred_strg, "out_err"=>out_err_strg, "hidden_state_err"=>h_state_err_strg, "hidden_state"=>h_state_strg)
 
     if !parsed["working"]
         savefile=joinpath(save_loc, "results.jld2")
