@@ -140,7 +140,7 @@ function main_experiment(args::Vector{String})
     end
 
     # results = Dict("out_pred"=>out_pred_strg, "out_err"=>out_err_strg, "hidden_state_err"=>h_state_err_strg, "hidden_state"=>h_state_strg)
-    results = Dict("out_pred"=>out_pred_strg, "hidden_state_err"=>h_state_err_strg)
+    results = Dict("out_err"=>out_err_strg, "hidden_state_err"=>h_state_err_strg)
 
     if !parsed["working"]
         savefile=joinpath(save_loc, "results.jld2")
