@@ -1,6 +1,6 @@
 __precompile__(true)
 
-module CycleWorldJointExperiment
+module CompassWorldJointExperiment
 
 using GVFN: CycleWorld, step!, start!
 using GVFN
@@ -48,9 +48,9 @@ function exp_settings(as::ArgParseSettings = ArgParseSettings(exc_handler=Reprod
     end
 
     #Cycle world specific settings
-    CycleWorldUtils.env_settings!(as)
-    CycleWorldUtils.horde_settings!(as, "gvfn")
-    CycleWorldUtils.horde_settings!(as, "out")
+    CompassWorldUtils.env_settings!(as)
+    CompassWorldUtils.horde_settings!(as, "gvfn")
+    CompassWorldUtils.horde_settings!(as, "out")
 
     # RNN
     FluxUtils.rnn_settings!(as)
@@ -61,12 +61,19 @@ function exp_settings(as::ArgParseSettings = ArgParseSettings(exc_handler=Reprod
         help="learning update mixture"
         arg_type=Float64
         default=1.0 # Full RNN
+        "--act"
+        help="activation for RNN layer"
+        arg_type=String
+        default="sigmoid"
     end
 
     return as
 end
 
-build_features(s) = Float32.([s[1], 1-s[1]])
+# build_features(s) = Float32.([s[1], 1-s[1]])
+onehot(size, idx) = begin; a=zeros(size); a[idx] = 1.0; return a end;
+onehot(type, size, idx) = begin; a=zeros(type, size); a[idx] = 1.0; return a end;
+build_features(state, action) = Float32.([state; 1.0.-state; onehot(3, action); 1.0.-onehot(3,action)])
 
 function main_experiment(args::Vector{String})
 
@@ -82,10 +89,9 @@ function main_experiment(args::Vector{String})
     seed = parsed["seed"]
     rng = Random.MersenneTwister(seed)
 
-    env = CycleWorld(parsed["chain"])
-
-    out_horde = CycleWorldUtils.get_horde(parsed, "out")
-    gvfn_horde = CycleWorldUtils.get_horde(parsed, "gvfn")
+    env = CompassWorld(parsed["size"]; rng=rng)
+    out_horde = CompassWorldUtils.get_horde(parsed, "out")
+    gvfn_horde = CompassWorldUtils.get_horde(parsed, "gvfn")
 
     num_gvfs = length(out_horde)
     num_hidden = length(gvfn_horde)
@@ -94,24 +100,39 @@ function main_experiment(args::Vector{String})
     τ=parsed["truncation"]
     opt = FluxUtils.get_optimizer(parsed)
 
-    rnn = FluxUtils.construct_rnn(parsed["cell"], 2, length(gvfn_horde), Flux.σ)#; init=(dims...)->Float32(0.001)*randn(rng, Float32, dims...))
-    out_model = Flux.Dense(num_hidden, length(out_horde), Flux.σ; initW=(dims...)->glorot_uniform(rng, dims...))
 
-    h_state_strg = zeros(num_steps, num_hidden)
-    h_state_err_strg = zeros(num_steps, num_hidden)
+    # h_state_strg = zeros(num_steps, num_hidden)
+    # h_state_err_strg = zeros(num_steps, num_hidden)
     out_pred_strg = zeros(num_steps, num_gvfs)
     out_err_strg = zeros(num_steps, num_gvfs)
 
+    
     _, s_t = start!(env)
+    action_state = ""
+    action_state, a_tm1 = CompassWorldUtils.get_action(action_state, s_t, rng)
+    num_features = length(build_features(s_t, a_tm1[1]))
 
     state_list = CircularBuffer{Array{Float32, 1}}(τ+1)
-    fill!(state_list, zeros(Float32, 2))
-    push!(state_list, build_features(s_t))
+    fill!(state_list, zeros(Float32, num_features))
+    push!(state_list, build_features(s_t, a_tm1[1]))
+
+    # Build Model
+    rnn = FluxUtils.construct_rnn("RNN", 1, 1)
+    if parsed["cell"] == "RNN"
+        act = FluxUtils.get_activation(parsed["act"])
+        rnn = FluxUtils.construct_rnn(parsed["cell"], num_features, length(gvfn_horde), act; init=(dims...)->glorot_uniform(rng, dims...))
+    else
+        rnn = FluxUtils.construct_rnn(parsed["cell"], num_features, length(gvfn_horde); init=(dims...)->glorot_uniform(rng, dims...))
+    end
+    # rnn = FluxUtils.construct_rnn(parsed["cell"], num_features, length(gvfn_horde), Flux.σ)#; init=(dims...)->Float32(0.001)*randn(rng, Float32, dims...))
+    out_model = Flux.Dense(num_hidden, length(out_horde), Flux.σ; initW=(dims...)->glorot_uniform(rng, dims...))
+
     hidden_state_init = GVFN.get_initial_hidden_state(rnn)
 
     lu = GVFN.OnlineJointTD(parsed["beta"], state_list, hidden_state_init)
 
     for step in 1:num_steps
+        action_state, a_t = CompassWorldUtils.get_action(action_state, s_t, rng)
         if parsed["verbose"]
             if step % 1000 == 0
                 print(step, "\r")
@@ -120,16 +141,13 @@ function main_experiment(args::Vector{String})
 
         _, s_tp1, _, _ = step!(env, 1)
 
-        (preds, rnn_out) = train_step!(out_model, rnn, gvfn_horde, out_horde, opt, lu, build_features(s_tp1), s_tp1)
-
-        h_state_strg[step,:] .= Flux.data(rnn_out[end])
-        h_state_err_strg[step, :] .= h_state_strg[step, :] .- CycleWorldUtils.oracle(env, parsed["gvfnhorde"], parsed["gvfngamma"])
+        (preds, rnn_out) = train_step!(out_model, rnn, gvfn_horde, out_horde, opt, lu, build_features(s_tp1, a_t[1]), s_tp1)
 
         out_pred_strg[step,:] .= Flux.data(preds[end])
-        out_err_strg[step, :] .= out_pred_strg[step, :] .- CycleWorldUtils.oracle(env, parsed["outhorde"], parsed["outgamma"])
+        out_err_strg[step, :] .= out_pred_strg[step, :] .- CompassWorldUtils.oracle(env, parsed["outhorde"])
     end
 
-    results = Dict("out_pred"=>out_pred_strg, "out_err"=>out_err_strg, "hidden_state_err"=>h_state_err_strg, "hidden_state"=>h_state_strg)
+    results = Dict("out_pred"=>out_pred_strg, "out_err"=>out_err_strg)
 
     if !parsed["working"]
         savefile=joinpath(save_loc, "results.jld2")

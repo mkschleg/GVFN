@@ -269,7 +269,7 @@ function main_experiment(args::Vector{String})
     _, s_t = start!(env)
     ϕ = build_features(s_t, 1)
     state_list = CircularBuffer{typeof(ϕ)}(τ+1)
-    
+
     hidden_state_init = zeros(num_gvfs)
 
     action_state = ""

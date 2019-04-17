@@ -62,6 +62,8 @@ mutable struct CompassWorld <: AbstractEnvironment
             partially_observable)
 end
 
+CompassWorld(_size; kwargs...) = CompassWorld(_size, _size; kwargs...)
+
 function JuliaRL.reset!(env::CompassWorld; rng = Random.GLOBAL_RNG, kwargs...)
     env.agent_state = (x=rand(rng, 1:env.world_dims.width), y=rand(rng, 1:env.world_dims.height), dir=rand(rng, 0:3))
 end
