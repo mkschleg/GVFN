@@ -43,8 +43,9 @@ function gamma_chain(chain_length::Integer, γ::AbstractFloat)
     return Horde(gvfs)
 end
 
-function gammas(gammas::Array{AbstractFloat, 1})
-    gvfs = [GVF(FeatureCumulant, StatTerminationDiscount(γ, ((env_state)->env_state[1] == 1)), NullPolicy()) for γ in gammas]
+function gammas(gms::Array{Float64, 1})
+    gvfs = [GVF(FeatureCumulant(1), StateTerminationDiscount(γ, ((env_state)->env_state[1] == 1)), NullPolicy()) for γ in gms]
+    return Horde(gvfs)
 end
 
 function get_horde(horde_str::AbstractString, chain_length::Integer, gamma::AbstractFloat)
@@ -53,6 +54,8 @@ function get_horde(horde_str::AbstractString, chain_length::Integer, gamma::Abst
         horde = gamma_chain(chain_length, gamma)
     elseif horde_str == "onestep"
         horde = onestep(chain_length)
+    elseif horde_str == "gammas"
+        horde = gammas(collect(0.0:0.1:0.9))
     end
     return horde
 end
@@ -75,6 +78,8 @@ function oracle(env::CycleWorld, horde_str, γ=0.9)
         tmp = zeros(chain_length + 1)
         tmp[chain_length - state] = 1
         ret = [tmp[1]]
+    elseif horde_str == "gammas"
+        ret = collect(0.0:0.1:0.9).^(chain_length - state - 1)
     else
         throw("Bug Found")
     end

@@ -20,7 +20,8 @@ const optimizer = "ADAM"
 # const alphas = [0.001; 0.1*1.5.^(-6:2:1); 0.1*1.5.^(1:2:3)]
 const alphas = [0.01]
 const betas = 0.0:0.2:1.0
-const truncations = [1, 2, 4, 6, 8, 10]
+# const truncations = [1, 2, 4, 6, 8, 10]
+const truncations = [3, 5, 7, 9]
 
 function make_arguments(args::Dict{String, String})
     horde = args["outhorde"]
@@ -50,7 +51,8 @@ function main()
     num_workers = parsed["numworkers"]
     
     arg_dict = Dict([
-        "outhorde"=>["onestep", "chain"],
+        # "outhorde"=>["onestep", "chain"],
+        "outhorde"=>["onestep", "chain", "gamma_chain"],
         "alpha"=>alphas,
         "truncation"=>truncations,
         "cell"=>["RNN"],

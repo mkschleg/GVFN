@@ -50,5 +50,16 @@ function construct_rnn(cell::AbstractString, in::Integer, num_hidden::Integer, a
     return cell_func(in, num_hidden, args...; kwargs...)
 end
 
+function get_activation(act::AbstractString)
+    if act == "sigmoid"
+        return Flux.σ
+    elseif act == "tanh"
+        return tanh
+    elseif act == "linear"
+        return Flux.identity
+    else
+        throw("$(act) not known...")
+    end
+end
 
 end
