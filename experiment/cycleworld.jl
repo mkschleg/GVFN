@@ -4,8 +4,8 @@ module CycleWorldExperiment
 
 using GVFN: CycleWorld, step!, start!
 using GVFN
-using Flux
-using Flux.Tracker
+import Flux
+import Flux.Tracker
 using Statistics
 import LinearAlgebra.Diagonal
 using Random
@@ -13,7 +13,16 @@ using ProgressMeter
 using FileIO
 using ArgParse
 using Random
+using DataStructures: CircularBuffer
 
+include("utils/util.jl")
+
+function Flux.Optimise.apply!(o::Flux.RMSProp, x, Δ)
+  η, ρ = o.eta, o.rho
+  acc = get!(o.acc, x, zero(x))::typeof(Flux.data(x))
+  @. acc = ρ * acc + (1 - ρ) * Δ^2
+  @. Δ *= η / (√acc + Flux.Optimise.ϵ)
+end
 
 function arg_parse(as::ArgParseSettings = ArgParseSettings())
 
@@ -33,7 +42,6 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         default="temp.jld"
     end
 
-
     #Cycle world
     @add_arg_table as begin
         "--chain"
@@ -42,15 +50,22 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         default=6
     end
 
-    # Algorithms
+    # shared settings
+    @add_arg_table as begin
+        "--truncation", "-t"
+        help="Truncation parameter for bptt"
+        arg_type=Int64
+        default=1
+    end
+
+    # GVFN 
     @add_arg_table as begin
         "--alg"
         help="Algorithm"
         default="TDLambda"
-        "--luparams"
+        "--params"
         help="Parameters"
         arg_type=Float64
-        default=[0.5, 0.9]
         nargs='+'
         "--opt"
         help="Optimizer"
@@ -58,12 +73,8 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         "--optparams"
         help="Parameters"
         arg_type=Float64
-        default=[0.5, 0.9]
+        default=[]
         nargs='+'
-        "--truncation", "-t"
-        help="Truncation parameter for bptt"
-        arg_type=Int64
-        default=1
         "--horde"
         help="The horde used for training"
         default="gamma_chain"
@@ -76,6 +87,11 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
     return as
 end
 
+
+function onestep(chain_length::Integer)
+    gvfs = [GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())]
+    return Horde(gvfs)
+end
 
 function chain(chain_length::Integer)
     gvfs = [[GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())];
@@ -90,6 +106,11 @@ function gamma_chain(chain_length::Integer, γ::AbstractFloat)
     return Horde(gvfs)
 end
 
+function gammas(chain_length::Integer)
+    gvfs = [GVF(FeatureCumulant(1), StateTerminationDiscount(γ, ((env_state)->env_state[1] == 1)), NullPolicy()) for γ in 0.0:0.1:0.9]
+    return Horde(gvfs)
+end
+
 function oracle(env::CycleWorld, horde_str, γ=0.9)
     chain_length = env.chain_length
     state = env.agent_state
@@ -101,6 +122,8 @@ function oracle(env::CycleWorld, horde_str, γ=0.9)
         ret = zeros(chain_length + 1)
         ret[chain_length - state] = 1
         ret[end] = γ^(chain_length - state - 1)
+    elseif horde_str == "gammas"
+        ret = collect(0.0:0.1:0.9).^(chain_length - state - 1)
     else
         throw("Bug Found")
     end
@@ -132,16 +155,19 @@ function main_experiment(args::Vector{String})
     horde = chain(parsed["chain"])
     if parsed["horde"] == "gamma_chain"
         horde = gamma_chain(parsed["chain"], parsed["gamma"])
+    elseif parsed["horde"] == "gammas"
+        horde = gammas(parsed["chain"])
     end
 
     num_gvfs = length(horde)
 
     alg_string = parsed["alg"]
     gvfn_lu_func = getproperty(GVFN, Symbol(alg_string))
-    lu = gvfn_lu_func(Float64.(parsed["luparams"])...)
+    lu = gvfn_lu_func(Float64.(parsed["params"])...)
     τ=parsed["truncation"]
 
     opt_string = parsed["opt"]
+
     opt_func = getproperty(Flux, Symbol(opt_string))
     opt = opt_func(Float64.(parsed["optparams"])...)
 
@@ -152,45 +178,38 @@ function main_experiment(args::Vector{String})
 
     _, s_t = start!(env)
 
-    gvfn = GVFNetwork(num_gvfs, 3, horde; init=(dims...)->0.01*randn(rng, Float32, dims...))
-    model = Chain(StopGradient(gvfn), Flux.Dense(num_gvfs, 1))
+    gvfn = GVFNetwork(num_gvfs, 3, horde; init=(dims...)->0.001*randn(rng, Float32, dims...), σ_int=Flux.σ)
 
-    # out_model = Flux.Dense(num_gvfs, 1)
+    model = SingleLayer(num_gvfs, 1, sigmoid, sigmoid′)
+
     out_horde = Horde([GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())])
-    out_opt = Descent(0.1)
+    out_opt = Flux.ADAM(0.01)
     out_lu = TD()
 
-    state_list = [zeros(3) for t in 1:τ]
-    popfirst!(state_list)
+    state_list = CircularBuffer{Array{Float64, 1}}(τ+1)
+    fill!(state_list, zeros(3))
     push!(state_list, build_features(s_t))
     hidden_state_init = zeros(num_gvfs)
 
-    for step in 1:num_steps
+    @showprogress 0.1 "Step: " for step in 1:num_steps
+    # for step in 1:num_steps
 
         _, s_tp1, _, _ = step!(env, 1)
 
-        if length(state_list) == (τ+1)
-            popfirst!(state_list)
-        end
         push!(state_list, build_features(s_tp1))
 
         train!(gvfn, opt, lu, hidden_state_init, state_list, s_tp1)
-        train!(model, out_horde, out_opt, out_lu, state_list[end-1:end], s_tp1, τ==1 ? hidden_state_init : preds[end-2])
 
         reset!(gvfn, hidden_state_init)
         preds = gvfn.(state_list)
 
-        if τ == 1
-            reset!(gvfn, hidden_state_init)
-        else
-            reset!(gvfn, preds[end-2])
-        end
-        # reset!(gvfn, preds[end-2])
-        out_preds = model.(state_list[end-1:end])
+        train!(model, out_horde, out_opt, out_lu, Flux.data.(preds), s_tp1)
 
-        pred_strg[step, :] .= preds[end].data
-        err_strg[step, :] .= preds[end].data - oracle(env, parsed["horde"], parsed["gamma"])
-        out_pred_strg[step] = out_preds[end].data[1]
+        out_preds = model(preds[end])
+
+        pred_strg[step, :] .= Flux.data(preds[end])
+        err_strg[step, :] .= Flux.data(preds[end]) - oracle(env, parsed["horde"], parsed["gamma"])
+        out_pred_strg[step] = Flux.data(out_preds)[1]
         out_err_strg[step] = out_pred_strg[step][1] - oracle(env, parsed["horde"], parsed["gamma"])[1]
 
         s_t .= s_tp1
@@ -198,7 +217,7 @@ function main_experiment(args::Vector{String})
     end
 
     results = Dict(["predictions"=>pred_strg, "error"=>err_strg, "out_pred"=>out_pred_strg, "out_err_strg"=>out_err_strg])
-    save(savefile, results)
+    # save(savefile, results)
     # return pred_strg, err_strg
 end
 

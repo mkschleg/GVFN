@@ -7,8 +7,8 @@ using Random
 """
  RingWorld
 
-   1 -> 0 -> 0 -> ... -> 0 -|
-   ^------------------------|
+   1 <-> 0 <-> 0 <-> ... <-> 0 <-|
+   ^-----------------------------|
 
 chain_length: size of cycle
 actions: Progress
@@ -28,26 +28,21 @@ mutable struct RingWorld <: AbstractEnvironment
             partially_observable)
 end
 
-function JuliaRL.reset!(env::CycleWorld; rng = Random.GLOBAL_RNG, kwargs...)
+function JuliaRL.reset!(env::RingWorld; rng = Random.GLOBAL_RNG, kwargs...)
     env.agent_state = 0
 end
 
-JuliaRL.get_actions(env::CycleWorld) = env.actions
+JuliaRL.get_actions(env::RingWorld) = env.actions
 
-function JuliaRL.environment_step!(env::CycleWorld, action::Int64; rng = Random.GLOBAL_RNG, kwargs...)
-    # actions 1 == Turn Left
-    # actions 2 == Turn Right
-    # actions 3 == Up
-    # JuliaRL.step()
+function JuliaRL.environment_step!(env::RingWorld, action::Int64; rng = Random.GLOBAL_RNG, kwargs...)
     env.agent_state = (env.agent_state + 1) % env.chain_length
-    # JuliaRL
 end
 
-function JuliaRL.get_reward(env::CycleWorld) # -> get the reward of the environment
+function JuliaRL.get_reward(env::RingWorld) # -> get the reward of the environment
     return 0
 end
 
-function JuliaRL.get_state(env::CycleWorld) # -> get state of agent
+function JuliaRL.get_state(env::RingWorld) # -> get state of agent
     if env.partially_observable
         return partially_observable_state(env)
     else
@@ -55,11 +50,11 @@ function JuliaRL.get_state(env::CycleWorld) # -> get state of agent
     end
 end
 
-function fully_observable_state(env::CycleWorld)
+function fully_observable_state(env::RingWorld)
     return [env.agent_state]
 end
 
-function partially_observable_state(env::CycleWorld)
+function partially_observable_state(env::RingWorld)
     state = zeros(1)
     if env.agent_state == 0
         state[1] = 1
@@ -67,11 +62,11 @@ function partially_observable_state(env::CycleWorld)
     return state
 end
 
-function JuliaRL.is_terminal(env::CycleWorld) # -> determines if the agent_state is terminal
+function JuliaRL.is_terminal(env::RingWorld) # -> determines if the agent_state is terminal
     return false
 end
 
-function Base.show(io::IO, env::CycleWorld)
+function Base.show(io::IO, env::RingWorld)
     model = fill("0", env.chain_length)
     model[1] = "1"
     println(model)

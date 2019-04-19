@@ -33,18 +33,11 @@ end
 
 JuliaRL.get_actions(env::CycleWorld) = env.actions
 
-function JuliaRL.environment_step!(env::CycleWorld, action::Int64; rng = Random.GLOBAL_RNG, kwargs...)
-    # actions 1 == Turn Left
-    # actions 2 == Turn Right
-    # actions 3 == Up
-    # JuliaRL.step()
+JuliaRL.environment_step!(env::CycleWorld, action::Int64; rng = Random.GLOBAL_RNG, kwargs...) = 
     env.agent_state = (env.agent_state + 1) % env.chain_length
-    # JuliaRL
-end
 
-function JuliaRL.get_reward(env::CycleWorld) # -> get the reward of the environment
-    return 0
-end
+
+JuliaRL.get_reward(env::CycleWorld) = 0 # -> get the reward of the environment
 
 function JuliaRL.get_state(env::CycleWorld) # -> get state of agent
     if env.partially_observable
@@ -54,9 +47,7 @@ function JuliaRL.get_state(env::CycleWorld) # -> get state of agent
     end
 end
 
-function fully_observable_state(env::CycleWorld)
-    return [env.agent_state]
-end
+fully_observable_state(env::CycleWorld) = [env.agent_state]
 
 function partially_observable_state(env::CycleWorld)
     state = zeros(1)
@@ -79,3 +70,6 @@ function Base.show(io::IO, env::CycleWorld)
     println(model)
     # println(env.agent_state)
 end
+
+
+
