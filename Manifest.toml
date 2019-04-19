@@ -825,11 +825,11 @@ version = "0.2.0"
 
 [[Reproduce]]
 deps = ["ArgParse", "Blink", "ClusterManagers", "CodeTracking", "DataFrames", "Dates", "Distributed", "FileIO", "Git", "Glob", "Interact", "JLD2", "Logging", "ProgressMeter", "Random", "Reexport", "SharedArrays", "Test"]
-git-tree-sha1 = "6278b97bb46eed6e61a597447dc7e8ade4a2583d"
-repo-rev = "be3731ce6caaf291d80cbfe016daef108c9a368c"
+git-tree-sha1 = "8d5e8a6ed47fa372d2cb569ea8673e6f8402bf49"
+repo-rev = "d4483e78109cb9292ca4d3b389739be3104649ee"
 repo-url = "https://github.com/mkschleg/Reproduce.jl.git"
 uuid = "560a9c3a-0b8c-11e9-0329-d39dfcb85ed2"
-version = "0.1.0"
+version = "0.2.1"
 
 [[Requires]]
 deps = ["Test"]
