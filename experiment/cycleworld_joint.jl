@@ -80,7 +80,11 @@ function main_experiment(args::Vector{String})
     if !parsed["working"]
         create_info!(parsed, parsed["exp_loc"]; filter_keys=["verbose", "working", "exp_loc"])
         save_loc = Reproduce.get_save_dir(parsed)
+        if isfile(joinpath(save_loc, "results.jld2"))
+            return
+        end
     end
+
 
     num_steps = parsed["steps"]
     seed = parsed["seed"]
