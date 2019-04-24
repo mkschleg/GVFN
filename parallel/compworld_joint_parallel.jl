@@ -42,7 +42,7 @@ function main()
         default=1
         "--numsteps"
         arg_type=Int64
-        default=10000000
+        default=2000000
         "--saveloc"
         arg_type=String
         default=save_loc
