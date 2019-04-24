@@ -1,5 +1,5 @@
 #!/home/mkschleg/opt/bin/julia
-#SBATCH --array=1-360
+#SBATCH --array=101-360
 #SBATCH -o joint_out/%A_%a.out # Standard output
 #SBATCH -e joint_out/%A_%a.err # Standard error
 #SBATCH --mem=2000M # Memory request of 2 GB

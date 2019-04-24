@@ -80,7 +80,11 @@ function main_experiment(args::Vector{String})
     if !parsed["working"]
         create_info!(parsed, parsed["exp_loc"]; filter_keys=["verbose", "working", "exp_loc"])
         save_loc = Reproduce.get_save_dir(parsed)
+        if isfile(joinpath(save_loc, "results.jld2"))
+            return
+        end
     end
+
 
     num_steps = parsed["steps"]
     seed = parsed["seed"]
@@ -140,7 +144,7 @@ function main_experiment(args::Vector{String})
     end
 
     # results = Dict("out_pred"=>out_pred_strg, "out_err"=>out_err_strg, "hidden_state_err"=>h_state_err_strg, "hidden_state"=>h_state_strg)
-    results = Dict("out_pred"=>out_pred_strg, "hidden_state_err"=>h_state_err_strg)
+    results = Dict("out_err"=>out_err_strg, "hidden_state_err"=>h_state_err_strg)
 
     if !parsed["working"]
         savefile=joinpath(save_loc, "results.jld2")

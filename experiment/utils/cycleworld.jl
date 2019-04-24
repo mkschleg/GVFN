@@ -43,8 +43,9 @@ function gamma_chain(chain_length::Integer, γ::AbstractFloat)
     return Horde(gvfs)
 end
 
-function gammas(gammas::Array{AbstractFloat, 1})
-    gvfs = [GVF(FeatureCumulant, StatTerminationDiscount(γ, ((env_state)->env_state[1] == 1)), NullPolicy()) for γ in gammas]
+function gammas(gms::Array{Float64, 1})
+    gvfs = [GVF(FeatureCumulant(1), StateTerminationDiscount(γ, ((env_state)->env_state[1] == 1)), NullPolicy()) for γ in gms]
+    return Horde(gvfs)
 end
 
 function get_horde(horde_str::AbstractString, chain_length::Integer, gamma::AbstractFloat)
