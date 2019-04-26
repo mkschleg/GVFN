@@ -1,9 +1,9 @@
 #!/home/mkschleg/opt/bin/julia
-#SBATCH --array=1-360
-#SBATCH -o joint_out/%A_%a.out # Standard output
-#SBATCH -e joint_out/%A_%a.err # Standard error
+#SBATCH -o comp_joint.out # Standard output
+#SBATCH -e comp_join.err # Standard error
 #SBATCH --mem=2000M # Memory request of 2 GB
-#SBATCH --time=01:00:00 # Running time of 1 hours
+#SBATCH --time=24:00:00 # Running time of 12 hours
+#SBATCH --ntasks=64
 #SBATCH --account=def-whitem
 
 using Pkg
@@ -62,7 +62,7 @@ function main()
         "seed"=>collect(1:3)
     ])
     arg_list = ["gvfnhorde", "cell", "alpha", "beta", "truncation", "seed"]
-    static_args = ["--steps", string(parsed["numsteps"]), "--exp_loc", parsed["saveloc"], "--outhorde", "forward"]
+    static_args = ["--steps", string(parsed["numsteps"]), "--exp_loc", parsed["saveloc"], "--outhorde", "forward", "--verbose"]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments)
 
     if parsed["numjobs"]

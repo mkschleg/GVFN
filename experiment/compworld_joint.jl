@@ -134,8 +134,8 @@ function main_experiment(args::Vector{String})
     for step in 1:num_steps
         
         if parsed["verbose"]
-            if step % 1000 == 0
-                print(step, "\r")
+            if step % 10000 == 0
+                print(step, "\n")
             end
         end
 
