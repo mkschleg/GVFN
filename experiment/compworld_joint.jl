@@ -132,14 +132,16 @@ function main_experiment(args::Vector{String})
     lu = GVFN.OnlineJointTD(parsed["beta"], state_list, hidden_state_init)
 
     for step in 1:num_steps
-        action_state, a_t = CompassWorldUtils.get_action(action_state, s_t, rng)
+        
         if parsed["verbose"]
             if step % 1000 == 0
                 print(step, "\r")
             end
         end
 
-        _, s_tp1, _, _ = step!(env, 1)
+        action_state, a_t = CompassWorldUtils.get_action(action_state, s_t, rng)
+
+        _, s_tp1, _, _ = step!(env, a_t[1])
 
         (preds, rnn_out) = train_step!(out_model, rnn, gvfn_horde, out_horde, opt, lu, build_features(s_tp1, a_t[1]), s_tp1)
 
