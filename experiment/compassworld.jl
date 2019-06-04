@@ -10,7 +10,8 @@ using Statistics
 import LinearAlgebra.Diagonal
 using Random
 using ProgressMeter
-using FileIO
+# using FileIO
+using JLD2
 using ArgParse
 using Random
 
@@ -196,7 +197,12 @@ end
 
 # build_features(state) = state
 onehot(size, idx) = begin; a=zeros(size);a[idx] = 1.0; return a end;
-build_features(state, action) = [[1.0]; state; 1.0.-state; onehot(3, action); 1.0.-onehot(3,action)]
+# build_features(state, action) = [[1.0]; state; 1.0.-state; onehot(3, action); 1.0.-onehot(3,action)]
+
+function build_features(state, action)
+    ϕ = [[1.0]; state; 1.0.-state]
+    return [action==1 ? ϕ : zero(ϕ); action==2 ? ϕ : zero(ϕ); action==3 ? ϕ : zero(ϕ);]
+end
 
 # Flux.σ(x::AbstractArray) = Flux.σ.(x)
 
@@ -226,6 +232,9 @@ function main_experiment(args::Vector{String})
         if !isdir(savepath)
             mkpath(savepath)
         end
+    end
+    if isfile(savefile)
+        return
     end
 
     num_steps = parsed["steps"]
@@ -259,7 +268,7 @@ function main_experiment(args::Vector{String})
         act = clip
     end
 
-    gvfn = GVFNetwork(num_gvfs, 6*2 + 1 + 6, horde; init=(dims...)->0.0001.*(rand(rng, Float64, dims...).-0.5), σ_int=act)
+    
 
     out_horde = forward()
     out_opt = Descent(0.1)
@@ -269,6 +278,8 @@ function main_experiment(args::Vector{String})
     _, s_t = start!(env)
     ϕ = build_features(s_t, 1)
     state_list = CircularBuffer{typeof(ϕ)}(τ+1)
+
+    gvfn = GVFNetwork(num_gvfs, length(ϕ), horde; init=(dims...)->0.0001.*(rand(rng, Float64, dims...).-0.5), σ_int=act)
 
     hidden_state_init = zeros(num_gvfs)
 
@@ -304,7 +315,11 @@ function main_experiment(args::Vector{String})
     end
 
     results = Dict(["out_pred"=>out_pred_strg, "out_err_strg"=>out_err_strg])
-    save(savefile, results)
+    # save(savefile, results)
+    JLD2.save(
+        JLD2.FileIO.File(JLD2.FileIO.DataFormat{:JLD2},
+                         savefile),
+        Dict("results"=>results); compress=true)
 end
 
 Base.@ccallable function julia_main(ARGS::Vector{String})::Cint
