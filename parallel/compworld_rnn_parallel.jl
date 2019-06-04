@@ -1,13 +1,19 @@
-#!/usr/local/bin/julia
+#!/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/julia/1.1.0/bin/julia
+#SBATCH -o comp_gvfn.out # Standard output
+#SBATCH -e comp_gvfn.err # Standard error
+#SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
+#SBATCH --time=00:10:00 # Running time of 12 hours
+#SBATCH --ntasks=4
+#SBATCH --account=rrg-whitem
 
 using Pkg
-using Reproduce
+
 # cd("..")
 Pkg.activate(".")
 # include("parallel_experiment.jl")
-
 # println("Hello Wolrd...")
 
+using Reproduce
 save_loc = "compassworld_gvfn"
 exp_file = "experiment/compassworld.jl"
 exp_module_name = :CompassWorldExperiment
