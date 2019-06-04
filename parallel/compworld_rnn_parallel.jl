@@ -14,10 +14,13 @@ Pkg.activate(".")
 # println("Hello Wolrd...")
 
 using Reproduce
-save_loc = "compassworld_gvfn"
-exp_file = "experiment/compassworld.jl"
-exp_module_name = :CompassWorldExperiment
-exp_func_name = :main_experiment
+
+const save_loc = "compassworld_gvfn"
+const exp_file = "experiment/compassworld.jl"
+const exp_module_name = :CompassWorldExperiment
+const exp_func_name = :main_experiment
+
+println("Hello Wolrd...")
 
 #------ Learning Updates -------#
 
@@ -83,7 +86,6 @@ function main()
         arg_list = ["horde", "alpha", "lambda", "seed"]
     end
 
-    
     static_args = ["--alg", learning_update, "--steps", "5000000"]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=(learning_update == "RTD" ? make_arguments_rtd : make_arguments_tdlambda))
 
