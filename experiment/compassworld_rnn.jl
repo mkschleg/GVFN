@@ -296,7 +296,6 @@ function main_experiment(args::Vector{String})
                 print(step, "\r")
             end
         end
-        print(step, "\r")
         action_state, a_t = get_action(action_state, s_t, rng)
 
         _, s_tp1, _, _ = step!(env, a_t[1])
