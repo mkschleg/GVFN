@@ -1,17 +1,26 @@
-#!/usr/local/bin/julia
+#!/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/julia/1.1.0/bin/julia
+#SBATCH -o comp_gvfn.out # Standard output
+#SBATCH -e comp_gvfn.err # Standard error
+#SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
+#SBATCH --time=00:10:00 # Running time of 12 hours
+#SBATCH --ntasks=4
+#SBATCH --account=rrg-whitem
 
 using Pkg
-using Reproduce
+
 # cd("..")
 Pkg.activate(".")
 # include("parallel_experiment.jl")
-
 # println("Hello Wolrd...")
 
-save_loc = "compassworld_gvfn"
-exp_file = "experiment/compassworld.jl"
-exp_module_name = :CompassWorldExperiment
-exp_func_name = :main_experiment
+using Reproduce
+
+const save_loc = "compassworld_gvfn"
+const exp_file = "experiment/compassworld.jl"
+const exp_module_name = :CompassWorldExperiment
+const exp_func_name = :main_experiment
+
+println("Hello Wolrd...")
 
 #------ Learning Updates -------#
 
@@ -77,7 +86,6 @@ function main()
         arg_list = ["horde", "alpha", "lambda", "seed"]
     end
 
-    
     static_args = ["--alg", learning_update, "--steps", "5000000"]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=(learning_update == "RTD" ? make_arguments_rtd : make_arguments_tdlambda))
 

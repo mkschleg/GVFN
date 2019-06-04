@@ -214,9 +214,10 @@ end
 
 
 function main_experiment(args::Vector{String})
-
+    
     as = arg_parse()
     parsed = parse_args(args, as)
+    println("Hello")
 
     savefile = parsed["savefile"]
     savepath = dirname(savefile)
@@ -231,6 +232,7 @@ function main_experiment(args::Vector{String})
     end
 
     num_steps = parsed["steps"]
+    println(num_steps)
     seed = parsed["seed"]
     rng = Random.MersenneTwister(seed)
 
@@ -273,16 +275,6 @@ function main_experiment(args::Vector{String})
     fill!(state_list, zero(ϕ))
     push!(state_list, build_features(s_t, a_tm1[1]))
 
-    # hidden_state_init = Flux.data.(rnn.cell(hidden_state_init, state_list[1]))
-    # println(size(rnn.state), " ", size(state_list[1]))
-    hidden_state_init = nothing
-
-    if parsed["cell"] == "LSTM"
-        hidden_state_init = Flux.data.(rnn.cell(rnn.state, state_list[1])[1])
-    else
-        hidden_state_init = Flux.data(rnn.cell(rnn.state, state_list[1])[1])
-    end
-
     ρ = zeros(Float32, num_gvfs)
     cumulants = zeros(Float32, num_gvfs)
     discounts = zeros(Float32, num_gvfs)
@@ -291,10 +283,12 @@ function main_experiment(args::Vector{String})
 
     preds = model.(state_list)
 
+    hidden_state_init = GVFN.get_initial_hidden_state(rnn)
+    lu = OnlineTD_RNN(state_list, hidden_state_init)
 
     for step in 1:num_steps
         if step%100000 == 0
-            println("Garbage Clean!")
+            # println("Garbage Clean!")
             GC.gc()
         end
         if parsed["verbose"]
@@ -306,39 +300,44 @@ function main_experiment(args::Vector{String})
 
         _, s_tp1, _, _ = step!(env, a_t[1])
 
-        push!(state_list, build_features(s_tp1, a_t[1]))
+        preds = train_step!(model[end], rnn, horde, opt, lu, build_features(s_tp1, a_t[1]), s_tp1)
+
+        # out_pred_strg[step,:] = Flux.data(preds[end])
+        # out_err_strg[step, :] = out_pred_strg[step, :] .- CycleWorldUtils.oracle(env, parsed["horde"], parsed["gamma"])
+
+        # push!(state_list, build_features(s_tp1, a_t[1]))
 
 
-        reset!(rnn, hidden_state_init)
+        # reset!(rnn, hidden_state_init)
 
 
-        preds .= model.(state_list)
-        preds_tilde .= Flux.data(preds[end])
+        # preds .= model.(state_list)
+        # preds_tilde .= Flux.data(preds[end])
 
-        get!(cumulants, discounts, π_prob, horde, a_t[1], s_tp1, preds_tilde)
+        # get!(cumulants, discounts, π_prob, horde, a_t[1], s_tp1, preds_tilde)
 
-        ρ .= π_prob./a_t[2]
+        # ρ .= π_prob./a_t[2]
 
-        grads = Flux.Tracker.gradient(()->GVFN.offpolicy_tdloss(ρ, preds[end-1], cumulants, discounts, preds_tilde), Flux.params(model))
+        # grads = Flux.Tracker.gradient(()->GVFN.offpolicy_tdloss(ρ, preds[end-1], cumulants, discounts, preds_tilde), Flux.params(model))
 
-        for weights in Flux.params(model)
-            Flux.Tracker.update!(opt, weights, -grads[weights])
-        end
+        # for weights in Flux.params(model)
+        #     Flux.Tracker.update!(opt, weights, -grads[weights])
+        # end
 
-        reset!(rnn, hidden_state_init)
-        Flux.truncate!(rnn)
-        preds .= model.(state_list)
+        # reset!(rnn, hidden_state_init)
+        # Flux.truncate!(rnn)
+        # preds .= model.(state_list)
 
         out_pred_strg[step, :] .= Flux.data(preds[end])
         out_err_strg[step, :] .= out_pred_strg[step, :] .- oracle(env, "forward")
 
-        s_t .= s_tp1
+        # s_t .= s_tp1
 
-        if parsed["cell"] == "LSTM"
-            hidden_state_init = Flux.data.(rnn.cell(hidden_state_init, state_list[1])[1])
-        else
-            hidden_state_init = Flux.data(rnn.cell(hidden_state_init, state_list[1])[1])
-        end
+        # if parsed["cell"] == "LSTM"
+        #     hidden_state_init = Flux.data.(rnn.cell(hidden_state_init, state_list[1])[1])
+        # else
+        #     hidden_state_init = Flux.data(rnn.cell(hidden_state_init, state_list[1])[1])
+        # end
         # println(hidden_state_init)
 
     end
