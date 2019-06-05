@@ -302,43 +302,8 @@ function main_experiment(args::Vector{String})
 
         preds = train_step!(model[end], rnn, horde, opt, lu, build_features(s_tp1, a_t[1]), s_tp1)
 
-        # out_pred_strg[step,:] = Flux.data(preds[end])
-        # out_err_strg[step, :] = out_pred_strg[step, :] .- CycleWorldUtils.oracle(env, parsed["horde"], parsed["gamma"])
-
-        # push!(state_list, build_features(s_tp1, a_t[1]))
-
-
-        # reset!(rnn, hidden_state_init)
-
-
-        # preds .= model.(state_list)
-        # preds_tilde .= Flux.data(preds[end])
-
-        # get!(cumulants, discounts, π_prob, horde, a_t[1], s_tp1, preds_tilde)
-
-        # ρ .= π_prob./a_t[2]
-
-        # grads = Flux.Tracker.gradient(()->GVFN.offpolicy_tdloss(ρ, preds[end-1], cumulants, discounts, preds_tilde), Flux.params(model))
-
-        # for weights in Flux.params(model)
-        #     Flux.Tracker.update!(opt, weights, -grads[weights])
-        # end
-
-        # reset!(rnn, hidden_state_init)
-        # Flux.truncate!(rnn)
-        # preds .= model.(state_list)
-
         out_pred_strg[step, :] .= Flux.data(preds[end])
         out_err_strg[step, :] .= out_pred_strg[step, :] .- oracle(env, "forward")
-
-        # s_t .= s_tp1
-
-        # if parsed["cell"] == "LSTM"
-        #     hidden_state_init = Flux.data.(rnn.cell(hidden_state_init, state_list[1])[1])
-        # else
-        #     hidden_state_init = Flux.data(rnn.cell(hidden_state_init, state_list[1])[1])
-        # end
-        # println(hidden_state_init)
 
     end
 
