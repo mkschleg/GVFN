@@ -10,7 +10,8 @@ using Statistics
 import LinearAlgebra.Diagonal
 using Random
 using ProgressMeter
-using FileIO
+# using FileIO
+using JLD2
 using ArgParse
 # using Reproduce
 using Random
@@ -193,8 +194,11 @@ end
 
 # build_features(state) = state
 onehot(size, idx) = begin; a=zeros(size);a[idx] = 1.0; return a end;
-build_features(state, action) = [[1.0]; state; 1.0.-state; onehot(3, action); 1.0.-onehot(3,action)]
-
+# build_features(state, action) = [[1.0]; state; 1.0.-state; onehot(3, action); 1.0.-onehot(3,action)]
+function build_features(state, action)
+    ϕ = [[1.0]; state; 1.0.-state]
+    return [action==1 ? ϕ : zero(ϕ); action==2 ? ϕ : zero(ϕ); action==3 ? ϕ : zero(ϕ);]
+end
 # Flux.σ(x::AbstractArray) = Flux.σ.(x)
 
 function clip(a)
@@ -210,9 +214,10 @@ end
 
 
 function main_experiment(args::Vector{String})
-
+    
     as = arg_parse()
     parsed = parse_args(args, as)
+    println("Hello")
 
     savefile = parsed["savefile"]
     savepath = dirname(savefile)
@@ -222,8 +227,12 @@ function main_experiment(args::Vector{String})
             mkpath(savepath)
         end
     end
+    if isfile(savefile)
+        return
+    end
 
     num_steps = parsed["steps"]
+    println(num_steps)
     seed = parsed["seed"]
     rng = Random.MersenneTwister(seed)
 
@@ -266,16 +275,6 @@ function main_experiment(args::Vector{String})
     fill!(state_list, zero(ϕ))
     push!(state_list, build_features(s_t, a_tm1[1]))
 
-    # hidden_state_init = Flux.data.(rnn.cell(hidden_state_init, state_list[1]))
-    # println(size(rnn.state), " ", size(state_list[1]))
-    hidden_state_init = nothing
-
-    if parsed["cell"] == "LSTM"
-        hidden_state_init = Flux.data.(rnn.cell(rnn.state, state_list[1])[1])
-    else
-        hidden_state_init = Flux.data(rnn.cell(rnn.state, state_list[1])[1])
-    end
-
     ρ = zeros(Float32, num_gvfs)
     cumulants = zeros(Float32, num_gvfs)
     discounts = zeros(Float32, num_gvfs)
@@ -284,10 +283,12 @@ function main_experiment(args::Vector{String})
 
     preds = model.(state_list)
 
+    hidden_state_init = GVFN.get_initial_hidden_state(rnn)
+    lu = OnlineTD_RNN(state_list, hidden_state_init)
 
     for step in 1:num_steps
         if step%100000 == 0
-            println("Garbage Clean!")
+            # println("Garbage Clean!")
             GC.gc()
         end
         if parsed["verbose"]
@@ -299,45 +300,18 @@ function main_experiment(args::Vector{String})
 
         _, s_tp1, _, _ = step!(env, a_t[1])
 
-        push!(state_list, build_features(s_tp1, a_t[1]))
-
-
-        reset!(rnn, hidden_state_init)
-
-
-        preds .= model.(state_list)
-        preds_tilde .= Flux.data(preds[end])
-
-        get!(cumulants, discounts, π_prob, horde, a_t[1], s_tp1, preds_tilde)
-
-        ρ .= π_prob./a_t[2]
-
-        grads = Flux.Tracker.gradient(()->GVFN.offpolicy_tdloss(ρ, preds[end-1], cumulants, discounts, preds_tilde), Flux.params(model))
-
-        for weights in Flux.params(model)
-            Flux.Tracker.update!(opt, weights, -grads[weights])
-        end
-
-        reset!(rnn, hidden_state_init)
-        Flux.truncate!(rnn)
-        preds .= model.(state_list)
+        preds = train_step!(model[end], rnn, horde, opt, lu, build_features(s_tp1, a_t[1]), s_tp1)
 
         out_pred_strg[step, :] .= Flux.data(preds[end])
         out_err_strg[step, :] .= out_pred_strg[step, :] .- oracle(env, "forward")
 
-        s_t .= s_tp1
-
-        if parsed["cell"] == "LSTM"
-            hidden_state_init = Flux.data.(rnn.cell(hidden_state_init, state_list[1])[1])
-        else
-            hidden_state_init = Flux.data(rnn.cell(hidden_state_init, state_list[1])[1])
-        end
-        # println(hidden_state_init)
-
     end
 
     results = Dict(["out_pred"=>out_pred_strg, "out_err_strg"=>out_err_strg])
-    save(savefile, results)
+    JLD2.save(
+        JLD2.FileIO.File(JLD2.FileIO.DataFormat{:JLD2},
+                         savefile),
+        Dict("results"=>results); compress=true)
 end
 
 Base.@ccallable function julia_main(ARGS::Vector{String})::Cint

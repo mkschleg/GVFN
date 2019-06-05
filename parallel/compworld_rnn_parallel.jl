@@ -1,19 +1,34 @@
-#!/usr/local/bin/julia
+#!/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/julia/1.1.0/bin/julia
+#SBATCH -o comp_gvfn.out # Standard output
+#SBATCH -e comp_gvfn.err # Standard error
+#SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
+#SBATCH --time=00:10:00 # Running time of 12 hours
+#SBATCH --ntasks=4
+#SBATCH --account=rrg-whitem
 
 using Pkg
+
 # cd("..")
 Pkg.activate(".")
-include("parallel_experiment.jl")
+# include("parallel_experiment.jl")
+# println("Hello Wolrd...")
+
+using Reproduce
+
+const save_loc = "compassworld_gvfn"
+const exp_file = "experiment/compassworld.jl"
+const exp_module_name = :CompassWorldExperiment
+const exp_func_name = :main_experiment
 
 println("Hello Wolrd...")
 
 #------ Learning Updates -------#
 
-# const learning_update = "RTD"
-# const truncations = [1, 10, 24]
+const learning_update = "RTD"
+const truncations = [1, 3, 6, 12, 24]
 
-const learning_update = "TDLambda"
-const lambdas = 0.0:0.1:0.9
+# const learning_update = "TDLambda"
+# const lambdas = 0.0:0.1:0.9
 # const truncations = [1, 10, 24]
 
 
@@ -21,7 +36,7 @@ const lambdas = 0.0:0.1:0.9
 
 # Parameters for the SGD Algorithm
 const optimizer = "Descent"
-const alphas = [0.001,0.01,0.1,0.25,0.5]
+const alphas = [0.001, 0.01, 0.1, 0.25, 0.5, 0.75]
 # const alphas = 0.1*1.5.^(-6:1)
 
 # # Parameters for the RMSProp Optimizer
@@ -58,7 +73,7 @@ function main()
             "horde"=>["rafols", "forward"],
             "alpha"=>alphas,
             "truncation"=>truncations,
-            "seed"=>collect(1:2)
+            "seed"=>collect(1:5)
         ])
         arg_list = ["horde", "alpha", "truncation", "seed"]
     elseif learning_update == "TDLambda"
@@ -66,15 +81,24 @@ function main()
             "horde"=>["rafols", "forward"],
             "alpha"=>alphas,
             "lambda"=>lambdas,
-            "seed"=>collect(1:2)
+            "seed"=>collect(1:5)
         ])
         arg_list = ["horde", "alpha", "lambda", "seed"]
     end
 
-    
     static_args = ["--alg", learning_update, "--steps", "5000000"]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=(learning_update == "RTD" ? make_arguments_rtd : make_arguments_tdlambda))
-    parallel_experiment_args("experiment/compassworld.jl", args_iterator; exp_module_name=:CompassWorldExperiment, exp_func_name=:main_experiment, num_workers=8)
+
+    experiment = Experiment(save_loc,
+                            exp_file,
+                            exp_module_name,
+                            exp_func_name,
+                            args_iterator)
+
+    create_experiment_dir(experiment)
+    add_experiment(experiment; settings_dir="settings")
+    ret = job(experiment; num_workers=4)
+    post_experiment(experiment, ret)
 
 end
 
