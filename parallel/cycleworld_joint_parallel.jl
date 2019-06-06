@@ -7,11 +7,10 @@
 #SBATCH --account=def-whitem
 
 using Pkg
-using Reproduce
-using Logging
-
 Pkg.activate(".")
 
+using Reproduce
+using Logging
 
 const save_loc = "cycleworld_joint_sweep_tmp"
 const exp_file = "experiment/cycleworld_joint.jl"
