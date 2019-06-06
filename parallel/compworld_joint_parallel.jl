@@ -1,10 +1,10 @@
-#!/home/mkschleg/opt/bin/julia
+#!/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/julia/1.1.0/bin/julia
 #SBATCH -o comp_joint.out # Standard output
-#SBATCH -e comp_join.err # Standard error
-#SBATCH --mem=2000M # Memory request of 2 GB
+#SBATCH -e comp_joint.err # Standard error
+#SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
 #SBATCH --time=24:00:00 # Running time of 12 hours
 #SBATCH --ntasks=64
-#SBATCH --account=def-whitem
+#SBATCH --account=rrg-whitem
 
 using Pkg
 Pkg.activate(".")
@@ -59,7 +59,7 @@ function main()
         "truncation"=>truncations,
         "cell"=>["RNN"],
         "beta"=>betas,
-        "seed"=>collect(1:3)
+        "seed"=>collect(1:5)
     ])
     arg_list = ["gvfnhorde", "cell", "alpha", "beta", "truncation", "seed"]
     static_args = ["--steps", string(parsed["numsteps"]), "--exp_loc", parsed["saveloc"], "--outhorde", "forward", "--verbose"]
