@@ -1,13 +1,16 @@
-#!/home/mkschleg/opt/bin/julia
-#SBATCH --array=1-50
-#SBATCH -o joint_out/%A_%a.out # Standard output
-#SBATCH -e joint_out/%A_%a.err # Standard error
-#SBATCH --mem=2000M # Memory request of 2 GB
-#SBATCH --time=01:00:00 # Running time of 1 hours
+#!/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx512/Compiler/gcc7.3/julia/1.1.0/bin/julia
+#SBATCH -o comp_joint.out # Standard output
+#SBATCH -e comp_join.err # Standard error
+#SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
+#SBATCH --time=01:00:00 # Running time of 12 hours
+#SBATCH --ntasks=8
 #SBATCH --account=def-whitem
 
 using Pkg
 Pkg.activate(".")
+
+using Reproduce
+using Logging
 
 using Reproduce
 using Logging
@@ -31,7 +34,7 @@ function make_arguments(args::Dict)
     cell = args["cell"]
     truncation = args["truncation"]
     seed = args["seed"]
-    new_args=["--gvfnhorde", horde, "--truncation", truncation, "--opt", optimizer, "--optparams", alpha, "--cell", cell, "--seed", seed]
+    new_args=["--gvfnhorde", horde, "--truncation", truncation, "--opt", optimizer, "--optparams", alpha, "--cell", cell, "--seed", seed, "--beta", beta]
     return new_args
 end
 
@@ -44,7 +47,7 @@ function main()
         default=1
         "--numsteps"
         arg_type=Int64
-        default=200000
+        default=2000
         "--jobloc"
         arg_type=String
         default=joinpath(save_loc, "jobs")
@@ -68,7 +71,7 @@ function main()
 
     if parsed["numjobs"]
         @info "This experiment has $(length(collect(args_iterator))) jobs."
-        println(collect(args_iterator[num_workers]))
+        println(collect(args_iterator)[num_workers])
         exit(0)
     end
 
