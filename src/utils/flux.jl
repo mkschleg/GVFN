@@ -1,6 +1,7 @@
 module FluxUtils
 
-using Flux, ArgParse
+using ..Flux
+using Reproduce
 
 function rnn_settings!(as::ArgParseSettings)
     @add_arg_table as begin

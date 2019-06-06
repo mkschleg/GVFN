@@ -17,7 +17,6 @@ using Random
 
 using Flux.Tracker: TrackedArray, TrackedReal, track, @grad
 
-
 using DataStructures: CircularBuffer
 
 function Flux.Optimise.apply!(o::Flux.RMSProp, x, Δ)
@@ -267,8 +266,6 @@ function main_experiment(args::Vector{String})
         # act = (x)->clamp(x, 0.0, 1.0)
         act = clip
     end
-
-    
 
     out_horde = forward()
     out_opt = Descent(0.1)
