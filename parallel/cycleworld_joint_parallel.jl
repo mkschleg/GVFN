@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 #!/home/mkschleg/opt/bin/julia
 #SBATCH --array=1-50
 #SBATCH -o joint_out/%A_%a.out # Standard output
@@ -6,20 +5,15 @@
 #SBATCH --mem=2000M # Memory request of 2 GB
 #SBATCH --time=01:00:00 # Running time of 1 hours
 #SBATCH --account=def-whitem
-=======
-#!/usr/local/bin/julia
->>>>>>> e0abad0d32be9986910821056ef887c273c37fea
 
 using Pkg
 using Reproduce
 using Logging
 
-<<<<<<< HEAD
-=======
 Pkg.activate(".")
 
->>>>>>> e0abad0d32be9986910821056ef887c273c37fea
-const save_loc = "cycleworld_joint_sweep"
+
+const save_loc = "cycleworld_joint_sweep_tmp"
 const exp_file = "experiment/cycleworld_joint.jl"
 const exp_module_name = :CycleWorldJointExperiment
 const exp_func_name = :main_experiment
@@ -31,7 +25,7 @@ const truncations = [1, 2, 4, 6, 8, 10]
 
 # const num_steps = 200000
 
-function make_arguments(args::Dict{String, String})
+function make_arguments(args::Dict)
     horde = args["outhorde"]
     alpha = args["alpha"]
     beta = args["beta"]
@@ -52,12 +46,15 @@ function main()
         "--numsteps"
         arg_type=Int64
         default=200000
+        "--jobloc"
+        arg_type=String
+        default=joinpath(save_loc, "jobs")
         "--numjobs"
         action=:store_true
     end
     parsed = parse_args(as)
     num_workers = parsed["numworkers"]
-    
+
     arg_dict = Dict([
         "outhorde"=>["onestep", "chain"],
         "alpha"=>alphas,
@@ -85,7 +82,7 @@ function main()
 
     create_experiment_dir(experiment)
     add_experiment(experiment; settings_dir="settings")
-    ret = job(experiment; num_workers=num_workers)
+    ret = job(experiment; num_workers=num_workers, job_file_dir=parsed["jobloc"])
     post_experiment(experiment, ret)
 end
 

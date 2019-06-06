@@ -15,7 +15,8 @@ using ArgParse
 using Random
 using DataStructures: CircularBuffer
 
-include("utils/util.jl")
+# include("utils/util.jl")
+import GVFN.CycleWorldSettings
 
 function Flux.Optimise.apply!(o::Flux.RMSProp, x, Δ)
   η, ρ = o.eta, o.rho

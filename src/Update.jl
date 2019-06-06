@@ -1,14 +1,14 @@
 
 using Statistics
 using LinearAlgebra: Diagonal
-using Flux.Tracker: update!
+import Flux.Tracker.update!
 
 using Flux.Optimise: apply!
 
 abstract type AbstractUpdate end
 
-function train!(gvfn::Flux.Recur{T}, lu::AbstractUpdate, h_init, state_seq, env_state_tp1) where {T <: AbstractGVFLayer} end
-function train!(gvfn::AbstractGVFLayer, lu::AbstractUpdate, h_init, state_seq, env_state_tp1)
+function update!(gvfn::Flux.Recur{T}, lu::AbstractUpdate, h_init, state_seq, env_state_tp1) where {T <: AbstractGVFLayer} end
+function update!(gvfn::AbstractGVFLayer, lu::AbstractUpdate, h_init, state_seq, env_state_tp1)
     throw("$(typeof(lu)) not implemented for $(typeof(gvfn)). Try Flux.Recur{$(typeof(gvfn))} ")
 end
 
@@ -21,7 +21,7 @@ mutable struct TDLambda <: AbstractUpdate
     TDLambda(λ) = new(λ, IdDict(), IdDict())
 end
 
-function train!(gvfn::Flux.Recur{T}, opt, lu::TDLambda, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: AbstractGVFLayer}
+function update!(gvfn::Flux.Recur{T}, opt, lu::TDLambda, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: AbstractGVFLayer}
 
     λ = lu.λ
     reset!(gvfn, h_init)
@@ -49,7 +49,7 @@ function train!(gvfn::Flux.Recur{T}, opt, lu::TDLambda, h_init, states, env_stat
     # return Flux.data.(preds)
 end
 
-function train!(gvfn::Flux.Recur{T}, opt, lu::TDLambda, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: GVFRActionLayer}
+function update!(gvfn::Flux.Recur{T}, opt, lu::TDLambda, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: GVFRActionLayer}
 
     λ = lu.λ
     reset!(gvfn, h_init)
@@ -84,7 +84,7 @@ end
 
 
 
-function train!(model, horde::AbstractHorde, opt, lu::TD, state_seq, env_state_tp1, action_t=nothing, b_prob=1.0; prms=nothing)
+function update!(model, horde::AbstractHorde, opt, lu::TD, state_seq, env_state_tp1, action_t=nothing, b_prob=1.0; prms=nothing)
 
     if prms == nothing
         prms = params(model)
@@ -99,7 +99,7 @@ function train!(model, horde::AbstractHorde, opt, lu::TD, state_seq, env_state_t
 end
 
 
-function train!(model::SingleLayer, horde::AbstractHorde, opt, lu::TD, state_seq, env_state_tp1, action_t=nothing, b_prob=1.0; prms=nothing)
+function update!(model::SingleLayer, horde::AbstractHorde, opt, lu::TD, state_seq, env_state_tp1, action_t=nothing, b_prob=1.0; prms=nothing)
 
     # println(state_seq)
     v = model.(state_seq[end-1:end])
@@ -113,7 +113,7 @@ function train!(model::SingleLayer, horde::AbstractHorde, opt, lu::TD, state_seq
     model.b .+= -apply!(opt, model.b, Δ)
 end
 
-function train!(gvfn::Flux.Recur{T}, opt, lu::TD, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: GVFRActionLayer}
+function update!(gvfn::Flux.Recur{T}, opt, lu::TD, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: GVFRActionLayer}
 
     prms = Params([gvfn.cell.Wx, gvfn.cell.Wh])
 
@@ -141,7 +141,7 @@ mutable struct RTD <: AbstractUpdate
     RTD() = new()
 end
 
-function train!(gvfn::Flux.Recur{T}, opt, lu::RTD, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: AbstractGVFLayer}
+function update!(gvfn::Flux.Recur{T}, opt, lu::RTD, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: AbstractGVFLayer}
 
     prms = Params([gvfn.cell.Wx, gvfn.cell.Wh])
 
@@ -159,7 +159,7 @@ function train!(gvfn::Flux.Recur{T}, opt, lu::RTD, h_init, states, env_state_tp1
     end
 end
 
-function train!(gvfn::Flux.Recur{T}, opt, lu::RTD, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: GVFRActionLayer}
+function update!(gvfn::Flux.Recur{T}, opt, lu::RTD, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: GVFRActionLayer}
 
     prms = Params([gvfn.cell.Wx, gvfn.cell.Wh])
 
@@ -186,7 +186,7 @@ mutable struct RTDC <: AbstractUpdate
     RTD(α) = new(α)
 end
 
-function train!(gvfn::Flux.Recur{T}, lu::RTDC, h_init, states, env_state_tp1) where {T <: AbstractGVFLayer}
+function update!(gvfn::Flux.Recur{T}, lu::RTDC, h_init, states, env_state_tp1) where {T <: AbstractGVFLayer}
 
     # α = lu.α
 
@@ -214,7 +214,7 @@ mutable struct RTD_jacobian <: AbstractUpdate
     RTD_jacobian() = new(IdDict{Any, Array{Float64, 3}}())
 end
 
-function train!(gvfn::Flux.Recur{T}, lu::RTD_jacobian, h_init, states, env_state_tp1, b_prob=1.0) where {T <: AbstractGVFLayer}
+function update!(gvfn::Flux.Recur{T}, lu::RTD_jacobian, h_init, states, env_state_tp1, b_prob=1.0) where {T <: AbstractGVFLayer}
 
     # α = lu.α
     reset!(gvfn, h_init)

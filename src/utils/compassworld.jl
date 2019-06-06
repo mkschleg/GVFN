@@ -1,6 +1,6 @@
 module CompassWorldUtils
 
-using GVFN, Reproduce
+using ..GVFN, Reproduce
 
 cwc = GVFN.CompassWorldConst
 
