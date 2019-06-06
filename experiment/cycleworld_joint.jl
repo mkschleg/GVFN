@@ -142,12 +142,12 @@ function main_experiment(args::Vector{String})
         h_state_strg[step,:] .= Flux.data(rnn_out[end])
         h_state_err_strg[step, :] .= h_state_strg[step, :] .- CycleWorldUtils.oracle(env, parsed["gvfnhorde"], parsed["gvfngamma"])
 
-        out_pred_strg[step,:] .= Flux.data(preds[end])
-        out_err_strg[step, :] .= out_pred_strg[step, :] .- CycleWorldUtils.oracle(env, parsed["outhorde"], parsed["outgamma"])
+        # out_pred_strg[step,:] .= Flux.data(preds[end])
+        # out_err_strg[step, :] .= out_pred_strg[step, :] .- CycleWorldUtils.oracle(env, parsed["outhorde"], parsed["outgamma"])
     end
 
     # results = Dict("out_pred"=>out_pred_strg, "out_err"=>out_err_strg, "hidden_state_err"=>h_state_err_strg, "hidden_state"=>h_state_strg)
-    results = Dict("out_err"=>out_err_strg, "hidden_state_err"=>h_state_err_strg)
+    results = Dict("out_err"=>out_err_strg)
 
     if !parsed["working"]
         savefile=joinpath(save_loc, "results.jld2")

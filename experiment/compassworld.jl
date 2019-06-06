@@ -243,6 +243,9 @@ function main_experiment(args::Vector{String})
     env = CompassWorld(parsed["size"], parsed["size"])
     num_state_features = get_num_features(env)
     horde = rafols()
+    if parsed["horde"] == "forward"
+        horde = forward()
+    end
 
     num_gvfs = length(horde)
 
@@ -327,5 +330,4 @@ end
 end
 
 # CycleWorldExperiment.main_experiment()
-
 
