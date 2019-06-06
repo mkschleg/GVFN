@@ -1,7 +1,7 @@
 
 module CycleWorldUtils
 
-using GVFN, ArgParse
+using ..GVFN, Reproduce
 
 # export settings!, onestep, chain, gamma_chain, get_horde, oracle
 

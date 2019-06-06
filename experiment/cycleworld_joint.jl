@@ -16,7 +16,10 @@ using Reproduce
 using Random
 using DataStructures: CircularBuffer
 
-include("utils/util.jl")
+import GVFN.CycleWorldUtils
+import GVFN.FluxUtils
+
+# include("utils/util.jl")
 
 function Flux.Optimise.apply!(o::Flux.RMSProp, x, Δ)
   η, ρ = o.eta, o.rho
