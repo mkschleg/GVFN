@@ -197,9 +197,8 @@ function update!(gvfn::Flux.Recur{T}, opt, lu::RTD, h_init, states, env_state_tp
     preds_tilde = Flux.data(preds[end])
     cumulants, discounts, π_prob = get(gvfn.cell, action_t, env_state_tp1, preds_tilde)
     ρ = π_prob ./ b_prob
-    # targets = cumulants .+ discounts.*preds_tilde
-    # δ = targets .- preds_t
-    grads = Tracker.gradient(()->offpolicy_tdloss(ρ, preds_t, cumulants, discounts, preds_tilde), prms)
+
+    grads = Tracker.gradient(()->offpolicy_tdloss(Float32.(ρ), preds_t, Float32.(cumulants), Float32.(discounts), preds_tilde), prms)
     for weights in prms
         Flux.Tracker.update!(opt, weights, grads[weights])
     end
