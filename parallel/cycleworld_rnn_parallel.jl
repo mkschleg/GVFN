@@ -1,9 +1,15 @@
-#!/usr/local/bin/julia
+#!/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/julia/1.1.0/bin/julia
+#SBATCH -o cycle_rnn.out # Standard output
+#SBATCH -e cycle_rnn.err # Standard error
+#SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
+#SBATCH --time=12:00:00 # Running time of 12 hours
+#SBATCH --ntasks=64
+#SBATCH --account=rrg-whitem
 
 using Pkg
-using Reproduce
-
 Pkg.activate(".")
+
+using Reproduce
 
 const save_loc = "cycleworld_rnn_sweep_sgd"
 const exp_file = "experiment/cycleworld_rnn.jl"
