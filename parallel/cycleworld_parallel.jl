@@ -5,16 +5,15 @@ Pkg.activate(".")
 
 using Reproduce
 
-const save_loc = "cycleworld_gvfn_sweep"
+const save_loc = "cycleworld_gvfn_sweep_sgd"
 const exp_file = "experiment/cycleworld.jl"
 const exp_module_name = :CycleWorldExperiment
 const exp_func_name = :main_experiment
 const optimizer = "Descent"
-# const alphas = [0.001; 0.1*1.5.^(-6:3)]
-const alphas = [0.001, 0.01, 0.1, 0.25, 0.5, 0.75]
+const alphas = clamp.(0.1*1.5.^(-6:6), 0.0, 1.0)
 
 # const learning_update = "RTD"
-# const truncations = [1, 3, 6, 12, 24]
+# const truncations = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 const learning_update = "TDLambda"
 const lambdas = 0.0:0.1:0.9
@@ -32,20 +31,39 @@ end
 
 function main()
 
+    as = ArgParseSettings()
+    @add_arg_table as begin
+        "numworkers"
+        arg_type=Int64
+        default=1
+        "--jobloc"
+        arg_type=String
+        default=joinpath(save_loc, "jobs")
+        "--numjobs"
+        action=:store_true
+    end
+    parsed = parse_args(as)
+    num_workers = parsed["numworkers"]
+
     arg_dict = Dict([
-        "horde"=>["gamma_chain"],
-        "alpha"=>[alphas[end]],
-        "lambda"=>collect(0.0:0.1:0.9),
+        "horde"=>["chain", "gamma_chain", "gammas_aj_term"],
+        "alpha"=>alphas,
+        "lambda"=>lambdas,
         "activation"=>["sigmoid"],
-        "seed"=>collect(1:5)
+        "seed"=>collect(1:10)
     ])
-    arg_list = [ "activation", "horde", "alpha", "lambda", "seed"]
+    arg_list = ["activation", "horde", "alpha", "lambda", "seed"]
 
 
-    static_args = ["--steps", "200000", "--alg", learning_update, "--exp_loc", save_loc]
+    static_args = ["--steps", "300000", "--alg", learning_update, "--exp_loc", save_loc]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments)
 
-    # experiment = Experiment(save_loc)
+    if parsed["numjobs"]
+        @info "This experiment has $(length(collect(args_iterator))) jobs."
+        println(collect(args_iterator)[num_workers])
+        exit(0)
+    end
+
     experiment = Experiment(save_loc,
                             exp_file,
                             exp_module_name,
@@ -54,7 +72,7 @@ function main()
 
     create_experiment_dir(experiment)
     add_experiment(experiment; settings_dir="settings")
-    ret = job(experiment; num_workers=6)
+    ret = job(experiment; num_workers=num_workers, job_file_dir=parsed["jobloc"])
     post_experiment(experiment, ret)
 end
 
