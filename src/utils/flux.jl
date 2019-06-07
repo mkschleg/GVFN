@@ -14,6 +14,7 @@ function rnn_settings!(as::ArgParseSettings)
         default="RNN"
         "--numhidden"
         help="Number of hidden units in cell"
+        arg_type=Int64
         default=6
     end
 end
@@ -43,7 +44,7 @@ end
 
 function construct_rnn(in::Integer, parsed::Dict, args...; kwargs...)
     kt = keytype(parsed)
-    return construct_runn(kt(parsed["cell"]), in, parsed[kt("num_hidden")], args...; kwargs...)
+    return construct_rnn(kt(parsed["cell"]), in, parsed[kt("numhidden")], args...; kwargs...)
 end
 
 function construct_rnn(cell::AbstractString, in::Integer, num_hidden::Integer, args...; kwargs...)
@@ -62,5 +63,16 @@ function get_activation(act::AbstractString)
         throw("$(act) not known...")
     end
 end
+
+function get_next_hidden_state(rnn::Flux.Recur{T}, h_init, input) where {T}
+    return Flux.data(rnn.cell(h_init, input)[1])
+end
+
+function get_next_hidden_state(rnn::Flux.Recur{T}, h_init, input) where {T<:Flux.LSTMCell}
+    return Flux.data.(rnn.cell(h_init, input)[1])
+end
+
+get_initial_hidden_state(rnn::Flux.Recur{T}) where {T} = Flux.data(rnn.state)
+get_initial_hidden_state(rnn::Flux.Recur{T}) where {T<:Flux.LSTMCell} = Flux.data.(rnn.state)
 
 end

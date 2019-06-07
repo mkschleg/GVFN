@@ -21,12 +21,12 @@ using DataStructures: CircularBuffer
 # include("utils/util.jl")
 import GVFN.CycleWorldUtils
 
-function Flux.Optimise.apply!(o::Flux.RMSProp, x, Δ)
-  η, ρ = o.eta, o.rho
-  acc = get!(o.acc, x, zero(x))::typeof(Flux.data(x))
-  @. acc = ρ * acc + (1 - ρ) * Δ^2
-  @. Δ *= η / (√acc + Flux.Optimise.ϵ)
-end
+# function Flux.Optimise.apply!(o::Flux.RMSProp, x, Δ)
+#   η, ρ = o.eta, o.rho
+#   acc = get!(o.acc, x, zero(x))::typeof(Flux.data(x))
+#   @. acc = ρ * acc + (1 - ρ) * Δ^2
+#   @. Δ *= η / (√acc + Flux.Optimise.ϵ)
+# end
 
 function arg_parse(as::ArgParseSettings = ArgParseSettings())
 
@@ -121,8 +121,6 @@ function oracle(env::CycleWorld, horde_str, γ=0.9)
     return ret
 end
 
-build_features(s) = [1.0, s[1], 1-s[1]]
-
 function main_experiment(args::Vector{String})
 
     as = arg_parse()
@@ -153,7 +151,7 @@ function main_experiment(args::Vector{String})
     agent = CycleWorldAgent(parsed; rng=rng)
     start!(agent, s_t; rng=rng)
 
-    @showprogress 0.1 "Step: " for step in 1:num_steps
+    for step in 1:num_steps
 
         _, s_tp1, _, _ = step!(env, 1)
         out_preds, action = step!(agent, s_tp1, 0, false; rng=rng)
