@@ -41,8 +41,8 @@ function CycleWorldAgent(parsed; rng=Random.GLOBAL_RNG)
 
     act = FluxUtils.get_activation(parsed["act"])
 
-    gvfn = GVFNetwork(num_gvfs, 3, horde; init=(dims...)->0.001*randn(rng, Float32, dims...), σ_int=Flux.σ)
-    model = SingleLayer(num_gvfs, 1, σ, sigmoid′)
+    gvfn = GVFNetwork(num_gvfs, 3, horde; init=(dims...)->glorot_uniform(rng, dims...), σ_int=act)
+    model = Linear(num_gvfs, 1; init=(dims...)->glorot_uniform(rng, dims...))
     out_horde = Horde([GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())])
 
     state_list = DataStructures.CircularBuffer{Array{Float32, 1}}(τ+1)
@@ -105,8 +105,8 @@ function CycleWorldRNNAgent(parsed; rng=Random.GLOBAL_RNG)
 
     τ=parsed["truncation"]
     opt = FluxUtils.get_optimizer(parsed)
-    rnn = FluxUtils.construct_rnn(3, parsed)
-    out_model = Flux.Dense(parsed["numhidden"], length(horde))
+    rnn = FluxUtils.construct_rnn(3, parsed; init=(dims...)->glorot_uniform(rng, dims...))
+    out_model = Flux.Dense(parsed["numhidden"], length(horde); initW=(dims...)->glorot_uniform(rng, dims...))
 
     state_list =  DataStructures.CircularBuffer{Array{Float32, 1}}(τ+1)
     hidden_state_init = GVFN.get_initial_hidden_state(rnn)
