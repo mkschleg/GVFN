@@ -1,48 +1,43 @@
 #!/usr/local/bin/julia
 
 using Pkg
-Pkg.activate(".")
-
 using Reproduce
 
-const save_loc = "cycleworld_gvfn_sweep"
-const exp_file = "experiment/cycleworld.jl"
-const exp_module_name = :CycleWorldExperiment
+Pkg.activate(".")
+
+const save_loc = "cycleworld_rnn_sweep_test"
+const exp_file = "experiment/cycleworld_rnn.jl"
+const exp_module_name = :CycleWorldRNNExperiment
 const exp_func_name = :main_experiment
 const optimizer = "Descent"
-# const alphas = [0.001; 0.1*1.5.^(-6:3)]
-const alphas = [0.001, 0.01, 0.1, 0.25, 0.5, 0.75]
-
-# const learning_update = "RTD"
-# const truncations = [1, 3, 6, 12, 24]
-
-const learning_update = "TDLambda"
-const lambdas = 0.0:0.1:0.9
+const alphas = [0.001; 0.1*1.5.^(-6:2:1); 0.1*1.5.^(1:2:3)]
+const truncations = [1, 2, 4, 6, 8, 10, 16]
 
 
 function make_arguments(args::Dict)
     horde = args["horde"]
     alpha = args["alpha"]
-    lambda = args["lambda"]
-    act = args["activation"]
+    cell = args["cell"]
+    truncation = args["truncation"]
     seed = args["seed"]
-    new_args=["--horde", horde, "--params", lambda, "--act", act, "--opt", optimizer, "--optparams", alpha, "--seed", seed]
+    # save_file = "$(save_loc)/$(horde)/$(cell)/$(optimizer)_alpha_$(alpha)_truncation_$(truncation)/run_$(seed).jld2"
+    new_args=["--horde", horde, "--truncation", truncation, "--opt", optimizer, "--optparams", alpha, "--cell", cell, "--seed", seed]
     return new_args
 end
 
 function main()
 
     arg_dict = Dict([
-        "horde"=>["gamma_chain"],
+        "horde"=>["onestep", "chain"],
         "alpha"=>[alphas[end]],
-        "lambda"=>collect(0.0:0.1:0.9),
-        "activation"=>["sigmoid"],
+        "truncation"=>truncations,
+        "cell"=>["RNN", "LSTM", "GRU"],
+        # "cell"=>["RNN", "GRU"],
         "seed"=>collect(1:5)
     ])
-    arg_list = [ "activation", "horde", "alpha", "lambda", "seed"]
+    arg_list = ["horde", "cell", "alpha", "truncation", "seed"]
 
-
-    static_args = ["--steps", "200000", "--alg", learning_update, "--exp_loc", save_loc]
+    static_args = ["--steps", "20"]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments)
 
     # experiment = Experiment(save_loc)

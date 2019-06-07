@@ -546,7 +546,6 @@ uuid = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 version = "0.23.1"
 
 [[PooledArrays]]
-deps = ["Test"]
 git-tree-sha1 = "6e8c38927cb6e9ae144f7277c753714861b27d14"
 uuid = "2dfb63ee-cc39-5dd5-95bd-886bf059d720"
 version = "0.5.2"

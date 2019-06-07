@@ -5,16 +5,16 @@ import Flux.Tracker.update!
 
 using Flux.Optimise: apply!
 
-abstract type AbstractUpdate end
+abstract type LearningUpdate end
 
-function update!(gvfn::Flux.Recur{T}, lu::AbstractUpdate, h_init, state_seq, env_state_tp1) where {T <: AbstractGVFLayer} end
-function update!(gvfn::AbstractGVFLayer, lu::AbstractUpdate, h_init, state_seq, env_state_tp1)
+function update!(gvfn::Flux.Recur{T}, lu::LearningUpdate, h_init, state_seq, env_state_tp1) where {T <: AbstractGVFLayer} end
+function update!(gvfn::AbstractGVFLayer, lu::LearningUpdate, h_init, state_seq, env_state_tp1)
     throw("$(typeof(lu)) not implemented for $(typeof(gvfn)). Try Flux.Recur{$(typeof(gvfn))} ")
 end
 
 # Don't use TDLambda with recurrent learning...
 # Assumed incremental
-mutable struct TDLambda <: AbstractUpdate
+mutable struct TDLambda <: LearningUpdate
     λ::Float64
     traces::IdDict
     γ_t::IdDict
@@ -40,8 +40,8 @@ function update!(gvfn::Flux.Recur{T}, opt, lu::TDLambda, h_init, states, env_sta
 
     for weights in Params([gvfn.cell.Wx, gvfn.cell.Wh])
         e = get!(lu.traces, weights, zero(weights))::typeof(Flux.data(weights))
-        e .= ρ.*(e.*(γ_t.*λ) - grads[weights].data)
-        Flux.Tracker.update!(opt, weights, e.*(δ))
+        e .= ρ.*(e.*(γ_t.*λ) .- grads[weights].data)
+        Flux.Tracker.update!(opt, weights, -e.*(δ))
     end
 
     γ_t .= discounts
@@ -78,8 +78,33 @@ function update!(gvfn::Flux.Recur{T}, opt, lu::TDLambda, h_init, states, env_sta
     # return preds
 end
 
+function update!(model::SingleLayer, horde::AbstractHorde, opt, lu::TDLambda, state_seq, env_state_tp1, action_t=nothing, b_prob=1.0; prms=nothing)
 
-struct TD <: AbstractUpdate
+    # println(state_seq)
+    λ = lu.λ
+    v = model.(state_seq[end-1:end])
+    v_prime_t = deriv(model, state_seq[end-1])
+
+    c, γ, π_prob = get(horde, action_t, env_state_tp1, Flux.data(v[end]))
+    γ_t = get!(lu.γ_t, model, zeros(Float64, size(γ)...))::Array{Float64, 1}
+
+    ρ = π_prob./b_prob
+    δ = ρ.*tderror(v[end-1], c, γ, Flux.data(v[end]))
+    Δ = δ.*v_prime_t
+
+    e = get!(lu.traces, model.W, zero(model.W))::typeof(model.W)
+    e .= (e.*(γ_t.*λ) .+ state_seq[end-1]').*(ρ)
+    model.W .+= apply!(opt, model.W, e.*(δ))
+
+    e = get!(lu.traces, model.b, zero(model.b))::typeof(model.b)
+    e .= (e.*(γ_t.*λ) .+ 1.0).*(ρ)
+    model.b .+= apply!(opt, model.b, e.*(δ))
+
+    γ_t .= γ
+end
+
+
+struct TD <: LearningUpdate
 end
 
 
@@ -136,7 +161,7 @@ function update!(gvfn::Flux.Recur{T}, opt, lu::TD, h_init, states, env_state_tp1
     # return preds
 end
 
-mutable struct RTD <: AbstractUpdate
+mutable struct RTD <: LearningUpdate
     # α::Float64
     RTD() = new()
 end
@@ -179,7 +204,7 @@ function update!(gvfn::Flux.Recur{T}, opt, lu::RTD, h_init, states, env_state_tp
     # return preds
 end
 
-mutable struct RTDC <: AbstractUpdate
+mutable struct RTDC <: LearningUpdate
     # α::Float64
     β::Float64
     h::IdDict
@@ -208,7 +233,7 @@ function update!(gvfn::Flux.Recur{T}, lu::RTDC, h_init, states, env_state_tp1) w
 end
 
 
-mutable struct RTD_jacobian <: AbstractUpdate
+mutable struct RTD_jacobian <: LearningUpdate
     # α::Float64
     J::IdDict
     RTD_jacobian() = new(IdDict{Any, Array{Float64, 3}}())
