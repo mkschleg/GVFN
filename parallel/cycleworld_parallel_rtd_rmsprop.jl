@@ -1,4 +1,11 @@
-#!/usr/local/bin/julia
+#!/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/julia/1.1.0/bin/julia
+#SBATCH -o cycle_rtd.out # Standard output
+#SBATCH -e cycle_rtd.err # Standard error
+#SBATCH --mem-per-cpu=1000M # Memory request of 2 GB
+#SBATCH --time=12:00:00 # Running time of 12 hours
+#SBATCH --ntasks=64
+#SBATCH --account=rrg-whitem
+
 
 using Pkg
 Pkg.activate(".")
