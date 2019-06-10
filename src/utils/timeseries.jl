@@ -25,8 +25,13 @@ function Powers2(N::Int)
     return Horde(gvfs)
 end
 
-function get_horde(N::Int)
-    return Powers2(N)
+function get_horde(N::Int, prefix::String)
+    if prefix=="gvfn"
+        return Powers2(N)
+    else
+        return Horde(GVF(FeatureCumulant(1), ConstantDiscount(0),NullPolicy()))
+    end
+    throw(DomainError("get_horde called with invalid prefix: $(prefix)"))
 end
 
 get_horde(parsed::Dict) = get_horde(parsed["max-exponent"])

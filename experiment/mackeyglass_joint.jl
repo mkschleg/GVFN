@@ -95,7 +95,8 @@ function main_experiment(args::Vector{String})
 
     # TODO
     # apparently need an output horde and a gvfn horde?
-    TimeSeriesUtils.get_horde(parsed)
+    out_horde = TimeSeriesUtils.get_horde(parsed, "out")
+    gvfn_horde = TimeSeriesUtils.get_horde(parsed, "gvfn")
 
     num_gvfs = length(out_horde)
     num_hidden = length(gvfn_horde)
@@ -123,6 +124,8 @@ function main_experiment(args::Vector{String})
     hidden_state_init = GVFN.get_initial_hidden_state(rnn)
 
     lu = GVFN.OnlineJointTD(parsed["beta"], state_list, hidden_state_init)
+
+    horizon = parsed["horizon"]
 
     for step in 1:num_steps
         if parsed["verbose"]
