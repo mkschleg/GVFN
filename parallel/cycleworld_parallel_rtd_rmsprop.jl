@@ -1,37 +1,38 @@
 #!/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/julia/1.1.0/bin/julia
-#SBATCH -o cycle_gvfn_lin.out # Standard output
-#SBATCH -e cycle_gvfn_lin.err # Standard error
-#SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
-#SBATCH --time=1:00:00 # Running time of 12 hours
+#SBATCH -o cycle_rtd.out # Standard output
+#SBATCH -e cycle_rtd.err # Standard error
+#SBATCH --mem-per-cpu=1000M # Memory request of 2 GB
+#SBATCH --time=12:00:00 # Running time of 12 hours
 #SBATCH --ntasks=64
 #SBATCH --account=rrg-whitem
+
 
 using Pkg
 Pkg.activate(".")
 
 using Reproduce
 
-const save_loc = "cycleworld_gvfn_sweep_sgd_lin"
+const save_loc = "cycleworld_gvfn_sweep_rtd_rmsprop"
 const exp_file = "experiment/cycleworld.jl"
 const exp_module_name = :CycleWorldExperiment
 const exp_func_name = :main_experiment
-const optimizer = "Descent"
-const alphas = clamp.(0.1*1.5.^(-6:6), 0.0, 1.0)
+const optimizer = "RMSProp"
+const alphas = 0.01*1.5.^(-6:6)
 
-# const learning_update = "RTD"
-# const truncations = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+const learning_update = "RTD"
+const truncations = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
-const learning_update = "TDLambda"
-const lambdas = 0.0:0.1:0.9
+# const learning_update = "TDLambda"
+# const lambdas = 0.0:0.1:0.9
 
 
 function make_arguments(args::Dict)
     horde = args["horde"]
     alpha = args["alpha"]
-    lambda = args["lambda"]
+    truncation = args["truncation"]
     act = args["activation"]
     seed = args["seed"]
-    new_args=["--horde", horde, "--params", lambda, "--act", act, "--opt", optimizer, "--optparams", alpha, "--seed", seed]
+    new_args=["--horde", horde, "--truncation", truncation, "--act", act, "--opt", optimizer, "--optparams", alpha, "--seed", seed]
     return new_args
 end
 
@@ -54,11 +55,11 @@ function main()
     arg_dict = Dict([
         "horde"=>["chain", "gamma_chain", "gammas_aj_term"],
         "alpha"=>alphas,
-        "lambda"=>lambdas,
+        "truncation"=>truncations,
         "activation"=>["sigmoid"],
         "seed"=>collect(1:10)
     ])
-    arg_list = ["activation", "horde", "alpha", "lambda", "seed"]
+    arg_list = ["activation", "horde", "alpha", "truncation", "seed"]
 
 
     static_args = ["--steps", "300000", "--alg", learning_update, "--exp_loc", save_loc]
