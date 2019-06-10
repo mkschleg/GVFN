@@ -64,7 +64,7 @@ function main(args::Vector{String}=ARGS)
     ])
     arg_list = ["horde", "alpha", "truncation", "seed", "cell"]
 
-    static_args = ["--steps", "2000000"]
+    static_args = ["--steps", "2000000", "--exp_loc", save_loc]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments)
 
     if parsed["numjobs"]
