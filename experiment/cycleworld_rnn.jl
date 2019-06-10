@@ -91,7 +91,7 @@ function main_experiment(args::Vector{String})
     _, s_t = start!(env)
     action = start!(agent, s_t; rng=rng)
 
-    for step in 1:num_steps
+    @showprogress 0.1 "Step: " for step in 1:num_steps
         if parsed["verbose"]
             if step % 1000 == 0
                 print(step, "\r")

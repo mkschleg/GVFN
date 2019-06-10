@@ -116,9 +116,7 @@ function update!(out_model, rnn::Flux.Recur{T},
     reset!(rnn, h_init)
     rnn_out = rnn.(state_seq)
     preds = out_model.(rnn_out)
-    # println(preds)
-
-    cumulants, discounts, π_prob = get(horde, env_state_tp1, Flux.data(preds[end]))
+    cumulants, discounts, π_prob = get(horde, action_t, env_state_tp1, Flux.data(preds[end]))
     ρ = Float32.(π_prob./b_prob)
     δ = offpolicy_tdloss(ρ, preds[end-1], Float32.(cumulants), Float32.(discounts), Flux.data(preds[end]))
 

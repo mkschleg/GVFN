@@ -52,6 +52,17 @@ function construct_rnn(cell::AbstractString, in::Integer, num_hidden::Integer, a
     return cell_func(in, num_hidden, args...; kwargs...)
 end
 
+function clip(a)
+    clamp.(a, 0.0, 1.0)
+end
+
+function clip(a::TrackedArray)
+    track(clip, a)
+end
+Flux.Tracker.@grad function clip(a)
+    return clip(Flux.data(a)), Δ -> Tuple(Δ)
+end
+
 function get_activation(act::AbstractString)
     if act == "sigmoid"
         return Flux.σ
@@ -59,6 +70,8 @@ function get_activation(act::AbstractString)
         return tanh
     elseif act == "linear"
         return Flux.identity
+    elseif act == "clip"
+        
     else
         throw("$(act) not known...")
     end
