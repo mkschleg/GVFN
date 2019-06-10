@@ -1,29 +1,18 @@
-#!/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/julia/1.1.0/bin/julia
-#SBATCH -o comp_rnn.out # Standard output
-#SBATCH -e comp_rnn.err # Standard error
-#SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
-#SBATCH --time=24:00:00 # Running time of 12 hours
-#SBATCH --ntasks=64
-#SBATCH --account=rrg-whitem
+#!/usr/local/bin/julia
 
 using Pkg
-Pkg.activate(".")
-
 using Reproduce
 
+Pkg.activate(".")
 
-#------ Optimizers ----------#
-const save_loc = "compworld_rnn_sweep"
-const exp_file = "experiment/compassworld_rnn.jl"
-const exp_module_name = :CompassWorldRNNExperiment
+const save_loc = "cycleworld_rnn_sweep_sgd"
+const exp_file = "experiment/cycleworld_rnn.jl"
+const exp_module_name = :CycleWorldRNNExperiment
 const exp_func_name = :main_experiment
-
-
-# Parameters for the SGD Algorithm
-const optimizer = "Descent"
-const alphas = clamp.(0.1*1.5.^(-6:4), 0.0, 1.0)
-const truncations = [1, 5, 10, 16, 24, 32]
-
+const optimizer = "RMSProp"
+const alphas = 0.0001
+const chain = [6, 10, 20, 30, 40, 50, 60, 70, 80, 100]
+const truncation_percentages = 0.0:0.1:1.0
 
 function make_arguments(args::Dict)
     horde = args["horde"]
@@ -31,17 +20,18 @@ function make_arguments(args::Dict)
     cell = args["cell"]
     truncation = args["truncation"]
     seed = args["seed"]
+    # save_file = "$(save_loc)/$(horde)/$(cell)/$(optimizer)_alpha_$(alpha)_truncation_$(truncation)/run_$(seed).jld2"
     new_args=["--horde", horde, "--truncation", truncation, "--opt", optimizer, "--optparams", alpha, "--cell", cell, "--seed", seed]
     return new_args
 end
 
-function main(args::Vector{String}=ARGS)
+function main()
 
     as = ArgParseSettings()
     @add_arg_table as begin
-        "--numworkers"
+        "numworkers"
         arg_type=Int64
-        default=4
+        default=1
         "--jobloc"
         arg_type=String
         default=joinpath(save_loc, "jobs")
@@ -51,20 +41,16 @@ function main(args::Vector{String}=ARGS)
     parsed = parse_args(as)
     num_workers = parsed["numworkers"]
 
-    arg_dict = Dict{String, Any}()
-    arg_list = Array{String, 1}()
-
     arg_dict = Dict([
-        "horde"=>["forward"],
+        "horde"=>["onestep", "chain", "gamma_chain"],
         "alpha"=>alphas,
         "truncation"=>truncations,
         "cell"=>["RNN", "LSTM", "GRU"],
-        # "cell"=>["RNN", "GRU"],
-        "seed"=>collect(1:5)
+        "seed"=>collect(1:10)
     ])
-    arg_list = ["horde", "alpha", "truncation", "seed", "cell"]
+    arg_list = ["horde", "cell", "alpha", "truncation", "seed"]
 
-    static_args = ["--steps", "2000000"]
+    static_args = ["--steps", "300000", "--numhidden", "7", "--exp_loc", save_loc]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments)
 
     if parsed["numjobs"]
@@ -78,10 +64,12 @@ function main(args::Vector{String}=ARGS)
                             exp_module_name,
                             exp_func_name,
                             args_iterator)
+
     create_experiment_dir(experiment)
     add_experiment(experiment; settings_dir="settings")
     ret = job(experiment; num_workers=num_workers, job_file_dir=parsed["jobloc"])
     post_experiment(experiment, ret)
 end
+
 
 main()

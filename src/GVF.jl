@@ -95,6 +95,13 @@ get(π::RandomPolicy, state_t, action_t, state_tp1, action_tp1, preds_tp1) = π.
 StatsBase.sample(π::RandomPolicy) = sample(Random.GLOBAL_RNG, π)
 StatsBase.sample(rng::Random.AbstractRNG, π::RandomPolicy) = sample(rng, π.weight_vec, 1:length(π.weight_vec))
 
+struct FunctionalPolicy{F} <: AbstractPolicy
+    func::F
+end
+
+Base.get(π::FunctionalPolicy, state_t, action_t, state_tp1, action_tp1, preds_tp1) =
+    π.func(state_t, action_t, state_tp1, action_tp1, preds_tp1)
+
 abstract type AbstractGVF end
 
 function get(gvf::AbstractGVF, state_t, action_t, state_tp1, action_tp1, preds_tp1) end
