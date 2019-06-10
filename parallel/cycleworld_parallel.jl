@@ -1,11 +1,17 @@
-#!/usr/local/bin/julia
+#!/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/julia/1.1.0/bin/julia
+#SBATCH -o cycle_gvfn_lin.out # Standard output
+#SBATCH -e cycle_gvfn_lin.err # Standard error
+#SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
+#SBATCH --time=1:00:00 # Running time of 12 hours
+#SBATCH --ntasks=64
+#SBATCH --account=rrg-whitem
 
 using Pkg
 Pkg.activate(".")
 
 using Reproduce
 
-const save_loc = "cycleworld_gvfn_sweep_sgd"
+const save_loc = "cycleworld_gvfn_sweep_sgd_lin"
 const exp_file = "experiment/cycleworld.jl"
 const exp_module_name = :CycleWorldExperiment
 const exp_func_name = :main_experiment
