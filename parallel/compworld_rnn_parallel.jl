@@ -22,7 +22,7 @@ const exp_func_name = :main_experiment
 # Parameters for the SGD Algorithm
 const optimizer = "Descent"
 const alphas = clamp.(0.1*1.5.^(-6:4), 0.0, 1.0)
-const truncations = [1, 5, 10, 16, 32]
+const truncations = [1, 5, 10, 16, 24, 32]
 
 
 function make_arguments(args::Dict)
@@ -64,7 +64,7 @@ function main(args::Vector{String}=ARGS)
     ])
     arg_list = ["horde", "alpha", "truncation", "seed", "cell"]
 
-    static_args = ["--steps", "5000000"]
+    static_args = ["--steps", "2000000"]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments)
 
     if parsed["numjobs"]
