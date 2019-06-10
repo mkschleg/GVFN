@@ -13,7 +13,7 @@ using Reproduce
 
 
 #------ Optimizers ----------#
-const save_loc = "compworld_rnn_sweep"
+const save_loc = "compworld_rnn_sweep_rmsprop"
 const exp_file = "experiment/compassworld_rnn.jl"
 const exp_module_name = :CompassWorldRNNExperiment
 const exp_func_name = :main_experiment

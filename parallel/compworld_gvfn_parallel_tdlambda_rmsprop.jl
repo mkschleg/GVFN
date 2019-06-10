@@ -15,27 +15,29 @@ Pkg.activate(".")
 
 using Reproduce
 
-const save_loc = "compassworld_gvfn"
+const save_loc = "compassworld_gvfn_tdlambda_rmsprop"
 const exp_file = "experiment/compassworld.jl"
 const exp_module_name = :CompassWorldExperiment
 const exp_func_name = :main_experiment
 
 #------ Learning Updates -------#
 
-const learning_update = "RTD"
-const truncations = [1, 5, 10, 16, 24, 32]
+# const learning_update = "RTD"
+# const truncations = [1, 5, 10, 16, 24, 32]
 
 
-# const learning_update = "TDLambda"
-# const lambdas = 0.0:0.1:0.9
+const learning_update = "TDLambda"
+const lambdas = 0.0:0.1:0.9
 # const truncations = [1, 10, 24]
 
 
 #------ Optimizers ----------#
 
 # Parameters for the SGD Algorithm
-const optimizer = "Descent"
-const alphas = clamp.(0.1*1.5.^(-6:4), 0.0, 1.0)
+# const optimizer = "Descent"
+# const alphas = clamp.(0.1*1.5.^(-6:4), 0.0, 1.0)
+const optimizer = "RMSProp"
+const alphas = 0.01*1.5.^(-8:2:2)
 # const alphas = 0.1*1.5.^(-6:1)
 
 

@@ -15,19 +15,19 @@ Pkg.activate(".")
 
 using Reproduce
 
-const save_loc = "compassworld_gvfn"
+const save_loc = "compassworld_gvfn_tdlambda"
 const exp_file = "experiment/compassworld.jl"
 const exp_module_name = :CompassWorldExperiment
 const exp_func_name = :main_experiment
 
 #------ Learning Updates -------#
 
-const learning_update = "RTD"
-const truncations = [1, 5, 10, 16, 24, 32]
+# const learning_update = "RTD"
+# const truncations = [1, 5, 10, 16, 24, 32]
 
 
-# const learning_update = "TDLambda"
-# const lambdas = 0.0:0.1:0.9
+const learning_update = "TDLambda"
+const lambdas = 0.0:0.1:0.9
 # const truncations = [1, 10, 24]
 
 

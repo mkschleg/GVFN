@@ -12,7 +12,7 @@ using Random
 using ProgressMeter
 # using FileIO
 using JLD2
-using ArgParse
+using Reproduce
 using Random
 
 using Flux.Tracker: TrackedArray, TrackedReal, track, @grad
@@ -30,6 +30,10 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
 
     #Experiment
     @add_arg_table as begin
+        "--exp_loc"
+        help="Location of experiment"
+        arg_type=String
+        default="tmp"
         "--seed"
         help="Seed of rng"
         arg_type=Int64
