@@ -55,7 +55,7 @@ function make_arguments_tdlambda(args::Dict)
     alpha = args["alpha"]
     lambda = args["lambda"]
     seed = args["seed"]
-    new_args=["--horde", horde, "--luparams", lambda, "--opt", optimizer, "--optparams", alpha, "--seed", seed]
+    new_args=["--horde", horde, "--params", lambda, "--opt", optimizer, "--optparams", alpha, "--seed", seed]
     return new_args
 end
 
