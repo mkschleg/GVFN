@@ -3,6 +3,7 @@
 
 include("agent/cycleworld.jl")
 include("agent/compassworld.jl")
+include("agent/mackeyglass.jl")
 
 
 # mutable struct GVFNAgent{O, T, F, H, Φ, M, G, P} <: JuliaRL.AbstractAgent

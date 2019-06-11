@@ -10,6 +10,8 @@ abstract type TimeSeries end
 init!(self::TimeSeries) = nothing
 step!(self::TimeSeries, action) = step!(self::TimeSeries)
 
+get_num_features(self::TimeSeries) = 1
+
 mutable struct MSO <: TimeSeries
     dataset::Vector{Float64}
     idx::Int
@@ -26,13 +28,13 @@ end
 
 function start!(self::MSO)
     self.idx = 1
-    return step!(self)[2]
+    return step!(self)
 end
 
 function step!(self::MSO)
     self.state[1] = self.dataset[self.idx]
     self.idx += 1
-    return self.state[1], self.state, false
+    return self.state
 end
 
 mutable struct SineWave <: TimeSeries
@@ -49,13 +51,13 @@ end
 
 function start!(self::SineWave)
     self.idx = 1
-    return step!(self)[2]
+    return step!(self)
 end
 
 function step!(self::SineWave)
     self.state[1] = self.dataset[self.idx]
     self.idx += 1
-    return self.state[1], self.state, false
+    return self.state
 end
 
 mutable struct MackeyGlass <: TimeSeries
@@ -76,7 +78,7 @@ mutable struct MackeyGlass <: TimeSeries
 end
 
 function start!(self::MackeyGlass)
-    return step!(self)[2]
+    return step!(self)
 end
 
 function step!(self::MackeyGlass)
@@ -87,7 +89,7 @@ function step!(self::MackeyGlass)
         self.series = h + ((0.2xtau)/(1.0+xtau^10) - 0.1h) / self.delta
     end
     self.state[1] = self.series
-    return self.series, self.state, false
+    return self.state
 end
 
 end # module TimeSeries
