@@ -14,8 +14,8 @@ SingleLayer(in::Integer, out::Integer, σ, σ′; init=(dims...)->zeros(Float32,
 (layer::SingleLayer)(x) = layer.σ.(layer.W*x .+ layer.b)
 deriv(layer::SingleLayer, x) = layer.σ′.(layer.W*x .+ layer.b)
 
-Linear(in::Integer, out::Integer) =
-    SingleLayer(in, out, identity, (x)->1.0)
+Linear(in::Integer, out::Integer; kwargs...) =
+    SingleLayer(in, out, identity, (x)->1.0; kwargs...)
 
 # sigmoid = Flux.sigmoid
 sigmoid′(x) = sigmoid(x)*(1.0-sigmoid(x))

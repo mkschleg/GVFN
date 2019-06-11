@@ -85,6 +85,8 @@ function train_step!(out_model, rnn::Flux.Recur{T}, horde::AbstractHorde, out_ho
         Flux.Tracker.update!(opt, weights, -grads[weights])
     end
 
+    preds = out_model.(Flux.data.(rnn_out[end-1:end]))
+
     out_δ = offpolicy_tdloss(ρ, preds[end-1], Float32.(cumulants), Float32.(discounts), Float32.(Flux.data(preds[end])))
 
     grads = Flux.Tracker.gradient(()->(out_δ), Flux.params(out_model))
@@ -150,3 +152,5 @@ function train_step!(out_model, rnn::Flux.Recur{T}, horde::AbstractHorde, out_ho
     return preds, rnn_out
 
 end
+
+

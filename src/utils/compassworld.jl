@@ -1,6 +1,8 @@
 module CompassWorldUtils
 
-using GVFN, Reproduce
+using ..GVFN, Reproduce
+
+using JuliaRL.FeatureCreators
 
 cwc = GVFN.CompassWorldConst
 
@@ -160,7 +162,28 @@ function get_action(rng=Random.GLOBAL_RNG)
     end
 end
 
+onehot(size, idx) = begin; a=zeros(size);a[idx] = 1.0; return a end;
+build_features(state, action) = [[1.0]; state; 1.0.-state; onehot(3, action); 1.0.-onehot(3,action)]
+# build_features_action(state, action) = [[1.0]; state; 1.0.-state; onehot(3, action); 1.0.-onehot(3,action)]
 
+function build_features_action(state, action)
+    ϕ = [[1.0]; state; 1.0.-state]
+    return [action==1 ? ϕ : zero(ϕ); action==2 ? ϕ : zero(ϕ); action==3 ? ϕ : zero(ϕ);]
+end
 
+mutable struct StandardFeatureCreator end
+
+(fc::StandardFeatureCreator)(s, a) = create_features(fc, s, a)
+create_features(fc::StandardFeatureCreator, state, action) = [[1.0]; state; 1.0.-state; onehot(3, action); 1.0.-onehot(3,action)]
+feature_size(fc::StandardFeatureCreator) = 19
+
+mutable struct ActionTileFeatureCreator end
+
+(fc::ActionTileFeatureCreator)(s, a) = create_features(fc, s, a)
+function create_features(fc::ActionTileFeatureCreator, state, action)
+    ϕ = [[1.0]; state; 1.0.-state]
+    return [action==1 ? ϕ : zero(ϕ); action==2 ? ϕ : zero(ϕ); action==3 ? ϕ : zero(ϕ);]
+end
+feature_size(fc::ActionTileFeatureCreator) = 39
 
 end

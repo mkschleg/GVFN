@@ -40,3 +40,9 @@ end
 (layer::StopGradient)(x) = Flux.data(layer.cell(x))
 
 reset!(layer::StopGradient, hidden_state_init) = reset!(layer.cell, hidden_state_init)
+
+# Should we export the namespaces? I think not...
+include("utils/compassworld.jl")
+include("utils/cycleworld.jl")
+include("utils/flux.jl")
+

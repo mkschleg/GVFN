@@ -16,7 +16,8 @@ using Reproduce
 using Random
 using DataStructures: CircularBuffer
 
-include("utils/util.jl")
+# include("utils/util.jl")
+import GVFN.CompassWorldUtils
 
 function Flux.Optimise.apply!(o::Flux.RMSProp, x, Δ)
   η, ρ = o.eta, o.rho
@@ -103,13 +104,9 @@ function main_experiment(args::Vector{String})
     τ=parsed["truncation"]
     opt = FluxUtils.get_optimizer(parsed)
 
-
-    # h_state_strg = zeros(num_steps, num_hidden)
-    # h_state_err_strg = zeros(num_steps, num_hidden)
     out_pred_strg = zeros(num_steps, num_gvfs)
     out_err_strg = zeros(num_steps, num_gvfs)
 
-    
     _, s_t = start!(env)
     action_state = ""
     action_state, a_tm1 = CompassWorldUtils.get_action(action_state, s_t, rng)

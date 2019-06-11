@@ -7,10 +7,7 @@ using Reexport
 
 @reexport using JuliaRL
 
-include("Environments.jl")
-
-export jacobian, glorot_uniform, glorot_normal, StopGradient
-include("util.jl")
+import Random
 
 export
     SingleLayer,
@@ -37,16 +34,22 @@ export
 
 include("GVF.jl")
 
-
 export GVFNetwork, GVFActionNetwork, reset!, get
 include("GVFNetwork.jl")
 
-export RTD, RTD_jacobian, TDLambda, TD, train!
+export RTD, RTD_jacobian, TDLambda, TD, update!
 include("Loss.jl")
 include("Update.jl")
 
 export OnlineJointTD, OnlineTD_RNN, train_step!
 include("RNN.jl")
+
+include("Environments.jl")
+
+export jacobian, glorot_uniform, glorot_normal, StopGradient
+include("util.jl")
+
+include("Agent.jl")
 
 
 end

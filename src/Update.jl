@@ -1,27 +1,27 @@
 
 using Statistics
 using LinearAlgebra: Diagonal
-using Flux.Tracker: update!
+import Flux.Tracker.update!
 
 using Flux.Optimise: apply!
 
-abstract type AbstractUpdate end
+abstract type LearningUpdate end
 
-function train!(gvfn::Flux.Recur{T}, lu::AbstractUpdate, h_init, state_seq, env_state_tp1) where {T <: AbstractGVFLayer} end
-function train!(gvfn::AbstractGVFLayer, lu::AbstractUpdate, h_init, state_seq, env_state_tp1)
+function update!(gvfn::Flux.Recur{T}, lu::LearningUpdate, h_init, state_seq, env_state_tp1) where {T <: AbstractGVFLayer} end
+function update!(gvfn::AbstractGVFLayer, lu::LearningUpdate, h_init, state_seq, env_state_tp1)
     throw("$(typeof(lu)) not implemented for $(typeof(gvfn)). Try Flux.Recur{$(typeof(gvfn))} ")
 end
 
 # Don't use TDLambda with recurrent learning...
 # Assumed incremental
-mutable struct TDLambda <: AbstractUpdate
+mutable struct TDLambda <: LearningUpdate
     λ::Float64
     traces::IdDict
     γ_t::IdDict
     TDLambda(λ) = new(λ, IdDict(), IdDict())
 end
 
-function train!(gvfn::Flux.Recur{T}, opt, lu::TDLambda, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: AbstractGVFLayer}
+function update!(gvfn::Flux.Recur{T}, opt, lu::TDLambda, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: AbstractGVFLayer}
 
     λ = lu.λ
     reset!(gvfn, h_init)
@@ -40,7 +40,7 @@ function train!(gvfn::Flux.Recur{T}, opt, lu::TDLambda, h_init, states, env_stat
 
     for weights in Params([gvfn.cell.Wx, gvfn.cell.Wh])
         e = get!(lu.traces, weights, zero(weights))::typeof(Flux.data(weights))
-        e .= ρ.*(e.*(γ_t.*λ) - grads[weights].data)
+        e .= ρ.*(e.*(γ_t.*λ) + grads[weights].data)
         Flux.Tracker.update!(opt, weights, e.*(δ))
     end
 
@@ -49,7 +49,7 @@ function train!(gvfn::Flux.Recur{T}, opt, lu::TDLambda, h_init, states, env_stat
     # return Flux.data.(preds)
 end
 
-function train!(gvfn::Flux.Recur{T}, opt, lu::TDLambda, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: GVFRActionLayer}
+function update!(gvfn::Flux.Recur{T}, opt, lu::TDLambda, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: GVFRActionLayer}
 
     λ = lu.λ
     reset!(gvfn, h_init)
@@ -69,7 +69,7 @@ function train!(gvfn::Flux.Recur{T}, opt, lu::TDLambda, h_init, states, env_stat
     # println(length(prms))
     for weights in prms
         e = get!(lu.traces, weights, zero(weights))::typeof(Flux.data(weights))
-        e .= (e.*(γ_t.*λ)' .- Flux.data(grads[weights])).*(ρ')
+        e .= (e.*(γ_t.*λ)' - Flux.data(grads[weights])).*(ρ')
         Flux.Tracker.update!(opt, weights, e.*(δ'))
     end
 
@@ -78,13 +78,57 @@ function train!(gvfn::Flux.Recur{T}, opt, lu::TDLambda, h_init, states, env_stat
     # return preds
 end
 
+function update!(model::SingleLayer, horde::AbstractHorde, opt, lu::TDLambda, state_seq, env_state_tp1, action_t=nothing, b_prob=1.0; prms=nothing)
 
-struct TD <: AbstractUpdate
+    # println(state_seq)
+    λ = lu.λ
+    v = model.(state_seq[end-1:end])
+    v_prime_t = deriv(model, state_seq[end-1])
+
+    c, γ, π_prob = get(horde, action_t, env_state_tp1, Flux.data(v[end]))
+    γ_t = get!(lu.γ_t, model, zeros(Float64, size(γ)...))::Array{Float64, 1}
+
+    ρ = π_prob./b_prob
+    δ = ρ.*tderror(v[end-1], c, γ, Flux.data(v[end]))
+    Δ = δ.*v_prime_t
+
+    e = get!(lu.traces, model.W, zero(model.W))::typeof(model.W)
+    e .= (e.*(γ_t.*λ) .+ v_prime_t.*state_seq[end-1]').*(ρ)
+    model.W .-= apply!(opt, model.W, e.*(δ))
+
+    e = get!(lu.traces, model.b, zero(model.b))::typeof(model.b)
+    e .= (e.*(γ_t.*λ) .+ v_prime_t).*(ρ)
+    model.b .-= apply!(opt, model.b, e.*(δ))
+
+    γ_t .= γ
 end
 
 
+struct TD <: LearningUpdate
+end
 
-function train!(model, horde::AbstractHorde, opt, lu::TD, state_seq, env_state_tp1, action_t=nothing, b_prob=1.0; prms=nothing)
+function update!(out_model, rnn::Flux.Recur{T},
+                 horde::AbstractHorde,
+                 opt, lu::TD, h_init,
+                 state_seq, env_state_tp1,
+                 action_t=nothing, b_prob=1.0; prms=nothing) where {T}
+
+    reset!(rnn, h_init)
+    rnn_out = rnn.(state_seq)
+    preds = out_model.(rnn_out)
+    cumulants, discounts, π_prob = get(horde, action_t, env_state_tp1, Flux.data(preds[end]))
+    ρ = Float32.(π_prob./b_prob)
+    δ = offpolicy_tdloss(ρ, preds[end-1], Float32.(cumulants), Float32.(discounts), Flux.data(preds[end]))
+
+    grads = Flux.Tracker.gradient(()->δ, Flux.params(out_model, rnn))
+    reset!(rnn, h_init)
+    for weights in Flux.params(out_model, rnn)
+        Flux.Tracker.update!(opt, weights, grads[weights])
+    end
+end
+
+
+function update!(model, horde::AbstractHorde, opt, lu::TD, state_seq, env_state_tp1, action_t=nothing, b_prob=1.0; prms=nothing)
 
     if prms == nothing
         prms = params(model)
@@ -99,9 +143,8 @@ function train!(model, horde::AbstractHorde, opt, lu::TD, state_seq, env_state_t
 end
 
 
-function train!(model::SingleLayer, horde::AbstractHorde, opt, lu::TD, state_seq, env_state_tp1, action_t=nothing, b_prob=1.0; prms=nothing)
+function update!(model::SingleLayer, horde::AbstractHorde, opt, lu::TD, state_seq, env_state_tp1, action_t=nothing, b_prob=1.0; prms=nothing)
 
-    # println(state_seq)
     v = model.(state_seq[end-1:end])
     v_prime_t = deriv(model, state_seq[end-1])
 
@@ -109,11 +152,11 @@ function train!(model::SingleLayer, horde::AbstractHorde, opt, lu::TD, state_seq
     ρ = π_prob./b_prob
     δ = ρ.*tderror(v[end-1], c, γ, Flux.data(v[end]))
     Δ = δ.*v_prime_t
-    model.W .+= -apply!(opt, model.W, Δ*state_seq[end-1]')
-    model.b .+= -apply!(opt, model.b, Δ)
+    model.W .-= apply!(opt, model.W, Δ*state_seq[end-1]')
+    model.b .-= apply!(opt, model.b, Δ)
 end
 
-function train!(gvfn::Flux.Recur{T}, opt, lu::TD, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: GVFRActionLayer}
+function update!(gvfn::Flux.Recur{T}, opt, lu::TD, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: GVFRActionLayer}
 
     prms = Params([gvfn.cell.Wx, gvfn.cell.Wh])
 
@@ -132,16 +175,17 @@ function train!(gvfn::Flux.Recur{T}, opt, lu::TD, h_init, states, env_state_tp1,
     for weights in prms
         Flux.Tracker.update!(opt, weights, -grads[weights].*((ρ)'))
     end
-
     # return preds
 end
 
-mutable struct RTD <: AbstractUpdate
+mutable struct RTD <: LearningUpdate
     # α::Float64
     RTD() = new()
 end
 
-function train!(gvfn::Flux.Recur{T}, opt, lu::RTD, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: AbstractGVFLayer}
+
+
+function update!(gvfn::Flux.Recur{T}, opt, lu::RTD, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: AbstractGVFLayer}
 
     prms = Params([gvfn.cell.Wx, gvfn.cell.Wh])
 
@@ -151,15 +195,14 @@ function train!(gvfn::Flux.Recur{T}, opt, lu::RTD, h_init, states, env_state_tp1
     preds_tilde = Flux.data(preds[end])
     cumulants, discounts, π_prob = get(gvfn.cell, action_t, env_state_tp1, preds_tilde)
     ρ = π_prob ./ b_prob
-    # targets = cumulants .+ discounts.*preds_tilde
-    # δ = targets .- preds_t
-    grads = Tracker.gradient(()->offpolicy_tdloss(ρ, preds_t, cumulants, discounts, preds_tilde), prms)
+
+    grads = Tracker.gradient(()->offpolicy_tdloss(Float32.(ρ), preds_t, Float32.(cumulants), Float32.(discounts), preds_tilde), prms)
     for weights in prms
-        Flux.Tracker.update!(opt, weights, -grads[weights])
+        Flux.Tracker.update!(opt, weights, grads[weights])
     end
 end
 
-function train!(gvfn::Flux.Recur{T}, opt, lu::RTD, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: GVFRActionLayer}
+function update!(gvfn::Flux.Recur{T}, opt, lu::RTD, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: GVFRActionLayer}
 
     prms = Params([gvfn.cell.Wx, gvfn.cell.Wh])
 
@@ -169,24 +212,43 @@ function train!(gvfn::Flux.Recur{T}, opt, lu::RTD, h_init, states, env_state_tp1
     preds_tilde = Flux.data(preds[end])
     cumulants, discounts, π_prob = get(gvfn.cell, action_t, env_state_tp1, preds_tilde)
     ρ = π_prob/b_prob
-    # targets = cumulants .+ discounts.*preds_tilde
-    # δ = targets .- preds_t
 
     grads = Tracker.gradient(() ->tdloss(preds_t, cumulants, discounts, preds_tilde), prms)
     for weights in prms
         Flux.Tracker.update!(opt, weights, -grads[weights].*(ρ'))
     end
-    # return preds
+
 end
 
-mutable struct RTDC <: AbstractUpdate
+function update!(model::SingleLayer, horde::AbstractHorde, opt, lu::RTD, state_seq, env_state_tp1, action_t=nothing, b_prob=1.0; prms=nothing)
+    update!(model, horde, opt, TD(), state_seq, env_state_tp1, action_t, b_prob; prms=prms)
+end
+
+# function update!(gvfn::Flux.Recur{T}, horde::AbstractHorde,
+#                  out_model, out_horde::AbstractHorde,
+#                  opt, lu::RTD, h_init,
+#                  state_seq, env_state_tp1, action_t=nothing, b_prob=1.0) where {T}
+
+#     update!(gvfn, opt, lu, h_init, state_seq, env_s_tp1)
+
+#     reset!(gvfn, h_init)
+#     preds = gvfn.(state_seq)
+
+#     update!(out_model, out_horde, opt, lu, Flux.data.(preds), env_s_tp1)
+
+#     out_preds = out_model(preds[end])
+
+#     return preds, out_preds
+# end
+
+mutable struct RTDC <: LearningUpdate
     # α::Float64
     β::Float64
     h::IdDict
     RTD(α) = new(α)
 end
 
-function train!(gvfn::Flux.Recur{T}, lu::RTDC, h_init, states, env_state_tp1) where {T <: AbstractGVFLayer}
+function update!(gvfn::Flux.Recur{T}, lu::RTDC, h_init, states, env_state_tp1) where {T <: AbstractGVFLayer}
 
     # α = lu.α
 
@@ -207,14 +269,13 @@ function train!(gvfn::Flux.Recur{T}, lu::RTDC, h_init, states, env_state_tp1) wh
     end
 end
 
-
-mutable struct RTD_jacobian <: AbstractUpdate
+mutable struct RTD_jacobian <: LearningUpdate
     # α::Float64
     J::IdDict
     RTD_jacobian() = new(IdDict{Any, Array{Float64, 3}}())
 end
 
-function train!(gvfn::Flux.Recur{T}, lu::RTD_jacobian, h_init, states, env_state_tp1, b_prob=1.0) where {T <: AbstractGVFLayer}
+function update!(gvfn::Flux.Recur{T}, lu::RTD_jacobian, h_init, states, env_state_tp1, b_prob=1.0) where {T <: AbstractGVFLayer}
 
     # α = lu.α
     reset!(gvfn, h_init)
@@ -237,3 +298,9 @@ function train!(gvfn::Flux.Recur{T}, lu::RTD_jacobian, h_init, states, env_state
 
     # return preds
 end
+
+
+
+
+
+
