@@ -1,6 +1,6 @@
 #!/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/julia/1.1.0/bin/julia
 #SBATCH --mem=2000M # Memory request of 2 GB
-#SBATCH --time=12:00:00 # Running time of 12 hours
+#SBATCH --time=24:00:00 # Running time of 12 hours
 #SBATCH --ntasks=1
 #SBATCH --account=rrg-whitem
 
@@ -52,7 +52,12 @@ function main_cycleworld_rnn()
             end
         end
 
-        results = FileIO.load(read_file)
+	try
+	    results = FileIO.load(read_file)
+        catch
+	    continue
+        end
+		
         old_results = results
         new_results = mean(old_results["out_err_strg"])
         new_results_early = mean(old_results["out_err_strg"][1:100000])
