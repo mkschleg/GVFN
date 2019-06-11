@@ -23,7 +23,7 @@ function main_cycleworld_rnn()
     end
     parsed = parse_args(as)
 
-    read_dir = parsed["readdir"]
+    read_dir = parsed["readdir"][end] == '/' ? parsed["readdir"][1:end-1] : parsed["readdir"]
 
     println("Reading from: $(read_dir)")
 
@@ -54,9 +54,9 @@ function main_cycleworld_rnn()
 
         results = FileIO.load(read_file)
         old_results = results
-        new_results = mean(old_results["out_err_strg"])
-        new_results_early = mean(old_results["out_err_strg"][1:100000])
-        new_results_end = mean(old_results["out_err_strg"][250000:end])
+        new_results = mean(abs.(old_results["out_err_strg"][:, 1]))
+        new_results_early = mean(abs.(old_results["out_err_strg"][1:100000, 1]))
+        new_results_end = mean(abs.(old_results["out_err_strg"][250000:end, 1]))
         results = Dict(["mean"=>new_results, "mean_early"=>new_results_early, "mean_end"=>new_results_end])
 
         
