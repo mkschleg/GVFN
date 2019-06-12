@@ -88,7 +88,7 @@ function main()
             "feature"=>["standard", "action"],
             "seed"=>collect(1:5)
         ])
-        arg_list = ["horde", "alpha", "truncation", "seed"]
+        arg_list = ["feature", "horde", "alpha", "truncation", "seed"]
     elseif learning_update == "TDLambda"
         arg_dict = Dict([
             "horde"=>["rafols", "forward"],
@@ -100,7 +100,7 @@ function main()
         arg_list = ["feature", "horde", "alpha", "lambda", "seed"]
     end
 
-    static_args = ["--alg", learning_update, "--steps", "2000000", "--exp_loc", save_loc]
+    static_args = ["--alg", learning_update, "--steps", "5", "--exp_loc", save_loc]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=(learning_update == "RTD" ? make_arguments_rtd : make_arguments_tdlambda))
 
     if parsed["numjobs"]
@@ -117,7 +117,7 @@ function main()
 
     create_experiment_dir(experiment)
     add_experiment(experiment; settings_dir="settings")
-    ret = job(experiment; num_workers=num_workers, job_file_dir=parsed["jobloc"]))
+    ret = job(experiment; num_workers=num_workers, job_file_dir=parsed["jobloc"])
     # ret = job(experiment; num_workers=4)
     post_experiment(experiment, ret)
 

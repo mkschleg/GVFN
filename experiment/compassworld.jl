@@ -162,7 +162,7 @@ function main_experiment(args::Vector{String})
     agent = CompassWorldAgent(parsed; rng=rng)
     action = start!(agent, s_t; rng=rng)
 
-    @showprogress 0.1 "Step: " for step in 1:num_steps
+    for step in 1:num_steps
 
         _, s_tp1, _, _ = step!(env, action)
 

@@ -87,7 +87,7 @@ function main()
             "feature"=>["standard", "action"],
             "seed"=>collect(1:5)
         ])
-        arg_list = ["horde", "alpha", "truncation", "seed"]
+        arg_list = ["feature", "horde", "alpha", "truncation", "seed"]
     elseif learning_update == "TDLambda"
         arg_dict = Dict([
             "horde"=>["rafols", "forward"],
@@ -96,7 +96,7 @@ function main()
             "feature"=>["standard", "action"],
             "seed"=>collect(1:5)
         ])
-        arg_list = ["horde", "alpha", "lambda", "seed"]
+        arg_list = ["feature", "horde", "alpha", "lambda", "seed"]
     end
 
     static_args = ["--alg", learning_update, "--steps", "2000000", "--exp_loc", save_loc]

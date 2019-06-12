@@ -88,7 +88,7 @@ function main()
             "feature"=>["standard", "action"],
             "seed"=>collect(1:5)
         ])
-        arg_list = ["horde", "alpha", "truncation", "seed"]
+        arg_list = ["feature", "horde", "alpha", "truncation", "seed"]
     elseif learning_update == "TDLambda"
         arg_dict = Dict([
             "horde"=>["rafols", "forward"],

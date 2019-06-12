@@ -98,7 +98,7 @@ function main()
         arg_list = ["feature", "horde", "alpha", "lambda", "seed"]
     end
 
-    static_args = ["--alg", learning_update, "--steps", "5", "--exp_loc", save_loc]
+    static_args = ["--alg", learning_update, "--steps", "2000000", "--exp_loc", save_loc]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=(learning_update == "RTD" ? make_arguments_rtd : make_arguments_tdlambda))
 
     if parsed["numjobs"]
