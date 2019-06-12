@@ -2,7 +2,7 @@
 #SBATCH -o comp_gvfn_adam.out # Standard output
 #SBATCH -e comp_gvfn_adam.err # Standard error
 #SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
-#SBATCH --time=24:00:00 # Running time of 12 hours
+#SBATCH --time=12:00:00 # Running time of 12 hours
 #SBATCH --ntasks=64
 #SBATCH --account=rrg-whitem
 
@@ -100,7 +100,7 @@ function main()
         arg_list = ["feature", "horde", "alpha", "lambda", "seed"]
     end
 
-    static_args = ["--alg", learning_update, "--steps", "5", "--exp_loc", save_loc]
+    static_args = ["--alg", learning_update, "--steps", "2000000", "--exp_loc", save_loc]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=(learning_update == "RTD" ? make_arguments_rtd : make_arguments_tdlambda))
 
     if parsed["numjobs"]
