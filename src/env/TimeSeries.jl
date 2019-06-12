@@ -1,18 +1,13 @@
-module TimeSeries
-
 import DataStructures: CircularBuffer
 
-export MSO, SineWave, MackeyGlass,
-    init!, start!, step!
+abstract type TimeSeriesEnv end
 
-abstract type TimeSeries end
+init!(self::TimeSeriesEnv) = nothing
+step!(self::TimeSeriesEnv, action) = step!(self::TimeSeriesEnv)
 
-init!(self::TimeSeries) = nothing
-step!(self::TimeSeries, action) = step!(self::TimeSeries)
+get_num_features(self::TimeSeriesEnv) = 1
 
-get_num_features(self::TimeSeries) = 1
-
-mutable struct MSO <: TimeSeries
+mutable struct MSO <: TimeSeriesEnv
     dataset::Vector{Float64}
     idx::Int
 
@@ -37,7 +32,7 @@ function step!(self::MSO)
     return self.state
 end
 
-mutable struct SineWave <: TimeSeries
+mutable struct SineWave <: TimeSeriesEnv
     dataset::Vector{Float64}
     idx::Int
 
@@ -60,7 +55,7 @@ function step!(self::SineWave)
     return self.state
 end
 
-mutable struct MackeyGlass <: TimeSeries
+mutable struct MackeyGlass <: TimeSeriesEnv
     delta::Int
     tau::Int
     series::Float64
@@ -91,5 +86,3 @@ function step!(self::MackeyGlass)
     self.state[1] = self.series
     return self.state
 end
-
-end # module TimeSeries

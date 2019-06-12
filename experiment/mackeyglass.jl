@@ -34,7 +34,7 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         "--steps"
         help="number of steps"
         arg_type=Int64
-        default=100
+        default=60000
         "--working"
         action=:store_true
     end
@@ -42,12 +42,17 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
 
     # GVFN
     @add_arg_table as begin
+        "--max-exponent"
+        help="max discount=1.0-2^(-max-exponent)"
+        arg_type=Int
+        default=7
         "--horizon"
         help="prediction horizon"
         default=12
+        arg_type=Int
         "--alg"
         help="Algorithm"
-        default="TDLambda"
+        default="RTD"
         "--params"
         help="Parameters"
         arg_type=Float64

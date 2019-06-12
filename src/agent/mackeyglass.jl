@@ -5,7 +5,6 @@ import Random
 import DataStructures
 
 import JuliaRL
-import MackeyGlassUtils
 
 mutable struct MackeyGlassAgent{O, T, F, H, Φ, M, G} <: JuliaRL.AbstractAgent
     lu::LearningUpdate
@@ -24,7 +23,7 @@ end
 
 function MackeyGlassAgent(parsed; rng=Random.GLOBAL_RNG)
 
-    horde = MackeyGlassUtils.get_horde(parsed)
+    horde = TimeSeriesUtils.get_horde(parsed["max-exponent"])
     num_gvfs = length(horde)
 
     alg_string = parsed["alg"]
@@ -45,10 +44,10 @@ function MackeyGlassAgent(parsed; rng=Random.GLOBAL_RNG)
     state_list = DataStructures.CircularBuffer{Array{Float32, 1}}(τ+1)
     hidden_state_init = zeros(Float32, num_gvfs)
 
-    horizon = parsed["horizon"]
-    ϕbuff = DataStructures.CircularBuffer{Vector{Float32}}(horizon)
+    horizon = Int(parsed["horizon"])
+    ϕbuff = DataStructures.CircularBuffer{Array{Float32,1}}(horizon)
 
-    MackeyGlassAgent(lu, opt, gvfn, state_list, hidden_state_init, zeros(Float32, 1), model, out_horde, horizon, ϕbuff)
+    return MackeyGlassAgent(lu, opt, gvfn, state_list, hidden_state_init, zeros(Float32, 1), model, out_horde, horizon, ϕbuff)
 end
 
 function JuliaRL.start!(agent::MackeyGlassAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
@@ -70,7 +69,10 @@ function JuliaRL.step!(agent::MackeyGlassAgent, env_s_tp1, r, terminal; rng=Rand
     reset!(agent.gvfn, agent.hidden_state_init)
     preds = agent.gvfn.(agent.state_list)
 
-    update!(agent.model, agent.out_horde, agent.opt, agent.lu, Flux.data.(preds), env_s_tp1)
+    push!(agent.ϕbuff, Flux.data.(preds))
+    if isfull(agent.ϕbuff)
+        update!(agent.model, agent.out_horde, agent.opt, agent.lu, agent.ϕbuff.first, env_s_tp1)
+    end
 
     out_preds = agent.model(preds[end])
 
@@ -97,14 +99,14 @@ end
 
 function MackeyGlassRNNAgent(parsed; rng=Random.GLOBAL_RNG)
 
-    horde = MackeyGlassUtils.get_horde(parsed)
+    horde = TimeSeriesUtils.get_horde(parsed)
     num_gvfs = length(horde)
 
-    fc = MackeyGlassUtils.ActionTileFeatureCreator()
+    fc = TimeSeriesUtils.ActionTileFeatureCreator()
 
     τ=parsed["truncation"]
     opt = FluxUtils.get_optimizer(parsed)
-    rnn = FluxUtils.construct_rnn(MackeyGlassUtils.feature_size(fc), parsed; init=(dims...)->glorot_uniform(rng, dims...))
+    rnn = FluxUtils.construct_rnn(TimeSeriesUtils.feature_size(fc), parsed; init=(dims...)->glorot_uniform(rng, dims...))
     out_model = Flux.Dense(parsed["numhidden"], length(horde); initW=(dims...)->glorot_uniform(rng, dims...))
 
     state_list =  DataStructures.CircularBuffer{Array{Float32, 1}}(τ+1)
