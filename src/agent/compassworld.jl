@@ -101,7 +101,7 @@ end
 
 function JuliaRL.start!(agent::CompassWorldAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
 
-    agent.action_state, (agent.action, agent.action_prob) = get_action(agent.action_state, agent.s_t, rng)
+    agent.action_state, (agent.action, agent.action_prob) = get_action(agent.action_state, env_s_tp1, rng)
 
     fill!(agent.state_list, zeros(length(agent.build_features(env_s_tp1, agent.action))))
     push!(agent.state_list, agent.build_features(env_s_tp1, agent.action))
@@ -170,7 +170,7 @@ end
 
 function JuliaRL.start!(agent::CompassWorldRNNAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
 
-    agent.action_state, (agent.action, agent.action_prob) = get_action(agent.action_state, agent.s_t, rng)
+    agent.action_state, (agent.action, agent.action_prob) = get_action(agent.action_state, env_s_tp1, rng)
 
     fill!(agent.state_list, zeros(length(agent.build_features(env_s_tp1, agent.action))))
     push!(agent.state_list, agent.build_features(env_s_tp1, agent.action))

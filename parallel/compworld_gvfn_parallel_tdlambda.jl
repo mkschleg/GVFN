@@ -35,7 +35,7 @@ const lambdas = 0.0:0.1:0.9
 
 # Parameters for the SGD Algorithm
 const optimizer = "Descent"
-const alphas = clamp.(0.1*1.5.^(-6:4), 0.0, 1.0)
+const alphas = clamp.(0.1*1.5.^(-12:-6), 0.0, 1.0)
 # const alphas = 0.1*1.5.^(-6:1)
 
 
