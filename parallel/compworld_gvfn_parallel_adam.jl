@@ -1,6 +1,6 @@
 #!/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/julia/1.1.0/bin/julia
-#SBATCH -o comp_gvfn_tdlambda_rmsprop.out # Standard output
-#SBATCH -e comp_gvfn_tdlambda_rmsprop.err # Standard error
+#SBATCH -o comp_gvfn_adam.out # Standard output
+#SBATCH -e comp_gvfn_adam.err # Standard error
 #SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
 #SBATCH --time=24:00:00 # Running time of 12 hours
 #SBATCH --ntasks=64
@@ -15,30 +15,31 @@ Pkg.activate(".")
 
 using Reproduce
 
-const save_loc = "compassworld_gvfn_tdlambda_rmsprop"
+const save_loc = "compassworld_gvfn_adam"
 const exp_file = "experiment/compassworld.jl"
 const exp_module_name = :CompassWorldExperiment
 const exp_func_name = :main_experiment
 
 #------ Learning Updates -------#
 
-# const learning_update = "RTD"
-# const truncations = [1, 5, 10, 16, 24, 32]
+const learning_update = "RTD"
+const truncations = [1, 5, 10, 16, 24, 32]
 
 
-const learning_update = "TDLambda"
-const lambdas = 0.0:0.1:0.9
+# const learning_update = "TDLambda"
+# const lambdas = 0.0:0.1:0.9
 # const truncations = [1, 10, 24]
 
 
 #------ Optimizers ----------#
 
 # Parameters for the SGD Algorithm
+const optimizer = "ADAM"
+const alphas = 0.01*1.5.^(-8:2:2)
 # const optimizer = "Descent"
 # const alphas = clamp.(0.1*1.5.^(-6:4), 0.0, 1.0)
-const optimizer = "RMSProp"
-const alphas = 0.01*1.5.^(-8:2:2)
 # const alphas = 0.1*1.5.^(-6:1)
+
 
 function make_arguments_rtd(args::Dict)
     horde = args["horde"]
@@ -56,7 +57,7 @@ function make_arguments_tdlambda(args::Dict)
     lambda = args["lambda"]
     seed = args["seed"]
     feature = args["feature"]
-    new_args=["--horde", horde, "--params", lambda, "--opt", optimizer, "--optparams", alpha, "--feature", feature, "--seed", seed]
+    new_args=["--horde", horde, "--luparams", lambda, "--opt", optimizer, "--optparams", alpha, "--feature", feature, "--seed", seed]
     return new_args
 end
 
@@ -96,7 +97,7 @@ function main()
             "feature"=>["standard", "action"],
             "seed"=>collect(1:5)
         ])
-        arg_list = ["horde", "alpha", "lambda", "seed"]
+        arg_list = ["feature", "horde", "alpha", "lambda", "seed"]
     end
 
     static_args = ["--alg", learning_update, "--steps", "2000000", "--exp_loc", save_loc]
@@ -116,8 +117,8 @@ function main()
 
     create_experiment_dir(experiment)
     add_experiment(experiment; settings_dir="settings")
-    # ret = job(experiment; num_workers=4)
     ret = job(experiment; num_workers=num_workers, job_file_dir=parsed["jobloc"]))
+    # ret = job(experiment; num_workers=4)
     post_experiment(experiment, ret)
 
 end

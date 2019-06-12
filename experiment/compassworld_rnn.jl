@@ -86,6 +86,10 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         "--numhidden"
         help="Number of hidden units in cell"
         default=45
+        "--feature"
+        help="The feature creator to use"
+        arg_type=String
+        default="standard"
     end
 
     return as
@@ -135,12 +139,12 @@ function main_experiment(args::Vector{String})
         savepath = Reproduce.get_save_dir(parsed)
         savefile = joinpath(savepath, "results.jld2")
         if isfile(savefile)
+            println("Here")
             return
         end
     end
 
     num_steps = parsed["steps"]
-    println(num_steps)
     seed = parsed["seed"]
     rng = Random.MersenneTwister(seed)
 
@@ -154,7 +158,8 @@ function main_experiment(args::Vector{String})
     agent = CompassWorldRNNAgent(parsed; rng=rng)
     action = start!(agent, s_t; rng=rng)
 
-    @showprogress 0.1 "Step: " for step in 1:num_steps
+    # @showprogress 0.1 "Step: " for step in 1:num_steps
+    for step in 1:num_steps
         if step%100000 == 0
             # println("Garbage Clean!")
             GC.gc()

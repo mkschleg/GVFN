@@ -30,8 +30,9 @@ function make_arguments(args::Dict)
     alpha = args["alpha"]
     cell = args["cell"]
     truncation = args["truncation"]
+    feature = args["feature"]
     seed = args["seed"]
-    new_args=["--horde", horde, "--truncation", truncation, "--opt", optimizer, "--optparams", alpha, "--cell", cell, "--seed", seed]
+    new_args=["--horde", horde, "--truncation", truncation, "--opt", optimizer, "--optparams", alpha, "--cell", cell, "--feature", feature, "--seed", seed]
     return new_args
 end
 
@@ -59,10 +60,11 @@ function main(args::Vector{String}=ARGS)
         "alpha"=>alphas,
         "truncation"=>truncations,
         "cell"=>["RNN", "LSTM", "GRU"],
+        "feature"=>["standard", "action"],
         # "cell"=>["RNN", "GRU"],
         "seed"=>collect(1:5)
     ])
-    arg_list = ["horde", "alpha", "truncation", "seed", "cell"]
+    arg_list = ["feature", "horde", "alpha", "truncation", "seed", "cell"]
 
     static_args = ["--steps", "2000000", "--exp_loc", save_loc]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments)

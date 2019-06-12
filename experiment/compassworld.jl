@@ -88,6 +88,10 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         help="The activation used for the GVFN"
         arg_type=String
         default="sigmoid"
+        "--feature"
+        help="The feature creator to use"
+        arg_type=String
+        default="standard"
     end
 
     return as
