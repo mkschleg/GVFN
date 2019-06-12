@@ -35,7 +35,7 @@ const truncations = [1, 5, 10, 16, 24, 32]
 
 # Parameters for the SGD Algorithm
 const optimizer = "ADAM"
-const alphas = 0.01*1.5.^(-8:2:2)
+const alphas = 0.01*1.5.^(-8:3)
 # const optimizer = "Descent"
 # const alphas = clamp.(0.1*1.5.^(-6:4), 0.0, 1.0)
 # const alphas = 0.1*1.5.^(-6:1)
