@@ -35,7 +35,7 @@ const lambdas = 0.0:0.1:0.9
 
 # Parameters for the SGD Algorithm
 const optimizer = "Descent"
-const alphas = clamp.(0.1*1.5.^(-6:4), 0.0, 1.0)
+const alphas = clamp.(0.1*1.5.^(-12:-6), 0.0, 1.0)
 # const alphas = 0.1*1.5.^(-6:1)
 
 
@@ -115,8 +115,7 @@ function main()
 
     create_experiment_dir(experiment)
     add_experiment(experiment; settings_dir="settings")
-    ret = job(experiment; num_workers=num_workers, job_file_dir=parsed["jobloc"]))
-    # ret = job(experiment; num_workers=4)
+    ret = job(experiment; num_workers=num_workers, job_file_dir=parsed["jobloc"])
     post_experiment(experiment, ret)
 
 end

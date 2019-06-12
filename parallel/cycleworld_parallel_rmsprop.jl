@@ -52,7 +52,8 @@ function main()
     num_workers = parsed["numworkers"]
 
     arg_dict = Dict([
-        "horde"=>["chain", "gamma_chain", "gammas_aj_term"],
+#        "horde"=>["chain", "gamma_chain", "gammas_aj_term"],
+        "horde"=>["gammas_aj_term"],
         "alpha"=>alphas,
         "lambda"=>lambdas,
         "activation"=>["sigmoid"],

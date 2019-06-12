@@ -197,3 +197,75 @@ function sensitivity_best_arg(exp_loc, sweep_arg::String, best_arg::String, prod
 
 
 end
+
+function learning_curves(exp_loc, line_arg::String, sweep_arg::String, product_args::Vector{String};
+                         results_file="results.jld2",
+                         clean_func=identity,
+                         sweep_args_clean=identity,
+                         compare=(new, old)->new<old,
+                         save_dir="sensitivity_best",
+                         ylim=nothing, ci_const = 1.96, n=1, kwargs...)
+
+
+    gr()
+
+    ic = ItemCollection(exp_loc)
+    diff_dict = diff(ic.items)
+    args = Iterators.product([diff_dict[arg] for arg in product_args]...)
+
+    p1 = ProgressMeter.Progress(length(args), 0.1, "Args: ", offset=0)
+
+    p2 = ProgressMeter.Progress(length(diff_dict[line_arg]), 0.1, "$(line_arg): ", offset=1)
+
+    for arg in args
+
+        plt=nothing
+        for (idx_line, l_a) in enumerate(diff_dict[line_arg])
+
+            μ_dict = Dict{Any, Any}() #zeros(length(diff_dict[sweep_arg]))
+
+            p3 = ProgressMeter.Progress(length(diff_dict[sweep_arg]), 0.1, "$(sweep_arg): ", offset=2)
+            for (idx, s_a) in enumerate(diff_dict[sweep_arg])
+                search_dict = Dict(sweep_arg=>s_a, line_arg=>l_a, [product_args[idx]=>key for (idx, key) in enumerate(arg)]...)
+                _, hashes, _ = search(ic, search_dict)
+                μ_runs = nothing#zeros(length(hashes))
+                inf_list = Int64[]
+                for (idx_d, d) in enumerate(hashes)
+                    try
+                        results = load(joinpath(d, results_file))
+                        if μ_runs == nothing
+                            r = clean_func(results)
+                            μ_runs = zeros(length(hashes), length(r))
+                            μ_runs[idx_d, :] .= r
+                        else
+                            μ_runs[idx_d, :] .= r
+                        end
+                    catch e
+                        if μ_runs == nothing
+                            push!(inf_list, copy(idx_d))
+                        else
+                            μ_runs[idx_d, :] = Inf
+                        end
+                    end
+                end
+                for idx_inf in inf_list
+                    μ_runs[idx_inf, :] = Inf
+                end
+                # μ[idx] = mean(μ_runs)
+                μ_dict[s_a] = mean(μ_runs;dims=1)
+
+                # σ[idx] = ci_const * std(μ_runs)/sqrt(length(μ_runs))
+                next!(p3)
+            end
+
+            if plt == nothing
+                plt = plot(sweep_args_clean(diff_dict[sweep_arg]), μ, yerror=σ, ylim=ylim, label="$(line_arg)=$(l_a)"; kwargs...)
+            else
+                plot!(plt, sweep_args_clean(diff_dict[sweep_arg]), μ, yerror=σ, label="$(line_arg)=$(l_a)"; kwargs...)
+            end
+            next!(p2)
+        end
+    end
+end
+
+
