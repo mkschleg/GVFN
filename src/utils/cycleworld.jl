@@ -54,13 +54,13 @@ function gammas_term(gms::Array{Float64, 1})
 end
 
 function gammas_aj()
-    gvfs = [GVF(FeatureCumulant(1), ConstantDiscount(γ), NullPolicy()) for γ in gms]
-    return Horde(gvfs)
+    gms = 1.0 .- 2.0 .^ collect(-7:-1)
+    return gammas(gms)
 end
 
 function gammas_aj_term()
-    gvfs = [GVF(FeatureCumulant(1), StateTerminationDiscount(γ, ((env_state)->env_state[1] == 1)), NullPolicy()) for γ in gms]
-    return Horde(gvfs)
+    gms = 1.0 .- 2.0 .^ collect(-7:-1)
+    return gammas_term(gms)
 end
 
 function get_horde(horde_str::AbstractString, chain_length::Integer, gamma::AbstractFloat)

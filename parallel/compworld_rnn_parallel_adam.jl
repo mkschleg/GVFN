@@ -1,6 +1,6 @@
 #!/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/julia/1.1.0/bin/julia
-#SBATCH -o comp_rnn.out # Standard output
-#SBATCH -e comp_rnn.err # Standard error
+#SBATCH -o comp_rnn_adam.out # Standard output
+#SBATCH -e comp_rnn_adam.err # Standard error
 #SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
 #SBATCH --time=24:00:00 # Running time of 12 hours
 #SBATCH --ntasks=128
@@ -13,17 +13,16 @@ using Reproduce
 
 
 #------ Optimizers ----------#
-const save_loc = "compworld_rnn_sweep"
+const save_loc = "compworld_rnn_sweep_adam"
 const exp_file = "experiment/compassworld_rnn.jl"
 const exp_module_name = :CompassWorldRNNExperiment
 const exp_func_name = :main_experiment
 
 
 # Parameters for the SGD Algorithm
-const optimizer = "Descent"
-const alphas = clamp.(0.1*1.5.^(-6:4), 0.0, 1.0)
+const optimizer = "ADAM"
+const alphas = 0.01*1.5.^(-8:3)
 const truncations = [1, 5, 10, 16, 24, 32]
-
 
 function make_arguments(args::Dict)
     horde = args["horde"]

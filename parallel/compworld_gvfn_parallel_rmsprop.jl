@@ -46,7 +46,8 @@ function make_arguments_rtd(args::Dict)
     alpha = args["alpha"]
     truncation = args["truncation"]
     seed = args["seed"]
-    new_args=["--horde", horde, "--truncation", truncation, "--opt", optimizer, "--optparams", alpha, "--seed", seed]
+    feature = args["feature"]
+    new_args=["--horde", horde, "--truncation", truncation, "--opt", optimizer, "--optparams", alpha, "--feature", feature, "--seed", seed]
     return new_args
 end
 
@@ -55,7 +56,8 @@ function make_arguments_tdlambda(args::Dict)
     alpha = args["alpha"]
     lambda = args["lambda"]
     seed = args["seed"]
-    new_args=["--horde", horde, "--luparams", lambda, "--opt", optimizer, "--optparams", alpha, "--seed", seed]
+    feature = args["feature"]
+    new_args=["--horde", horde, "--luparams", lambda, "--opt", optimizer, "--optparams", alpha, "--feature", feature, "--seed", seed]
     return new_args
 end
 
@@ -83,17 +85,19 @@ function main()
             "horde"=>["rafols", "forward"],
             "alpha"=>alphas,
             "truncation"=>truncations,
+            "feature"=>["standard", "action"],
             "seed"=>collect(1:5)
         ])
-        arg_list = ["horde", "alpha", "truncation", "seed"]
+        arg_list = ["feature", "horde", "alpha", "truncation", "seed"]
     elseif learning_update == "TDLambda"
         arg_dict = Dict([
             "horde"=>["rafols", "forward"],
             "alpha"=>alphas,
             "lambda"=>lambdas,
+            "feature"=>["standard", "action"],
             "seed"=>collect(1:5)
         ])
-        arg_list = ["horde", "alpha", "lambda", "seed"]
+        arg_list = ["feature", "horde", "alpha", "lambda", "seed"]
     end
 
     static_args = ["--alg", learning_update, "--steps", "2000000", "--exp_loc", save_loc]
@@ -113,7 +117,7 @@ function main()
 
     create_experiment_dir(experiment)
     add_experiment(experiment; settings_dir="settings")
-    ret = job(experiment; num_workers=4)
+    ret = job(experiment; num_workers=num_workers, job_file_dir=parsed["jobloc"])
     post_experiment(experiment, ret)
 
 end

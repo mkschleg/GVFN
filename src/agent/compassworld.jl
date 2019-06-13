@@ -87,7 +87,12 @@ function CompassWorldAgent(parsed; rng=Random.GLOBAL_RNG)
 
     act = FluxUtils.get_activation(parsed["act"])
 
-    gvfn = GVFNetwork(num_gvfs, 19, horde; init=(dims...)->glorot_uniform(rng, dims...), σ_int=act)
+    fc = CompassWorldUtils.StandardFeatureCreator()
+    if parsed["feature"] == "action"
+        fc = CompassWorldUtils.ActionTileFeatureCreator()
+    end
+
+    gvfn = GVFNetwork(num_gvfs, CompassWorldUtils.feature_size(fc), horde; init=(dims...)->glorot_uniform(rng, dims...), σ_int=act)
     model = Linear(num_gvfs, 5; init=(dims...)->glorot_uniform(rng, dims...))
     out_horde = CompassWorldUtils.forward()
 
@@ -95,13 +100,13 @@ function CompassWorldAgent(parsed; rng=Random.GLOBAL_RNG)
     # fill!(state_list, zeros(Float32, num_observations))
     hidden_state_init = zeros(Float32, num_gvfs)
 
-    CompassWorldAgent(lu, opt, gvfn, CompassWorldUtils.build_features, state_list, hidden_state_init, zeros(Float32, 1), -1, 0.0, "", model, out_horde)
+    CompassWorldAgent(lu, opt, gvfn, fc, state_list, hidden_state_init, zeros(Float32, 1), -1, 0.0, "", model, out_horde)
 
 end
 
 function JuliaRL.start!(agent::CompassWorldAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
 
-    agent.action_state, (agent.action, agent.action_prob) = get_action(agent.action_state, agent.s_t, rng)
+    agent.action_state, (agent.action, agent.action_prob) = get_action(agent.action_state, env_s_tp1, rng)
 
     fill!(agent.state_list, zeros(length(agent.build_features(env_s_tp1, agent.action))))
     push!(agent.state_list, agent.build_features(env_s_tp1, agent.action))
@@ -154,7 +159,10 @@ function CompassWorldRNNAgent(parsed; rng=Random.GLOBAL_RNG)
     horde = CompassWorldUtils.get_horde(parsed)
     num_gvfs = length(horde)
 
-    fc = CompassWorldUtils.ActionTileFeatureCreator()
+    fc = CompassWorldUtils.StandardFeatureCreator()
+    if parsed["feature"] == "action"
+        fc = CompassWorldUtils.ActionTileFeatureCreator()
+    end
 
     τ=parsed["truncation"]
     opt = FluxUtils.get_optimizer(parsed)
@@ -170,7 +178,7 @@ end
 
 function JuliaRL.start!(agent::CompassWorldRNNAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
 
-    agent.action_state, (agent.action, agent.action_prob) = get_action(agent.action_state, agent.s_t, rng)
+    agent.action_state, (agent.action, agent.action_prob) = get_action(agent.action_state, env_s_tp1, rng)
 
     fill!(agent.state_list, zeros(length(agent.build_features(env_s_tp1, agent.action))))
     push!(agent.state_list, agent.build_features(env_s_tp1, agent.action))
