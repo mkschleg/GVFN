@@ -2,7 +2,7 @@ __precompile__(true)
 
 module MackeyGlassExperiment
 
-using GVFN: MackeyGlass, step!, start!
+using GVFN: MackeyGlass, MackeyGlassAgent, step!, start!
 using GVFN
 using Flux
 using Flux.Tracker
@@ -14,7 +14,6 @@ using ProgressMeter
 using JLD2
 using Reproduce
 using Random
-
 using Flux.Tracker: TrackedArray, TrackedReal, track, @grad
 
 using DataStructures: CircularBuffer
@@ -80,7 +79,7 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         "--act"
         help="The activation used for the GVFN"
         arg_type=String
-        default="sigmoid"
+        default="linear"
     end
 
     return as
@@ -122,16 +121,15 @@ function main_experiment(args::Vector{String})
     start!(agent, s_t; rng=rng)
 
     @showprogress 0.1 "Step: " for step in 1:num_steps
-
-        s_tp1 = step!(env, action)
+        s_tp1 = step!(env)
 
         if step > horizon
-            push!(gt, stp1[1])
+            push!(gt, s_tp1[1])
         end
 
         pred = step!(agent, s_tp1, 0, false; rng=rng)
 
-        predictions[step] .= Flux.data(pred)
+        predictions[step] = Flux.data(pred[1])
     end
 
     results = Dict("GroundTruth"=>gt, "Predictions"=>predictions)

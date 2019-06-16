@@ -31,8 +31,8 @@ const truncations = [1, 5, 10, 16, 24, 32]
 #------ Optimizers ----------#
 
 # Parameters for the SGD Algorithm
-const optimizer = "Descent"
-const alphas = clamp.(0.1*1.5.^(-6:4), 0.0, 1.0)
+const optimizer = "ADAM"
+const alphas = collect(2.0.^(-15:1))
 
 const max_exponents=[7]
 
@@ -78,6 +78,7 @@ function main()
     static_args = ["--alg", learning_update, "--steps", "60000", "--exp_loc", save_loc]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments_rtd)
 
+    println(collect(args_iterator)[num_workers])
     if parsed["numjobs"]
         @info "This experiment has $(length(collect(args_iterator))) jobs."
         println(collect(args_iterator)[num_workers])

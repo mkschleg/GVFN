@@ -38,6 +38,12 @@ end
 
 get(cumulant::PredictionCumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1) = preds_tp1[cumulant.idx]
 
+struct ScaledCumulant{T} <: AbstractCumulant
+    idx::Int
+    γ::T
+end
+
+get(c::ScaledCumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1) = preds_tp1[c.idx] * (1.0-c.γ)
 
 """
 Discounting

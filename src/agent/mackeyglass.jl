@@ -4,9 +4,9 @@ import Flux
 import Random
 import DataStructures
 
-import JuliaRL
+#import JuliaRL
 
-mutable struct MackeyGlassAgent{O, T, F, H, Φ, M, G} <: JuliaRL.AbstractAgent
+mutable struct MackeyGlassAgent{O, T, H, Φ, M, G} <: JuliaRL.AbstractAgent
     lu::LearningUpdate
     opt::O
     gvfn::Flux.Recur{T}
@@ -17,7 +17,7 @@ mutable struct MackeyGlassAgent{O, T, F, H, Φ, M, G} <: JuliaRL.AbstractAgent
     out_horde::Horde{G}
 
     horizon::Int
-    ϕbuff::DataStructures.CircularBuffer{Φ}
+    ϕbuff::DataStructures.CircularBuffer{Vector{Φ}}
 end
 
 
@@ -45,14 +45,12 @@ function MackeyGlassAgent(parsed; rng=Random.GLOBAL_RNG)
     hidden_state_init = zeros(Float32, num_gvfs)
 
     horizon = Int(parsed["horizon"])
-    ϕbuff = DataStructures.CircularBuffer{Array{Float32,1}}(horizon)
+    ϕbuff = DataStructures.CircularBuffer{Vector{Array{Float32,1}}}(horizon)
 
     return MackeyGlassAgent(lu, opt, gvfn, state_list, hidden_state_init, zeros(Float32, 1), model, out_horde, horizon, ϕbuff)
 end
 
-function JuliaRL.start!(agent::MackeyGlassAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
-
-    agent.action_state, (agent.action, agent.action_prob) = get_action(agent.action_state, agent.s_t, rng)
+function start!(agent::MackeyGlassAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
 
     fill!(agent.state_list, zeros(1))
     push!(agent.state_list, env_s_tp1)
@@ -60,7 +58,7 @@ function JuliaRL.start!(agent::MackeyGlassAgent, env_s_tp1; rng=Random.GLOBAL_RN
     agent.s_t = copy(env_s_tp1)
 end
 
-function JuliaRL.step!(agent::MackeyGlassAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
+function step!(agent::MackeyGlassAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
 
     push!(agent.state_list, env_s_tp1)
 
@@ -70,8 +68,8 @@ function JuliaRL.step!(agent::MackeyGlassAgent, env_s_tp1, r, terminal; rng=Rand
     preds = agent.gvfn.(agent.state_list)
 
     push!(agent.ϕbuff, Flux.data.(preds))
-    if isfull(agent.ϕbuff)
-        update!(agent.model, agent.out_horde, agent.opt, agent.lu, agent.ϕbuff.first, env_s_tp1)
+    if DataStructures.isfull(agent.ϕbuff)
+        update!(agent.model, agent.out_horde, agent.opt, agent.lu, popfirst!(agent.ϕbuff), env_s_tp1)
     end
 
     out_preds = agent.model(preds[end])
@@ -128,7 +126,7 @@ function JuliaRL.start!(agent::MackeyGlassRNNAgent, env_s_tp1; rng=Random.GLOBAL
 end
 
 
-function JuliaRL.step!(agent::MackeyGlassRNNAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
+function step!(agent::MackeyGlassRNNAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
 
     push!(agent.state_list, agent.build_features(env_s_tp1, agent.action))
 
