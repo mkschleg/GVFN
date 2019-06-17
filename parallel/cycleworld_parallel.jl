@@ -18,12 +18,8 @@ const exp_func_name = :main_experiment
 const optimizer = "Descent"
 const alphas = clamp.(0.1*1.5.^(-6:6), 0.0, 1.0)
 
-# const learning_update = "RTD"
-# const truncations = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-
 const learning_update = "TDLambda"
 const lambdas = 0.0:0.1:0.9
-
 
 function make_arguments(args::Dict)
     horde = args["horde"]
@@ -41,7 +37,7 @@ function main()
     @add_arg_table as begin
         "numworkers"
         arg_type=Int64
-        default=1
+        default=2
         "--jobloc"
         arg_type=String
         default=joinpath(save_loc, "jobs")
@@ -53,16 +49,16 @@ function main()
 
     arg_dict = Dict([
         #"horde"=>["chain", "gamma_chain", "gammas_aj_term"],
-	"horde"=>["gammas_aj_term"],
+	      "horde"=>["gamma_chain_scaled", "gammas_aj", "gammas_aj_scaled"],
         "alpha"=>alphas,
         "lambda"=>lambdas,
-        "activation"=>["sigmoid"],
+        "activation"=>["relu"],
         "seed"=>collect(1:10)
     ])
     arg_list = ["activation", "horde", "alpha", "lambda", "seed"]
 
 
-    static_args = ["--steps", "300000", "--alg", learning_update, "--exp_loc", save_loc]
+    static_args = ["--steps", "30", "--alg", learning_update, "--exp_loc", save_loc]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments)
 
     if parsed["numjobs"]

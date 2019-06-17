@@ -43,8 +43,20 @@ function gamma_chain(chain_length::Integer, γ::AbstractFloat)
     return Horde(gvfs)
 end
 
+function gamma_chain_scaled(chain_length::Integer, γ::AbstractFloat)
+    gvfs = [[GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())];
+            [GVF(PredictionCumulant(i-1), ConstantDiscount(0.0), NullPolicy()) for i in 2:chain_length];
+            [GVF(ScaledCumulant(1-γ, FeatureCumulant(1)), ConstantDiscount(γ), NullPolicy())]]
+    return Horde(gvfs)
+end
+
 function gammas(gms::Array{Float64, 1})
     gvfs = [GVF(FeatureCumulant(1), ConstantDiscount(γ), NullPolicy()) for γ in gms]
+    return Horde(gvfs)
+end
+
+function gammas_scaled(gms::Array{Float64, 1})
+    gvfs = [GVF(ScaledCumulant(1-γ, FeatureCumulant(1)), ConstantDiscount(γ), NullPolicy()) for γ in gms]
     return Horde(gvfs)
 end
 
@@ -63,20 +75,31 @@ function gammas_aj_term()
     return gammas_term(gms)
 end
 
+function gammas_aj_scaled()
+    gms = 1.0 .- 2.0 .^ collect(-7:-1)
+    return gammas_scaled(gms)
+end
+
 function get_horde(horde_str::AbstractString, chain_length::Integer, gamma::AbstractFloat)
     horde = chain(chain_length)
     if horde_str == "gamma_chain"
         horde = gamma_chain(chain_length, gamma)
+    elseif horde_str == "gamma_chain"
+        horde = gamma_chain_scaled(chain_length, gamma)
     elseif horde_str == "onestep"
         horde = onestep(chain_length)
     elseif horde_str == "gammas"
         horde = gammas(collect(0.0:0.1:0.9))
     elseif horde_str == "gammas_term"
         horde = gammas_term(collect(0.0:0.1:0.9))
+    elseif horde_str == "gammas_scaled"
+        horde = gammas_scaled(collect(0.0:0.1:0.9))
     elseif horde_str == "gammas_aj"
         horde = gammas_aj()
     elseif horde_str == "gammas_aj_term"
         horde = gammas_aj_term()
+    elseif horde_str == "gammas_aj_scaled"
+        horde = gammas_aj_scaled()
     end
     return horde
 end

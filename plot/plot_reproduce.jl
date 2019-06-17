@@ -27,6 +27,8 @@ function sensitivity(exp_loc, sweep_arg::String, product_args::Vector{String};
         for (idx, s_a) in enumerate(diff_dict[sweep_arg])
             search_dict = Dict(sweep_arg=>s_a, [product_args[idx]=>key for (idx, key) in enumerate(arg)]...)
             _, hashes, _ = search(ic, search_dict)
+            # println(search_dict)
+            # println(length(hashes))
             μ_runs = zeros(length(hashes))
             for (idx_d, d) in enumerate(hashes)
                 try
@@ -38,6 +40,7 @@ function sensitivity(exp_loc, sweep_arg::String, product_args::Vector{String};
 
             end
             μ[idx] = mean(μ_runs)
+            # println(μ)
             σ[idx] = ci_const * std(μ_runs)/sqrt(length(μ_runs))
             next!(p2)
         end
