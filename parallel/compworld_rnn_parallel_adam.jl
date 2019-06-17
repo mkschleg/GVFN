@@ -21,7 +21,7 @@ const exp_func_name = :main_experiment
 
 # Parameters for the SGD Algorithm
 const optimizer = "ADAM"
-const alphas = 0.01*1.5.^(-8:2:2)
+const alphas = 0.01*1.5.^(-8:3)
 const truncations = [1, 5, 10, 16, 24, 32]
 
 function make_arguments(args::Dict)
