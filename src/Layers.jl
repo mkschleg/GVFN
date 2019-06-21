@@ -21,6 +21,8 @@ Linear(in::Integer, out::Integer; kwargs...) =
 sigmoid′(x) = sigmoid(x)*(1.0-sigmoid(x))
 # sigmoid′(x) = begin; tmp = sigmoid(x); tmp*(1.0-tmp); end;
 
+relu = Flux.relu
+relu′(x) = x.*(x.>0)
 
 
 # Linear(in::Integer, out::Integer; init=(dims...)->zeros(Float32, dims...)) =

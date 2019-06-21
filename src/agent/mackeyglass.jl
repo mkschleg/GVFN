@@ -38,7 +38,7 @@ function MackeyGlassAgent(parsed; rng=Random.GLOBAL_RNG)
     act = FluxUtils.get_activation(parsed["act"])
 
     gvfn = GVFNetwork(num_gvfs, 1, horde; init=(dims...)->glorot_uniform(rng, dims...), σ_int=act)
-    model = SingleLayer(num_gvfs, 1; init=(dims...)->glorot_uniform(rng, dims...))
+    model = SingleLayer(num_gvfs, 1, relu, relu′; init=(dims...)->glorot_uniform(rng, dims...))
     out_horde = Horde([GVF(FeatureCumulant(1),ConstantDiscount(0.0), NullPolicy())])
 
     state_list = DataStructures.CircularBuffer{Array{Float32, 1}}(τ+1)
@@ -48,6 +48,8 @@ function MackeyGlassAgent(parsed; rng=Random.GLOBAL_RNG)
     ϕbuff = DataStructures.CircularBuffer{Vector{Array{Float32,1}}}(horizon)
 
     return MackeyGlassAgent(lu, opt, gvfn, state_list, hidden_state_init, zeros(Float32, 1), model, out_horde, horizon, ϕbuff)
+end
+
 end
 
 function start!(agent::MackeyGlassAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)

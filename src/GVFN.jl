@@ -14,7 +14,9 @@ export
     Linear,
     deriv,
     sigmoid,
-    sigmoid′
+    sigmoid′,
+    relu,
+    relu′
 
 include("Layers.jl")
 

@@ -33,7 +33,7 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         "--steps"
         help="number of steps"
         arg_type=Int64
-        default=60000
+        default=600000
         "--working"
         action=:store_true
     end
@@ -43,12 +43,12 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
     @add_arg_table as begin
         "--max-exponent"
         help="max discount=1.0-2^(-max-exponent)"
-        arg_type=Int
+        arg_type=Int64
         default=7
         "--horizon"
         help="prediction horizon"
         default=12
-        arg_type=Int
+        arg_type=Int64
         "--alg"
         help="Algorithm"
         default="RTD"
