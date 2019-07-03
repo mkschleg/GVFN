@@ -30,8 +30,7 @@ function best_settings(exp_loc, product_args::Vector{String};
     # settings_vec = Vector{Tuple{Float64, Dict}}(undef, length(args))
     settings_dict = Dict()
     for (arg_idx, arg) in enumerate(args)
-        search_dict = merge(
-            Dict([product_args[idx]=>key for (idx, key) in enumerate(arg)]...))
+        search_dict = Dict([product_args[idx]=>key for (idx, key) in enumerate(arg)]...)
         ret = order_settings(exp_loc; set_args=search_dict, ic=ic, kwargs...)
         settings_dict[search_dict] = ret[1]
     end
@@ -62,12 +61,10 @@ end
         `sort_idx(=1)`: The idx of the returned `runs_func` structure used for sorting.
         `run_key(=run)`: The key used to specify an ind run for an experiment.
 
-        `results_file(="results.jld2")`: The string of the file containing experimental results.
-        `save_loc(="")`: The save location (returns settings_vec if not provided).
+        `results_file(=\"results.jld2\")`: The string of the file containing experimental results.
+        `save_loc(=\"\")`: The save location (returns settings_vec if not provided).
         `ic(=ItemCollection([])`: Optional item_collection, not needed in normal use.
         
-
-
 """
 
 function order_settings(exp_loc;
@@ -75,7 +72,7 @@ function order_settings(exp_loc;
                         clean_func=identity, runs_func=mean,
                         lt=<, sort_idx=1, run_key="run",
                         set_args=Dict{String, Any}(),
-                        ic=ItemCollection([]), , save_loc="",)
+                        ic=ItemCollection([]), save_loc="")
 
     if exp_loc[end] == '/'
         exp_loc = exp_loc[1:end-1]
