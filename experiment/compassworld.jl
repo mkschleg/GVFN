@@ -88,6 +88,10 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         help="The activation used for the GVFN"
         arg_type=String
         default="sigmoid"
+        "--feature"
+        help="The feature creator to use"
+        arg_type=String
+        default="standard"
     end
 
     return as
@@ -158,7 +162,7 @@ function main_experiment(args::Vector{String})
     agent = CompassWorldAgent(parsed; rng=rng)
     action = start!(agent, s_t; rng=rng)
 
-    @showprogress 0.1 "Step: " for step in 1:num_steps
+    for step in 1:num_steps
 
         _, s_tp1, _, _ = step!(env, action)
 

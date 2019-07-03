@@ -38,6 +38,14 @@ end
 
 get(cumulant::PredictionCumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1) = preds_tp1[cumulant.idx]
 
+struct ScaledCumulant{F<:Number, T<:AbstractCumulant}
+    scale::F
+    cumulant::T
+end
+
+get(cumulant::ScaledCumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1) =
+    cumulant.scale*get(cumulant.cumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1)
+
 
 """
 Discounting
@@ -97,6 +105,7 @@ StatsBase.sample(rng::Random.AbstractRNG, π::RandomPolicy) = sample(rng, π.wei
 
 struct FunctionalPolicy{F} <: AbstractPolicy
     func::F
+    
 end
 
 Base.get(π::FunctionalPolicy, state_t, action_t, state_tp1, action_tp1, preds_tp1) =

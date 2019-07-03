@@ -1,8 +1,8 @@
 #!/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/julia/1.1.0/bin/julia
-#SBATCH -o comp_gvfn_rmsprop.out # Standard output
-#SBATCH -e comp_gvfn_rmsprop.err # Standard error
+#SBATCH -o comp_gvfn_adam.out # Standard output
+#SBATCH -e comp_gvfn_adam.err # Standard error
 #SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
-#SBATCH --time=24:00:00 # Running time of 12 hours
+#SBATCH --time=12:00:00 # Running time of 12 hours
 #SBATCH --ntasks=64
 #SBATCH --account=rrg-whitem
 
@@ -15,7 +15,7 @@ Pkg.activate(".")
 
 using Reproduce
 
-const save_loc = "compassworld_gvfn_rmsprop"
+const save_loc = "compassworld_gvfn_adam"
 const exp_file = "experiment/compassworld.jl"
 const exp_module_name = :CompassWorldExperiment
 const exp_func_name = :main_experiment
@@ -34,8 +34,8 @@ const truncations = [1, 5, 10, 16, 24, 32]
 #------ Optimizers ----------#
 
 # Parameters for the SGD Algorithm
-const optimizer = "RMSProp"
-const alphas = 0.01*1.5.^(-8:2:2)
+const optimizer = "ADAM"
+const alphas = 0.01*1.5.^(-8:3)
 # const optimizer = "Descent"
 # const alphas = clamp.(0.1*1.5.^(-6:4), 0.0, 1.0)
 # const alphas = 0.1*1.5.^(-6:1)
@@ -118,6 +118,7 @@ function main()
     create_experiment_dir(experiment)
     add_experiment(experiment; settings_dir="settings")
     ret = job(experiment; num_workers=num_workers, job_file_dir=parsed["jobloc"])
+    # ret = job(experiment; num_workers=4)
     post_experiment(experiment, ret)
 
 end
