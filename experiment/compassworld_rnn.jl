@@ -158,8 +158,8 @@ function main_experiment(args::Vector{String})
     agent = CompassWorldRNNAgent(parsed; rng=rng)
     action = start!(agent, s_t; rng=rng)
 
-    # @showprogress 0.1 "Step: " for step in 1:num_steps
-    for step in 1:num_steps
+    @showprogress 0.1 "Step: " for step in 1:num_steps
+    # for step in 1:num_steps
         if step%100000 == 0
             # println("Garbage Clean!")
             GC.gc()
@@ -173,16 +173,16 @@ function main_experiment(args::Vector{String})
         _, s_tp1, _, _ = step!(env, action)
         out_preds, action = step!(agent, s_tp1, 0, false; rng=rng)
 
-        out_pred_strg[step, :] .= Flux.data(out_preds[end])
+        out_pred_strg[step, :] .= Flux.data.(out_preds)
         out_err_strg[step, :] .= out_pred_strg[step, :] .- oracle(env, "forward")
-
+        # println(out_pred_strg[step, :])
     end
 
     results = Dict(["rmse"=>sqrt.(mean(out_err_strg.^2; dims=2))])
     if !parsed["working"]
         JLD2.@save savefile results
     else
-        return results
+        return out_pred_strg, out_err_strg, results
     end
 end
 

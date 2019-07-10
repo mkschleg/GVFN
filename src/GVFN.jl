@@ -49,6 +49,8 @@ include("Environments.jl")
 export jacobian, glorot_uniform, glorot_normal, StopGradient
 include("util.jl")
 
+
+include("ActingPolicy.jl")
 include("Agent.jl")
 
 

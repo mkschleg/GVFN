@@ -5,6 +5,18 @@ using ProgressMeter
 using FileIO
 
 
+function save_settings(save_loc, settings_vec)
+    if split(basename(save_loc), ".")[end] == "txt"
+        open(save_loc, "w") do f
+            for v in settings_vec
+                write(f, string(v)*"\n")
+            end
+        end
+    else
+        save(save_loc, Dict("settings"=>settings_vec))
+    end
+end
+
 
 """
     best_settings
@@ -38,7 +50,7 @@ function best_settings(exp_loc, product_args::Vector{String};
     
     if save_loc != ""
         # Save data
-        save(save_loc, settings_dict)
+        save_settings(save_loc, settings_dict)
     else
         return settings_dict
     end
@@ -67,12 +79,14 @@ end
         
 """
 
+
+
 function order_settings(exp_loc;
                         results_file="results.jld2",
                         clean_func=identity, runs_func=mean,
                         lt=<, sort_idx=1, run_key="run",
                         set_args=Dict{String, Any}(),
-                        ic=ItemCollection([]), save_loc="")
+                        ic=ItemCollection([]), save_locs=nothing)
 
     if exp_loc[end] == '/'
         exp_loc = exp_loc[1:end-1]
@@ -119,9 +133,14 @@ function order_settings(exp_loc;
 
     sort!(settings_vec; lt=lt, by=(tup)->tup[1][sort_idx])
     
-    if save_loc != ""
-        # Save data
-        save(save_loc, settings_vec)
+    if save_locs != nothing
+        if typeof(save_locs) <: AbstractString
+            save_settings(save_locs, settings_vec)
+        elseif typeof(save_locs) <: AbstractArray
+            for save_loc in save_locs
+                save_settings(save_loc, settings_vec)
+            end
+        end
     else
         return settings_vec
     end
@@ -133,6 +152,11 @@ function sensitivity(exp_loc, sweep_arg::String, product_args::Vector{String};
                      ci_const = 1.96, sweep_args_clean=identity, save_dir="sensitivity", ylim=nothing)
 
     gr()
+
+    if exp_loc[end] == '/'
+        exp_loc = exp_loc[1:end-1]
+    end
+    head_dir = dirname(exp_loc)
 
     ic = ItemCollection(exp_loc)
     diff_dict = diff(ic.items)
@@ -154,10 +178,13 @@ function sensitivity(exp_loc, sweep_arg::String, product_args::Vector{String};
             # println(length(hashes))
             μ_runs = zeros(length(hashes))
             for (idx_d, d) in enumerate(hashes)
-                try
-                    results = load(joinpath(d, results_file))
+
+                if isfile(joinpath(head_dir, d, results_file))
+                    results = load(joinpath(head_dir, d, results_file))
                     μ_runs[idx_d] = clean_func(results)
-                catch e
+                # catch e
+                else
+                    # println(joinpath(head_dir, d, results_file))
                     μ_runs[idx_d] = Inf
                 end
 
@@ -195,6 +222,11 @@ function sensitivity_multiline(exp_loc, sweep_arg::String, line_arg::String, pro
 
     gr()
 
+    if exp_loc[end] == '/'
+        exp_loc = exp_loc[1:end-1]
+    end
+    head_dir = dirname(exp_loc)
+    
     ic = ItemCollection(exp_loc)
     diff_dict = diff(ic.items)
     args = Iterators.product([diff_dict[arg] for arg in product_args]...)
@@ -218,13 +250,14 @@ function sensitivity_multiline(exp_loc, sweep_arg::String, line_arg::String, pro
                 _, hashes, _ = search(ic, search_dict)
                 μ_runs = zeros(length(hashes))
                 for (idx_d, d) in enumerate(hashes)
-                    try
-                        results = load(joinpath(d, results_file))
+                    if isfile(joinpath(head_dir, d, results_file))
+                        results = load(joinpath(head_dir, d, results_file))
                         μ_runs[idx_d] = clean_func(results)
-                    catch e
+                        # catch e
+                    else
+                        # println(joinpath(head_dir, d, results_file))
                         μ_runs[idx_d] = Inf
                     end
-
                 end
                 μ[idx] = mean(μ_runs)
                 σ[idx] = ci_const * std(μ_runs)/sqrt(length(μ_runs))
@@ -263,6 +296,11 @@ function sensitivity_best_arg(exp_loc, sweep_arg::String, best_arg::String, prod
 
     gr()
 
+    if exp_loc[end] == '/'
+        exp_loc = exp_loc[1:end-1]
+    end
+    head_dir = dirname(exp_loc)
+    
     ic = ItemCollection(exp_loc)
     diff_dict = diff(ic.items)
     args = Iterators.product([diff_dict[arg] for arg in product_args]...)
@@ -287,13 +325,14 @@ function sensitivity_best_arg(exp_loc, sweep_arg::String, best_arg::String, prod
                 _, hashes, _ = search(ic, search_dict)
                 μ_runs = zeros(length(hashes))
                 for (idx_d, d) in enumerate(hashes)
-                    try
-                        results = load(joinpath(d, results_file))
+                    if isfile(joinpath(head_dir, d, results_file))
+                        results = load(joinpath(head_dir, d, results_file))
                         μ_runs[idx_d] = clean_func(results)
-                    catch e
+                        # catch e
+                    else
+                        # println(joinpath(head_dir, d, results_file))
                         μ_runs[idx_d] = Inf
                     end
-
                 end
                 if compare(mean(μ_runs), μ[idx])
                     μ[idx] = mean(μ_runs)
@@ -322,76 +361,6 @@ function sensitivity_best_arg(exp_loc, sweep_arg::String, best_arg::String, prod
     end
 
 
-end
-
-function learning_curves(exp_loc, line_arg::String, sweep_arg::String, product_args::Vector{String};
-                         results_file="results.jld2",
-                         clean_func=identity,
-                         sweep_args_clean=identity,
-                         compare=(new, old)->new<old,
-                         save_dir="sensitivity_best",
-                         ylim=nothing, ci_const = 1.96, n=1, kwargs...)
-
-
-    gr()
-
-    ic = ItemCollection(exp_loc)
-    diff_dict = diff(ic.items)
-    args = Iterators.product([diff_dict[arg] for arg in product_args]...)
-
-    p1 = ProgressMeter.Progress(length(args), 0.1, "Args: ", offset=0)
-
-    p2 = ProgressMeter.Progress(length(diff_dict[line_arg]), 0.1, "$(line_arg): ", offset=1)
-
-    for arg in args
-
-        plt=nothing
-        for (idx_line, l_a) in enumerate(diff_dict[line_arg])
-
-            μ_dict = Dict{Any, Any}() #zeros(length(diff_dict[sweep_arg]))
-
-            p3 = ProgressMeter.Progress(length(diff_dict[sweep_arg]), 0.1, "$(sweep_arg): ", offset=2)
-            for (idx, s_a) in enumerate(diff_dict[sweep_arg])
-                search_dict = Dict(sweep_arg=>s_a, line_arg=>l_a, [product_args[idx]=>key for (idx, key) in enumerate(arg)]...)
-                _, hashes, _ = search(ic, search_dict)
-                μ_runs = nothing#zeros(length(hashes))
-                inf_list = Int64[]
-                for (idx_d, d) in enumerate(hashes)
-                    try
-                        results = load(joinpath(d, results_file))
-                        if μ_runs == nothing
-                            r = clean_func(results)
-                            μ_runs = zeros(length(hashes), length(r))
-                            μ_runs[idx_d, :] .= r
-                        else
-                            μ_runs[idx_d, :] .= r
-                        end
-                    catch e
-                        if μ_runs == nothing
-                            push!(inf_list, copy(idx_d))
-                        else
-                            μ_runs[idx_d, :] = Inf
-                        end
-                    end
-                end
-                for idx_inf in inf_list
-                    μ_runs[idx_inf, :] = Inf
-                end
-                # μ[idx] = mean(μ_runs)
-                μ_dict[s_a] = mean(μ_runs;dims=1)
-
-                # σ[idx] = ci_const * std(μ_runs)/sqrt(length(μ_runs))
-                next!(p3)
-            end
-
-            if plt == nothing
-                plt = plot(sweep_args_clean(diff_dict[sweep_arg]), μ, yerror=σ, ylim=ylim, label="$(line_arg)=$(l_a)"; kwargs...)
-            else
-                plot!(plt, sweep_args_clean(diff_dict[sweep_arg]), μ, yerror=σ, label="$(line_arg)=$(l_a)"; kwargs...)
-            end
-            next!(p2)
-        end
-    end
 end
 
 
