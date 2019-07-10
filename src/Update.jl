@@ -123,7 +123,7 @@ function update!(out_model, rnn::Flux.Recur{T},
     grads = Flux.Tracker.gradient(()->δ, Flux.params(out_model, rnn))
     reset!(rnn, h_init)
     for weights in Flux.params(out_model, rnn)
-        Flux.Tracker.update!(opt, weights, -grads[weights])
+        Flux.Tracker.update!(opt, weights, grads[weights])
     end
 end
 
