@@ -2,7 +2,6 @@
 
 abstract type AbstractActingPolicy end
 
-
 mutable struct RandomActingPolicy{T<:AbstractFloat}
     probabilities::Array{T,1}
     weight_vec::Weights{T, T, Array{T, 1}}
@@ -25,7 +24,7 @@ mutable struct FunctionalActingPolicy{A, P}
     prob_func::P
 end
 
-get(π::FunctionalActingPolicy, state_t, action_t) =
+get_prob(π::FunctionalActingPolicy, state_t, action_t) =
     π.prob_func(π, state_t, action_t)
 
 StatsBase.sample(π::FunctionalActingPolicy, state_t) =
@@ -33,3 +32,10 @@ StatsBase.sample(π::FunctionalActingPolicy, state_t) =
 
 StatsBase.sample(rng::Random.AbstractRNG, π::FunctionalActingPolicy, state_t) =
     π.action_func(π, state_t, rng)
+
+function (π::FunctionalActingPolicy)(state_t, rng::Random.AbstractRNG=Random.GLOBAL_RNG)
+    action = sample(rng, π, state_t)
+    return action, get_prob(π, state_t, action)
+end
+
+

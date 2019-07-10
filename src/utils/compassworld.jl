@@ -3,6 +3,7 @@ module CompassWorldUtils
 using ..GVFN, Reproduce
 
 using JuliaRL.FeatureCreators
+using Random
 
 cwc = GVFN.CompassWorldConst
 
@@ -42,19 +43,39 @@ end
 
 function forward()
     cwc = GVFN.CompassWorldConst
-    gvfs = [GVF(FeatureCumulant(color), StateTerminationDiscount(1.0, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD)) for color in 1:5]
+    gvfs = [GVF(FeatureCumulant(color),
+                StateTerminationDiscount(1.0, ((env_state)->env_state[cwc.WHITE] == 0)),
+                PersistentPolicy(cwc.FORWARD)) for color in 1:5]
     return Horde(gvfs)
 end
 
-function gammas()
+function gammas_term()
     cwc = GVFN.CompassWorldConst
     gvfs = Array{GVF, 1}()
     for color in 1:5
-        new_gvfs = [GVF(FeatureCumulant(color), StateTerminationDiscount(γ, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD)) for γ in 0.0:0.05:0.95]
+        new_gvfs = [GVF(
+            FeatureCumulant(color),
+            StateTerminationDiscount(γ, ((env_state)->env_state[cwc.WHITE] == 0)),
+            PersistentPolicy(cwc.FORWARD)) for γ in [collect(0.0:0.05:0.95); [0.975, 0.99]]]
         append!(gvfs, new_gvfs)
     end
     return Horde(gvfs)
 end
+
+function gammas_scaled()
+    cwc = GVFN.CompassWorldConst
+    gvfs = Array{GVF, 1}()
+    for color in 1:5
+        new_gvfs = [GVF(
+            ScaledCumulant(1-γ, FeatureCumulant(color)),
+            ConstantDiscount(γ),
+            PersistentPolicy(cwc.FORWARD)) for γ in [collect(0.0:0.05:0.95); [0.975, 0.99]]]
+        append!(gvfs, new_gvfs)
+        # new_gvfs = [GVF(FeatureCumulant(color), StateTerminationDiscount(γ, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD)) for γ in 0.0:0.05:0.95]
+    end
+    return Horde(gvfs)
+end
+
 
 function get_horde(horde_str::AbstractString)
     horde = forward()
@@ -63,7 +84,9 @@ function get_horde(horde_str::AbstractString)
     elseif horde_str == "rafols"
         horde = rafols()
     elseif horde_str == "gammas"
-        horde = gammas()
+        horde = gammas_term()
+    elseif horde_str == "gammas_scaled"
+        horde = gammas_scaled()
     end
     return horde
 end
@@ -149,17 +172,15 @@ function get_action(state, env_state, rng=Random.GLOBAL_RNG)
     end
 end
 
-function get_action(rng=Random.GLOBAL_RNG)
-    
-    cwc = GVFN.CompassWorldConst
-    r = rand(rng)
-    if r < 0.2
-        return cwc.RIGHT, 0.2
-    elseif r < 0.4
-        return cwc.LEFT, 0.2
-    else
-        return cwc.FORWARD, 0.6
-    end
+mutable struct ActingPolicy <: GVFN.AbstractActingPolicy
+    state::String
+    ActingPolicy() = new("")
+end
+
+function (π::ActingPolicy)(state_t, rng::Random.AbstractRNG=Random.GLOBAL_RNG)
+    s, action = get_action(π.state, state_t, rng)
+    π.state = s
+    return action[1], action[1]
 end
 
 onehot(size, idx) = begin; a=zeros(size);a[idx] = 1.0; return a end;
@@ -174,16 +195,16 @@ end
 mutable struct StandardFeatureCreator end
 
 (fc::StandardFeatureCreator)(s, a) = create_features(fc, s, a)
-create_features(fc::StandardFeatureCreator, state, action) = [[1.0]; state; 1.0.-state; onehot(3, action); 1.0.-onehot(3,action)]
-feature_size(fc::StandardFeatureCreator) = 19
+JuliaRL.FeatureCreators.create_features(fc::StandardFeatureCreator, state, action) = [[1.0]; state; 1.0.-state; onehot(3, action); 1.0.-onehot(3,action)]
+JuliaRL.FeatureCreators.feature_size(fc::StandardFeatureCreator) = 19
 
 mutable struct ActionTileFeatureCreator end
 
 (fc::ActionTileFeatureCreator)(s, a) = create_features(fc, s, a)
-function create_features(fc::ActionTileFeatureCreator, state, action)
+function JuliaRL.FeatureCreators.create_features(fc::ActionTileFeatureCreator, state, action)
     ϕ = [[1.0]; state; 1.0.-state]
     return [action==1 ? ϕ : zero(ϕ); action==2 ? ϕ : zero(ϕ); action==3 ? ϕ : zero(ϕ);]
 end
-feature_size(fc::ActionTileFeatureCreator) = 39
+JuliaRL.FeatureCreators.feature_size(fc::ActionTileFeatureCreator) = 39
 
 end

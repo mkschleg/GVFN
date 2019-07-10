@@ -3,6 +3,8 @@ import Flux
 import Random
 import DataStructures
 
+import JuliaRL
+
 # function get_action(env_state, rng=Random.GLOBAL_RNG)
 #     rn = rand(rng)
 #     if rn < 0.5
@@ -31,10 +33,11 @@ end
 
 function GVFNAgent(horde, out_horde,
                    feature_creator,
+                   feature_size,
                    acting_policy::Π,
                    parsed;
                    rng=Random.GLOBAL_RNG,
-                   init_func=(dims...)->glorot_uniform(rng, dims...)) where {Π<:AbstractActingPolicy}
+                   init_func=(dims...)->glorot_uniform(dims...)) where {Π<:AbstractActingPolicy}
 
     # horde = RingWorldUtils.get_horde(parsed)
     num_gvfs = length(horde)
@@ -50,11 +53,11 @@ function GVFNAgent(horde, out_horde,
 
     act = FluxUtils.get_activation(parsed["act"])
 
-    gvfn = GVFNetwork(num_gvfs, feature_size(fc), horde;
-                      init=init, σ_int=act)
+    gvfn = GVFNetwork(num_gvfs, feature_size, horde;
+                      init=init_func, σ_int=act)
 
     num_out_gvfs = length(out_horde)
-    model = Linear(num_gvfs, num_out_gvfs; init=init)
+    model = Linear(num_gvfs, num_out_gvfs; init=init_func)
 
     state_list = DataStructures.CircularBuffer{Array{Float32, 1}}(τ+1)
     hidden_state_init = zeros(Float32, num_gvfs)
@@ -73,8 +76,9 @@ end
 function JuliaRL.start!(agent::GVFNAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
 
     # agent.action, agent.action_prob = get_action(env_s_tp1, rng)
-    agent.action = sample(rng, agent.π, env_s_tp1)
-    agent.action_prob = get(agent.π, env_s_tp1, agent.action)
+    # agent.action = sample(rng, agent.π, env_s_tp1)
+    # agent.action_prob = get(agent.π, env_s_tp1, agent.action)
+    agent.action, agent.action_prob = agent.π(env_s_tp1, rng)
 
     fill!(agent.state_list, zeros(length(agent.build_features(env_s_tp1, agent.action))))
     push!(agent.state_list, agent.build_features(env_s_tp1, agent.action))
@@ -86,7 +90,7 @@ end
 function JuliaRL.step!(agent::GVFNAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
 
     # Decide Action
-    new_action = sample(rng, agent.π, env_s_tp1)
+    new_action, new_prob = agent.π(env_s_tp1, rng)
     
     push!(agent.state_list, agent.build_features(env_s_tp1, new_action))
 
@@ -100,7 +104,7 @@ function JuliaRL.step!(agent::GVFNAgent, env_s_tp1, r, terminal; rng=Random.GLOB
     out_preds = agent.model(preds[end])
 
     agent.action = copy(new_action)
-    agent.action_prob = get(agent.π, env_s_tp1, new_action)
+    agent.action_prob = new_prob
     
     agent.s_t .= env_s_tp1
     agent.hidden_state_init .= Flux.data(preds[1])

@@ -23,12 +23,8 @@ const exp_func_name = :main_experiment
 #------ Learning Updates -------#
 
 const learning_update = "RTD"
-const truncations = [1, 5, 10, 16, 24, 32]
+const truncations = [1, 4, 8, 16, 24, 32, 48, 64]
 
-
-# const learning_update = "TDLambda"
-# const lambdas = 0.0:0.1:0.9
-# const truncations = [1, 10, 24]
 
 
 #------ Optimizers ----------#
@@ -36,9 +32,6 @@ const truncations = [1, 5, 10, 16, 24, 32]
 # Parameters for the SGD Algorithm
 const optimizer = "ADAM"
 const alphas = 0.01*1.5.^(-8:3)
-# const optimizer = "Descent"
-# const alphas = clamp.(0.1*1.5.^(-6:4), 0.0, 1.0)
-# const alphas = 0.1*1.5.^(-6:1)
 
 
 function make_arguments_rtd(args::Dict)
@@ -47,17 +40,8 @@ function make_arguments_rtd(args::Dict)
     truncation = args["truncation"]
     seed = args["seed"]
     feature = args["feature"]
-    new_args=["--horde", horde, "--truncation", truncation, "--opt", optimizer, "--optparams", alpha, "--feature", feature, "--seed", seed]
-    return new_args
-end
-
-function make_arguments_tdlambda(args::Dict)
-    horde = args["horde"]
-    alpha = args["alpha"]
-    lambda = args["lambda"]
-    seed = args["seed"]
-    feature = args["feature"]
-    new_args=["--horde", horde, "--luparams", lambda, "--opt", optimizer, "--optparams", alpha, "--feature", feature, "--seed", seed]
+    act = args["act"]
+    new_args=["--horde", horde, "--act", act, "--truncation", truncation, "--opt", optimizer, "--optparams", alpha, "--feature", feature, "--seed", seed]
     return new_args
 end
 
@@ -73,6 +57,9 @@ function main()
         default=joinpath(save_loc, "jobs")
         "--numjobs"
         action=:store_true
+        "--numsteps"
+        arg_type=Int64
+        default=1000000
     end
     parsed = parse_args(as)
     num_workers = parsed["numworkers"]
@@ -80,28 +67,19 @@ function main()
     arg_dict = Dict{String, Any}()
     arg_list = Array{String, 1}()
 
-    if learning_update == "RTD"
-        arg_dict = Dict([
-            "horde"=>["rafols", "forward"],
-            "alpha"=>alphas,
-            "truncation"=>truncations,
-            "feature"=>["standard", "action"],
-            "seed"=>collect(1:5)
-        ])
-        arg_list = ["feature", "horde", "alpha", "truncation", "seed"]
-    elseif learning_update == "TDLambda"
-        arg_dict = Dict([
-            "horde"=>["rafols", "forward"],
-            "alpha"=>alphas,
-            "lambda"=>lambdas,
-            "feature"=>["standard", "action"],
-            "seed"=>collect(1:5)
-        ])
-        arg_list = ["feature", "horde", "alpha", "lambda", "seed"]
-    end
+    arg_dict = Dict([
+        "horde"=>["rafols", "forward", "gammas", "gammas_scaled"],
+        "alpha"=>alphas,
+        "truncation"=>truncations,
+        "feature"=>["standard", "action"],
+        "seed"=>collect(1:5),
+        "act"=>["sigmoid", "relu"]
+    ])
+    arg_list = ["feature", "act", "horde", "alpha", "truncation", "seed"]
 
-    static_args = ["--alg", learning_update, "--steps", "2000000", "--exp_loc", save_loc]
-    args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=(learning_update == "RTD" ? make_arguments_rtd : make_arguments_tdlambda))
+    static_args = ["--alg", learning_update, "--steps", string(parsed["numsteps"]), "--exp_loc", save_loc]
+    args_iterator = ArgIterator(arg_dict, static_args;
+                                arg_list=arg_list, make_args=make_arguments_rtd)
 
     if parsed["numjobs"]
         @info "This experiment has $(length(collect(args_iterator))) jobs."

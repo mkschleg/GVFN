@@ -2,7 +2,7 @@ __precompile__(true)
 
 module CompassWorldExperiment
 
-using GVFN: CycleWorld, step!, start!
+using GVFN: CompassWorld, step!, start!
 using GVFN
 using Flux
 using Flux.Tracker
@@ -47,7 +47,7 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
     end
 
 
-    #Cycle world
+    #Compass World
     @add_arg_table as begin
         "--size"
         help="The size of the compass world chain"
@@ -98,44 +98,48 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
 end
 
 
-function oracle(env::CompassWorld, horde_str)
-    cwc = GVFN.CompassWorldConst
-    state = env.agent_state
-    ret = Array{Float64,1}()
-    if horde_str == "forward"
-        ret = zeros(5)
-        if state.dir == cwc.NORTH
-            ret[cwc.ORANGE] = 1
-        elseif state.dir == cwc.SOUTH
-            ret[cwc.RED] = 1
-        elseif state.dir == cwc.WEST
-            if state.y == 1
-                ret[cwc.GREEN] = 1
-            else
-                ret[cwc.BLUE] = 1
-            end
-        elseif state.dir == cwc.EAST
-            ret[cwc.YELLOW] = 1
-        else
-            println(state.dir)
-            throw("Bug Found in Oracle:Forward")
-        end
-    elseif horde_str == "rafols"
-        throw("Not Implemented...")
-    else
-        throw("Bug Found in Oracle")
-    end
+# function oracle(env::CompassWorld, horde_str)
+#     cwc = GVFN.CompassWorldConst
+#     state = env.agent_state
+#     ret = Array{Float64,1}()
+#     if horde_str == "forward"
+#         ret = zeros(5)
+#         if state.dir == cwc.NORTH
+#             ret[cwc.ORANGE] = 1
+#         elseif state.dir == cwc.SOUTH
+#             ret[cwc.RED] = 1
+#         elseif state.dir == cwc.WEST
+#             if state.y == 1
+#                 ret[cwc.GREEN] = 1
+#             else
+#                 ret[cwc.BLUE] = 1
+#             end
+#         elseif state.dir == cwc.EAST
+#             ret[cwc.YELLOW] = 1
+#         else
+#             println(state.dir)
+#             throw("Bug Found in Oracle:Forward")
+#         end
+#     elseif horde_str == "rafols"
+#         throw("Not Implemented...")
+#     else
+#         throw("Bug Found in Oracle")
+#     end
 
-    return ret
-end
+#     return ret
+# end
 
 
 function main_experiment(args::Vector{String})
 
+    cwu = GVFN.CompassWorldUtils
+
     as = arg_parse()
     parsed = parse_args(args, as)
 
-
+    ######
+    # Experiment Setup
+    ######
     savepath = ""
     savefile = ""
     if !parsed["working"]
@@ -154,14 +158,41 @@ function main_experiment(args::Vector{String})
     out_pred_strg = zeros(num_steps, 5)
     out_err_strg = zeros(num_steps, 5)
 
+    ######
+    # Environment Setup
+    ######
+    
     env = CompassWorld(parsed["size"], parsed["size"])
     num_state_features = get_num_features(env)
 
-    _, s_t = start!(env)
+    _, s_t = start!(env) # Start environment
 
-    agent = CompassWorldAgent(parsed; rng=rng)
-    action = start!(agent, s_t; rng=rng)
+    #####
+    # Agent specific setup.
+    #####
+    
+    horde = cwu.get_horde(parsed)
+    out_horde = cwu.forward()
 
+    fc = cwu.StandardFeatureCreator()
+    if parsed["feature"] == "action"
+        fc = cwu.ActionTileFeatureCreator()
+    end
+
+    fs = JuliaRL.FeatureCreators.feature_size(fc)
+
+    ap = cwu.ActingPolicy()
+    
+    agent = GVFN.GVFNAgent(horde, out_horde,
+                           fc, fs,
+                           ap,
+                           parsed;
+                           rng=rng,
+                           init_func=(dims...)->0.001f0*glorot_uniform(rng, dims...))
+    
+    action = start!(agent, s_t; rng=rng) # Start agent
+
+    
     for step in 1:num_steps
 
         _, s_tp1, _, _ = step!(env, action)
@@ -169,7 +200,7 @@ function main_experiment(args::Vector{String})
         out_preds, action = step!(agent, s_tp1, 0, false; rng=rng)
 
         out_pred_strg[step, :] .= Flux.data(out_preds)
-        out_err_strg[step, :] .= out_pred_strg[step, :] .- oracle(env, "forward")
+        out_err_strg[step, :] .= out_pred_strg[step, :] .- cwu.oracle(env, "forward")
 
     end
 

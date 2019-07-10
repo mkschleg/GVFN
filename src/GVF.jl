@@ -38,7 +38,7 @@ end
 
 get(cumulant::PredictionCumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1) = preds_tp1[cumulant.idx]
 
-struct ScaledCumulant{F<:Number, T<:AbstractCumulant}
+struct ScaledCumulant{F<:Number, T<:AbstractCumulant} <: AbstractCumulant
     scale::F
     cumulant::T
 end

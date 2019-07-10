@@ -23,6 +23,7 @@ end
 
 function RNNAgent(out_horde,
                   feature_creator,
+                  feature_size,
                   acting_policy::Π,
                   parsed;
                   rng=Random.GLOBAL_RNG,
@@ -32,8 +33,8 @@ function RNNAgent(out_horde,
 
     τ=parsed["truncation"]
     opt = FluxUtils.get_optimizer(parsed)
-    rnn = FluxUtils.construct_rnn(CompassWorldUtils.feature_size(fc), parsed; init=init)
-    out_model = Flux.Dense(parsed["numhidden"], length(horde); initW=init)
+    rnn = FluxUtils.construct_rnn(feature_size, parsed; init=init_func)
+    out_model = Flux.Dense(parsed["numhidden"], length(horde); initW=init_func)
 
     state_list =  DataStructures.CircularBuffer{Array{Float32, 1}}(τ+1)
     hidden_state_init = GVFN.get_initial_hidden_state(rnn)
@@ -51,8 +52,9 @@ end
 
 function JuliaRL.start!(agent::RNNAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
 
-    agent.action = sample(rng, agent.π, env_s_tp1)
-    agent.action_prob = get(agent.π, env_s_tp1, agent.action)
+    # agent.action = sample(rng, agent.π, env_s_tp1)
+    # agent.action_prob = get(agent.π, env_s_tp1, agent.action)
+    agent.action, agent.action_prob = agent.π(env_s_tp1, rng)
     
     fill!(agent.state_list, zeros(length(agent.build_features(env_s_tp1, agent.action))))
     push!(agent.state_list, agent.build_features(env_s_tp1, agent.action))
@@ -65,7 +67,8 @@ end
 function JuliaRL.step!(agent::RNNAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
 
 
-    new_action = sample(rng, agent.π, env_s_tp1)
+    # new_action = sample(rng, agent.π, env_s_tp1)
+    new_action, new_prob = agent.π(env_s_tp1, rng)
     
     push!(agent.state_list, agent.build_features(env_s_tp1, new_action))
 
@@ -87,7 +90,8 @@ function JuliaRL.step!(agent::RNNAgent, env_s_tp1, r, terminal; rng=Random.GLOBA
     agent.s_t .= env_s_tp1
 
     
-    agent.action = new_action
+    agent.action = copy(new_action)
+    agent.action_prob = new_prob
     agent.action_prob = get(agent.π, env_s_tp1, new_action)
     
 
