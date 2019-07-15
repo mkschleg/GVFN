@@ -30,7 +30,8 @@ export
     ConstantDiscount,
     StateTerminationDiscount,
     FeatureCumulant,
-    PredictionCumulant
+    PredictionCumulant,
+    ScaledCumulant
 
 include("GVF.jl")
 
@@ -44,12 +45,14 @@ include("Update.jl")
 export OnlineJointTD, OnlineTD_RNN, train_step!
 include("RNN.jl")
 
+
+include("ActingPolicy.jl")
+
 include("Environments.jl")
 
 export jacobian, glorot_uniform, glorot_normal, StopGradient
 include("util.jl")
 
 include("Agent.jl")
-
 
 end

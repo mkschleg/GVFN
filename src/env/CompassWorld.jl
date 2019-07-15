@@ -150,25 +150,40 @@ end
 
 function build_gridworld_char_rep(env::CompassWorld)
     CWC = CompassWorldConst
-    model = fill('W', (env.world_dims.height+2, env.world_dims.width+2))
+    model = fill("W", (env.world_dims.height+2, env.world_dims.width+2))
 
-    model[1,:] .= 'O'
-    model[end, :] .= 'R'
+    model[1,:] .= "O"
+    model[end, :] .= "R"
 
-    model[:,1] .= 'B'
-    model[1:2, 1] .= 'G'
-    model[:, end] .= 'Y'
+    model[:,1] .= "B"
+    model[1:2, 1] .= "G"
+    model[:, end] .= "Y"
 
-    model[env.agent_state.y+1, env.agent_state.x+1] = CWC.DIR_CHAR[env.agent_state.dir]
+    model[env.agent_state.y+1, env.agent_state.x+1] = Base.string(CWC.DIR_CHAR[env.agent_state.dir])
 
     return model
 end
 
-function Base.show(io::IO, env::CompassWorld)
-    println(env.agent_state)
+# function Base.show(io::IO, env::CompassWorld)
+#     println(env.agent_state)
+#     model = build_gridworld_char_rep(env)
+#     for r in 1:size(model)[1]
+#         print(model[r,:], "\n")
+#     end
+# end
+
+function Base.string(env::CompassWorld)
+    
+end
+
+
+function Base.print(io::IO, env::CompassWorld)
+    print(io, env.agent_state)
+    print(io, "\n")
     model = build_gridworld_char_rep(env)
+    println(size(model))
     for r in 1:size(model)[1]
-        print(model[r,:], "\n")
+        print(io, join(model[r,:], " ")*"\n")
     end
 end
 

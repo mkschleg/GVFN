@@ -35,11 +35,12 @@ function update!(gvfn::Flux.Recur{T}, opt, lu::TDLambda, h_init, states, env_sta
     ρ = π_prob./b_prob
 
     targets = cumulants .+ discounts.*preds_tilde
-    δ = targets .- preds_t
+    δ = preds_t .- targets
     grads = gradient(()->sum(δ), params(gvfn))
 
     for weights in Params([gvfn.cell.Wx, gvfn.cell.Wh])
         e = get!(lu.traces, weights, zero(weights))::typeof(Flux.data(weights))
+        # println(size(e))
         e .= ρ.*(e.*(γ_t.*λ) + grads[weights].data)
         Flux.Tracker.update!(opt, weights, e.*(δ))
     end
@@ -63,13 +64,13 @@ function update!(gvfn::Flux.Recur{T}, opt, lu::TDLambda, h_init, states, env_sta
     ρ = π_prob/b_prob
 
     targets = cumulants .+ discounts.*preds_tilde
-    δ = targets .- preds_t
+    δ = preds_t .- targets
     grads = gradient(()->sum(δ), params(gvfn))
     prms = Params([gvfn.cell.Wx, gvfn.cell.Wh])
     # println(length(prms))
     for weights in prms
         e = get!(lu.traces, weights, zero(weights))::typeof(Flux.data(weights))
-        e .= (e.*(γ_t.*λ)' - Flux.data(grads[weights])).*(ρ')
+        e .= (e.*(γ_t.*λ)' + Flux.data(grads[weights])).*(ρ')
         Flux.Tracker.update!(opt, weights, e.*(δ'))
     end
 

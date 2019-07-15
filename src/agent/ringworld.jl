@@ -1,7 +1,7 @@
 
 import JuliaRL
 
-export CompassWorldAgent, CompassWorldRNNAgent
+export RingWorldAgent, RingWorldRNNAgent
 
 # import CycleWorldUtils
 import Flux
@@ -9,53 +9,17 @@ import Flux
 import Random
 import DataStructures
 
-function get_action(state, env_state, rng=Random.GLOBAL_RNG)
-
-    if state == ""
-        state = "Random"
-    end
-
-    cwc = GVFN.CompassWorldConst
-    
-
-    if state == "Random"
-        r = rand(rng)
-        if r > 0.9
-            state = "Leap"
-        end
-    end
-
-    if state == "Leap"
-        if env_state[cwc.WHITE] == 0.0
-            state = "Random"
-        else
-            return state, (cwc.FORWARD, 1.0)
-        end
-    end
-    r = rand(rng)
-    if r < 0.2
-        return state, (cwc.RIGHT, 0.2)
-    elseif r < 0.4
-        return state, (cwc.LEFT, 0.2)
+function get_action(env_state, rng=Random.GLOBAL_RNG)
+    rn = rand(rng)
+    if rn < 0.5
+        return 1, 0.5
     else
-        return state, (cwc.FORWARD, 0.6)
+        return 2, 0.5
     end
 end
 
-function get_action(rng=Random.GLOBAL_RNG)
-    
-    cwc = GVFN.CompassWorldConst
-    r = rand(rng)
-    if r < 0.2
-        return cwc.RIGHT, 0.2
-    elseif r < 0.4
-        return cwc.LEFT, 0.2
-    else
-        return cwc.FORWARD, 0.6
-    end
-end
 
-mutable struct CompassWorldAgent{O, T, F, H, Φ, M, G} <: JuliaRL.AbstractAgent
+mutable struct RingWorldAgent{O, T, F, H, Φ, M, G} <: JuliaRL.AbstractAgent
     lu::LearningUpdate
     opt::O
     gvfn::Flux.Recur{T}
@@ -65,15 +29,14 @@ mutable struct CompassWorldAgent{O, T, F, H, Φ, M, G} <: JuliaRL.AbstractAgent
     s_t::Φ
     action::Int64
     action_prob::Float64
-    action_state::String
     model::M
     out_horde::Horde{G}
 end
 
 
-function CompassWorldAgent(parsed; rng=Random.GLOBAL_RNG)
+function RingWorldAgent(parsed; rng=Random.GLOBAL_RNG)
 
-    horde = CompassWorldUtils.get_horde(parsed)
+    horde = RingWorldUtils.get_horde(parsed)
     num_gvfs = length(horde)
 
     alg_string = parsed["alg"]
@@ -87,26 +50,26 @@ function CompassWorldAgent(parsed; rng=Random.GLOBAL_RNG)
 
     act = FluxUtils.get_activation(parsed["act"])
 
-    fc = CompassWorldUtils.StandardFeatureCreator()
+    fc = RingWorldUtils.StandardFeatureCreator()
     if parsed["feature"] == "action"
-        fc = CompassWorldUtils.ActionTileFeatureCreator()
+        fc = RingWorldUtils.ActionTileFeatureCreator()
     end
 
-    gvfn = GVFNetwork(num_gvfs, CompassWorldUtils.feature_size(fc), horde; init=(dims...)->glorot_uniform(rng, dims...), σ_int=act)
+    gvfn = GVFNetwork(num_gvfs, RingWorldUtils.feature_size(fc), horde; init=(dims...)->glorot_uniform(rng, dims...), σ_int=act)
     model = Linear(num_gvfs, 5; init=(dims...)->glorot_uniform(rng, dims...))
-    out_horde = CompassWorldUtils.forward()
+    out_horde = RingWorldUtils.forward()
 
     state_list = DataStructures.CircularBuffer{Array{Float32, 1}}(τ+1)
     # fill!(state_list, zeros(Float32, num_observations))
     hidden_state_init = zeros(Float32, num_gvfs)
 
-    CompassWorldAgent(lu, opt, gvfn, fc, state_list, hidden_state_init, zeros(Float32, 1), -1, 0.0, "", model, out_horde)
+    RingWorldAgent(lu, opt, gvfn, fc, state_list, hidden_state_init, zeros(Float32, 1), -1, 0.0, model, out_horde)
 
 end
 
-function JuliaRL.start!(agent::CompassWorldAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
+function JuliaRL.start!(agent::RingWorldAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
 
-    agent.action_state, (agent.action, agent.action_prob) = get_action(agent.action_state, env_s_tp1, rng)
+    agent.action, agent.action_prob = get_action(env_s_tp1, rng)
 
     fill!(agent.state_list, zeros(length(agent.build_features(env_s_tp1, agent.action))))
     push!(agent.state_list, agent.build_features(env_s_tp1, agent.action))
@@ -115,7 +78,7 @@ function JuliaRL.start!(agent::CompassWorldAgent, env_s_tp1; rng=Random.GLOBAL_R
     return agent.action
 end
 
-function JuliaRL.step!(agent::CompassWorldAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
+function JuliaRL.step!(agent::RingWorldAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
 
     push!(agent.state_list, agent.build_features(env_s_tp1, agent.action))
 
@@ -131,15 +94,15 @@ function JuliaRL.step!(agent::CompassWorldAgent, env_s_tp1, r, terminal; rng=Ran
     agent.s_t .= env_s_tp1
     agent.hidden_state_init .= Flux.data(preds[1])
 
-    agent.action_state, (agent.action, agent.action_prob) = get_action(agent.action_state, agent.s_t, rng)
+    agent.action, agent.action_prob = get_action(agent.s_t, rng)
 
-    return Flux.data.(out_preds), agent.action[1]
+    return Flux.data.(out_preds), agent.action
 end
 
-JuliaRL.get_action(agent::CompassWorldAgent, state) = agent.action
+JuliaRL.get_action(agent::RingWorldAgent, state) = agent.action
 
 
-mutable struct CompassWorldRNNAgent{O, T, F, H, Φ, M, G} <: JuliaRL.AbstractAgent
+mutable struct RingWorldRNNAgent{O, T, F, H, Φ, M, G} <: JuliaRL.AbstractAgent
     lu::LearningUpdate
     opt::O
     rnn::Flux.Recur{T}
@@ -150,35 +113,34 @@ mutable struct CompassWorldRNNAgent{O, T, F, H, Φ, M, G} <: JuliaRL.AbstractAge
     s_t::Φ
     action::Int64
     action_prob::Float64
-    action_state::String
     horde::Horde{G}
 end
 
-function CompassWorldRNNAgent(parsed; rng=Random.GLOBAL_RNG)
+function RingWorldRNNAgent(parsed; rng=Random.GLOBAL_RNG)
 
-    horde = CompassWorldUtils.get_horde(parsed)
+    horde = RingWorldUtils.get_horde(parsed)
     num_gvfs = length(horde)
 
-    fc = CompassWorldUtils.StandardFeatureCreator()
+    fc = RingWorldUtils.StandardFeatureCreator()
     if parsed["feature"] == "action"
-        fc = CompassWorldUtils.ActionTileFeatureCreator()
+        fc = RingWorldUtils.ActionTileFeatureCreator()
     end
 
     τ=parsed["truncation"]
     opt = FluxUtils.get_optimizer(parsed)
-    rnn = FluxUtils.construct_rnn(CompassWorldUtils.feature_size(fc), parsed; init=(dims...)->glorot_uniform(rng, dims...))
+    rnn = FluxUtils.construct_rnn(RingWorldUtils.feature_size(fc), parsed; init=(dims...)->glorot_uniform(rng, dims...))
     out_model = Flux.Dense(parsed["numhidden"], length(horde); initW=(dims...)->glorot_uniform(rng, dims...))
 
     state_list =  DataStructures.CircularBuffer{Array{Float32, 1}}(τ+1)
     hidden_state_init = GVFN.get_initial_hidden_state(rnn)
 
-    CompassWorldRNNAgent(TD(), opt, rnn, out_model, fc, state_list, hidden_state_init, zeros(Float32, 1), 1, 0.0, "", horde)
+    RingWorldRNNAgent(TD(), opt, rnn, out_model, fc, state_list, hidden_state_init, zeros(Float32, 1), 1, 0.0, horde)
 
 end
 
-function JuliaRL.start!(agent::CompassWorldRNNAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
+function JuliaRL.start!(agent::RingWorldRNNAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
 
-    agent.action_state, (agent.action, agent.action_prob) = get_action(agent.action_state, env_s_tp1, rng)
+    agent.action, agent.action_prob = get_action(env_s_tp1, rng)
 
     fill!(agent.state_list, zeros(length(agent.build_features(env_s_tp1, agent.action))))
     push!(agent.state_list, agent.build_features(env_s_tp1, agent.action))
@@ -188,11 +150,9 @@ function JuliaRL.start!(agent::CompassWorldRNNAgent, env_s_tp1; rng=Random.GLOBA
 end
 
 
-function JuliaRL.step!(agent::CompassWorldRNNAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
+function JuliaRL.step!(agent::RingWorldRNNAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
 
-    agent.action_state, (new_action, new_action_prob) = get_action(agent.action_state, agent.s_t, rng)
-
-    push!(agent.state_list, agent.build_features(env_s_tp1, new_action))
+    push!(agent.state_list, agent.build_features(env_s_tp1, agent.action))
 
     # RNN update function
     update!(agent.out_model, agent.rnn,
@@ -209,12 +169,10 @@ function JuliaRL.step!(agent::CompassWorldRNNAgent, env_s_tp1, r, terminal; rng=
 
     agent.hidden_state_init = FluxUtils.get_next_hidden_state(agent.rnn, agent.hidden_state_init, agent.state_list[1])
     agent.s_t .= env_s_tp1
-    
-    agent.action = new_action
-    agent.action_prob = new_action_prob
+    agent.action, agent.action_prob = get_action(agent.s_t, rng)
 
     return Flux.data.(out_preds), agent.action
 end
 
-JuliaRL.get_action(agent::CompassWorldRNNAgent, state) = agent.action
+JuliaRL.get_action(agent::RingWorldRNNAgent, state) = agent.action
 

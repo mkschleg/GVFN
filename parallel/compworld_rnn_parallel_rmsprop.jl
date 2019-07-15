@@ -21,8 +21,8 @@ const exp_func_name = :main_experiment
 
 # Parameters for the SGD Algorithm
 const optimizer = "RMSProp"
-const alphas = 0.01*1.5.^(-8:2:2)
-const truncations = [1, 5, 10, 16, 24, 32]
+const alphas = 0.01*1.5.^(-8:3)
+const truncations = [1, 4, 8, 16, 24, 32, 48, 64]
 
 function make_arguments(args::Dict)
     horde = args["horde"]
@@ -47,6 +47,9 @@ function main(args::Vector{String}=ARGS)
         default=joinpath(save_loc, "jobs")
         "--numjobs"
         action=:store_true
+        "--numsteps"
+        arg_type=Int64
+        default=1000000
     end
     parsed = parse_args(as)
     num_workers = parsed["numworkers"]
@@ -60,12 +63,11 @@ function main(args::Vector{String}=ARGS)
         "truncation"=>truncations,
         "cell"=>["RNN", "LSTM", "GRU"],
         "feature"=>["standard", "action"],
-        # "cell"=>["RNN", "GRU"],
         "seed"=>collect(1:5)
     ])
     arg_list = ["feature", "horde", "alpha", "truncation", "seed", "cell"]
 
-    static_args = ["--steps", "2000000", "--exp_loc", save_loc]
+    static_args = ["--steps", string(parsed["numsteps"]), "--exp_loc", save_loc]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments)
 
     if parsed["numjobs"]

@@ -43,22 +43,24 @@ function main()
         default=joinpath(save_loc, "jobs")
         "--numjobs"
         action=:store_true
+        "--numsteps"
+        arg_type=Int64
+        default=300000
     end
     parsed = parse_args(as)
     num_workers = parsed["numworkers"]
 
     arg_dict = Dict([
         #"horde"=>["chain", "gamma_chain", "gammas_aj_term"],
-	      "horde"=>["gamma_chain_scaled", "gammas_aj", "gammas_aj_scaled"],
+	"horde"=>["chain", "gamma_chain", "gamma_chain_scaled", "gammas_aj", "gammas_aj_scaled"],
         "alpha"=>alphas,
         "lambda"=>lambdas,
-        "activation"=>["relu"],
+        "activation"=>["relu", "sigmoid"],
         "seed"=>collect(1:10)
     ])
     arg_list = ["activation", "horde", "alpha", "lambda", "seed"]
 
-
-    static_args = ["--steps", "30", "--alg", learning_update, "--exp_loc", save_loc]
+    static_args = ["--steps", string(parsed["numsteps"]), "--alg", learning_update, "--exp_loc", save_loc]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments)
 
     if parsed["numjobs"]
