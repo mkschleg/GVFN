@@ -44,6 +44,8 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         default=100
         "--working"
         action=:store_true
+        "--verbose"
+        action=:store_true
     end
 
 
@@ -188,27 +190,34 @@ function main_experiment(args::Vector{String})
                            ap,
                            parsed;
                            rng=rng,
-                           init_func=(dims...)->0.001f0*glorot_uniform(rng, dims...))
+                           init_func=(dims...)->0.001f0*glorot_normal(rng, dims...))
     
     action = start!(agent, s_t; rng=rng) # Start agent
-
+    verbose = parsed["verbose"]
     
-    for step in 1:num_steps
+    @showprogress 0.1 "Step: " for step in 1:num_steps
 
         _, s_tp1, _, _ = step!(env, action)
-
         out_preds, action = step!(agent, s_tp1, 0, false; rng=rng)
 
         out_pred_strg[step, :] .= Flux.data(out_preds)
         out_err_strg[step, :] .= out_pred_strg[step, :] .- cwu.oracle(env, "forward")
 
+        if verbose
+            println("step: $(step)")
+            println(env)
+            println(agent)
+            println(out_preds)
+        end
+
+        
     end
 
     results = Dict(["rmse"=>sqrt.(mean(out_err_strg.^2; dims=2))])
     if !parsed["working"]
         JLD2.@save savefile results
     else
-        return results
+        return results, out_pred_strg, out_err_strg
     end
 end
 

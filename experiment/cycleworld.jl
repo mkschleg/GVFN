@@ -10,6 +10,7 @@ import LinearAlgebra.Diagonal
 # using GVFN: CycleWorld, step!, start!
 using GVFN: CycleWorld, step!, start!
 using GVFN: CycleWorldAgent
+using GVFN
 using Statistics
 using Random
 using ProgressMeter
@@ -148,10 +149,19 @@ function main_experiment(args::Vector{String})
 
     _, s_t = start!(env)
 
-    agent = CycleWorldAgent(parsed; rng=rng)
+    horde = CycleWorldUtils.get_horde(parsed)
+    out_horde = Horde([GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())])
+    fc = (state, action)->CycleWorldUtils.build_features_cycleworld(state)
+    fs = 3
+    ap = GVFN.RandomActingPolicy([1.0])
+    
+    agent = GVFN.GVFNActionAgent(horde, out_horde,
+                                  fc, fs, 1, ap, parsed;
+                                  rng=rng,
+                                  init_func=(dims...)->glorot_uniform(rng, dims...))
     start!(agent, s_t; rng=rng)
 
-    for step in 1:num_steps
+    @showprogress 0.1 "Step: " for step in 1:num_steps
 
         _, s_tp1, _, _ = step!(env, 1)
         out_preds, action = step!(agent, s_tp1, 0, false; rng=rng)
