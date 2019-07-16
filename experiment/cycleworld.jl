@@ -155,10 +155,10 @@ function main_experiment(args::Vector{String})
     fs = 3
     ap = GVFN.RandomActingPolicy([1.0])
     
-    agent = GVFN.GVFNActionAgent(horde, out_horde,
-                                  fc, fs, 1, ap, parsed;
-                                  rng=rng,
-                                  init_func=(dims...)->glorot_uniform(rng, dims...))
+    agent = GVFN.GVFNAgent(horde, out_horde,
+                           fc, fs, ap, parsed;
+                           rng=rng,
+                           init_func=(dims...)->glorot_uniform(rng, dims...))
     start!(agent, s_t; rng=rng)
 
     @showprogress 0.1 "Step: " for step in 1:num_steps

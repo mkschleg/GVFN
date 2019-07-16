@@ -1,9 +1,12 @@
+
+
+
 import Flux
 
 import Random
 import DataStructures
 
-mutable struct RNNAgent{O, T, F, H, Φ, Π, M, G} <: JuliaRL.AbstractAgent
+mutable struct RNNAuxTaskAgent{O, T, F, H, Φ, Π, M, G1, G2} <: JuliaRL.AbstractAgent
     lu::LearningUpdate
     opt::O
     rnn::Flux.Recur{T}
@@ -15,42 +18,43 @@ mutable struct RNNAgent{O, T, F, H, Φ, Π, M, G} <: JuliaRL.AbstractAgent
     π::Π
     action::Int64
     action_prob::Float64
-    horde::Horde{G}
+    horde::Horde{G1}
+    at_horde::Horde{G2}
 end
 
 
 
 
-function RNNAgent(out_horde,
-                  feature_creator,
-                  feature_size,
-                  acting_policy::Π,
-                  parsed;
-                  rng=Random.GLOBAL_RNG,
-                  init_func=(dims...)->glorot_uniform(rng, dims...)) where {Π<:AbstractActingPolicy}
+function RNNAuxTaskAgent(out_horde, at_horde,
+                         feature_creator,
+                         feature_size,
+                         acting_policy::Π,
+                         parsed;
+                         rng=Random.GLOBAL_RNG,
+                         init_func=(dims...)->glorot_uniform(rng, dims...)) where {Π<:AbstractActingPolicy}
 
     num_gvfs = length(out_horde)
 
     τ=parsed["truncation"]
     opt = FluxUtils.get_optimizer(parsed)
     rnn = FluxUtils.construct_rnn(feature_size, parsed; init=init_func)
-    out_model = Flux.Dense(parsed["numhidden"], length(out_horde); initW=init_func)
+    out_model = Flux.Dense(parsed["numhidden"], length(out_horde) + length(at_horde); initW=init_func)
 
     state_list =  DataStructures.CircularBuffer{Array{Float32, 1}}(τ+1)
     hidden_state_init = GVFN.get_initial_hidden_state(rnn)
 
-    RNNAgent(TD(), opt,
-             rnn, out_model,
-             feature_creator,
-             state_list,
-             hidden_state_init,
-             zeros(Float32, 1),
-             acting_policy,
-             1, 0.0, out_horde)
+    RNNAuxTaskAgent(TD(), opt,
+                    rnn, out_model,
+                    feature_creator,
+                    state_list,
+                    hidden_state_init,
+                    zeros(Float32, 1),
+                    acting_policy,
+                    1, 0.0, out_horde, at_horde)
 
 end
 
-function JuliaRL.start!(agent::RNNAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
+function JuliaRL.start!(agent::RNNAuxTaskAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
 
     # agent.action = sample(rng, agent.π, env_s_tp1)
     # agent.action_prob = get(agent.π, env_s_tp1, agent.action)
@@ -64,7 +68,7 @@ function JuliaRL.start!(agent::RNNAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwarg
 end
 
 
-function JuliaRL.step!(agent::RNNAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
+function JuliaRL.step!(agent::RNNAuxTaskAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
 
 
     # new_action = sample(rng, agent.π, env_s_tp1)
@@ -92,8 +96,13 @@ function JuliaRL.step!(agent::RNNAgent, env_s_tp1, r, terminal; rng=Random.GLOBA
     
     agent.action = copy(new_action)
     agent.action_prob = new_prob
+    agent.action_prob = get(agent.π, env_s_tp1, new_action)
+    
 
     return Flux.data.(out_preds), agent.action
 end
 
-JuliaRL.get_action(agent::RNNAgent, state) = agent.action
+JuliaRL.get_action(agent::RNNAuxTaskAgent, state) = agent.action
+
+
+

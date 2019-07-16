@@ -129,6 +129,11 @@ end
 
 function main_experiment(args::Vector{String})
 
+    cwu = GVFN.CompassWorldUtils
+
+    #####
+    # Setup experiment environment
+    #####
     as = arg_parse()
     parsed = parse_args(args, as)
 
@@ -144,6 +149,9 @@ function main_experiment(args::Vector{String})
         end
     end
 
+    ####
+    # General Experiment parameters
+    ####
     num_steps = parsed["steps"]
     seed = parsed["seed"]
     rng = Random.MersenneTwister(seed)
@@ -151,11 +159,27 @@ function main_experiment(args::Vector{String})
     env = CompassWorld(parsed["size"], parsed["size"])
     num_state_features = get_num_features(env)
 
-    out_pred_strg = zeros(num_steps, 5)
-    out_err_strg = zeros(num_steps, 5)
 
     _, s_t = start!(env)
-    agent = CompassWorldRNNAgent(parsed; rng=rng)
+
+    out_horde = cwu.forward()
+
+    out_pred_strg = zeros(num_steps, length(out_horde))
+    out_err_strg = zeros(num_steps, length(out_horde))
+
+    fc = cwu.StandardFeatureCreator()
+    if parsed["feature"] == "action"
+        fc = cwu.ActionTileFeatureCreator()
+    end
+
+    fs = JuliaRL.FeatureCreators.feature_size(fc)
+
+    ap = cwu.ActingPolicy()
+    
+    # agent = RNNAgent(parsed; rng=rng)
+    agent = GVFN.RNNAgent(out_horde, fc, fs, ap, parsed;
+                          rng=rng,
+                          init_func=(dims...)->glorot_uniform(rng, dims...))
     action = start!(agent, s_t; rng=rng)
 
     # @showprogress 0.1 "Step: " for step in 1:num_steps

@@ -82,7 +82,16 @@ function main_experiment(args::Vector{String})
     rng = Random.MersenneTwister(seed)
 
     env = CycleWorld(parsed["chain"])
-    agent = CycleWorldRNNAgent(parsed)
+    
+    horde = CycleWorldUtils.get_horde(parsed)
+    fc = (state, action)->CycleWorldUtils.build_features_cycleworld(state)
+    fs = 3
+    ap = GVFN.RandomActingPolicy([1.0])
+    
+    # agent = CycleWorldRNNAgent(parsed)
+    agent = GVFN.RNNAgent(horde, fc, fs, ap, parsed;
+                          rng=rng,
+                          init_func=(dims...)->glorot_uniform(rng, dims...))
     num_gvfs = length(agent.horde)
 
     out_pred_strg = zeros(num_steps, num_gvfs)
