@@ -29,28 +29,11 @@ import GVFN.CycleWorldUtils
 #   @. Δ *= η / (√acc + Flux.Optimise.ϵ)
 # end
 
-function arg_parse(as::ArgParseSettings = ArgParseSettings())
+function arg_parse(as::ArgParseSettings = ArgParseSettings(exc_handler=Reproduce.ArgParse.debug_handler))
 
     #Experiment
-    @add_arg_table as begin
-        "--exp_loc"
-        help="Location of experiment"
-        arg_type=String
-        default="tmp"
-        "--seed"
-        help="Seed of rng"
-        arg_type=Int64
-        default=0
-        "--steps"
-        help="number of steps"
-        arg_type=Int64
-        default=100
-        "--verbose"
-        action=:store_true
-        "--working"
-        action=:store_true
-    end
-
+    
+    GVFN.exp_settings!(as)
     #Cycle world
     @add_arg_table as begin
         "--chain"
@@ -140,6 +123,8 @@ function main_experiment(args::Vector{String})
 
     num_steps = parsed["steps"]
     seed = parsed["seed"]
+    verbose = parsed["verbose"]
+    progress = parsed["progress"]
     rng = Random.MersenneTwister(seed)
 
     env = CycleWorld(parsed["chain"])
@@ -161,13 +146,26 @@ function main_experiment(args::Vector{String})
                            init_func=(dims...)->glorot_uniform(rng, dims...))
     start!(agent, s_t; rng=rng)
 
-    @showprogress 0.1 "Step: " for step in 1:num_steps
+    prg_bar = ProgressMeter.Progress(num_steps, "Step: ")
 
+    for step in 1:num_steps
+ 
         _, s_tp1, _, _ = step!(env, 1)
         out_preds, action = step!(agent, s_tp1, 0, false; rng=rng)
 
         out_pred_strg[step] = Flux.data(out_preds)[1]
         out_err_strg[step] = out_pred_strg[step][1] - oracle(env, "onestep", parsed["gamma"])[1]
+
+        if verbose
+            println("step: $(step)")
+            println(env)
+            println(agent)
+            println(out_preds)
+        end
+
+        if progress
+           next!(prg_bar)
+        end
     end
 
     results = Dict(["out_pred"=>out_pred_strg, "out_err_strg"=>out_err_strg])

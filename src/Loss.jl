@@ -9,3 +9,5 @@ end
 
 tdloss(v_t, c, γ_tp1, ṽ_tp1) =
     0.5*Flux.mse(v_t, Flux.data(c .+ γ_tp1.*ṽ_tp1))
+
+

@@ -80,11 +80,17 @@ function gammas_aj_scaled()
     return gammas_scaled(gms)
 end
 
+function single_gamma_scaled(γ::AbstractFloat)
+    Horde([GVF(ScaledCumulant(1-γ, FeatureCumulant(1)), ConstantDiscount(γ), NullPolicy())])
+end
+
 function get_horde(horde_str::AbstractString, chain_length::Integer, gamma::AbstractFloat)
-    horde = chain(chain_length)
-    if horde_str == "gamma_chain"
-        horde = gamma_chain(chain_length, gamma)
+    horde = nothing
+    if horde_str == "chain"
+        horde = chain(chain_length)
     elseif horde_str == "gamma_chain"
+        horde = gamma_chain(chain_length, gamma)
+    elseif horde_str == "gamma_chain_scaled"
         horde = gamma_chain_scaled(chain_length, gamma)
     elseif horde_str == "onestep"
         horde = onestep(chain_length)
@@ -100,6 +106,10 @@ function get_horde(horde_str::AbstractString, chain_length::Integer, gamma::Abst
         horde = gammas_aj_term()
     elseif horde_str == "gammas_aj_scaled"
         horde = gammas_aj_scaled()
+    elseif horde_str == "single_gamma_scaled"
+        horde = single_gamma_scaled(gamma)
+    else
+        throw("Horde not available $(horde_str)")
     end
     return horde
 end
@@ -130,7 +140,6 @@ function oracle(env::CycleWorld, horde_str, γ=0.9)
 
     return ret
 end
-
 
 build_features_cycleworld(s) = Float32[1.0, s[1], 1-s[1]]
 
