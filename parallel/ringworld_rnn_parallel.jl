@@ -54,7 +54,7 @@ function main()
         "cell"=>["RNN", "LSTM", "GRU"],
         "seed"=>collect(1:5)
     ])
-    arg_list = ["horde", "cell", "alpha", "truncation", "seed"]
+    arg_list = ["cell", "alpha", "truncation", "seed"]
 
     static_args = ["--steps", string(parsed["numsteps"]), "--numhidden", "14", "--exp_loc", save_loc]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments)
