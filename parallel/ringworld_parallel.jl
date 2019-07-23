@@ -16,7 +16,8 @@ const exp_file = "experiment/ringworld.jl"
 const exp_module_name = :RingWorldExperiment
 const exp_func_name = :main_experiment
 const optimizer = "Descent"
-const alphas = clamp.(0.1*1.5.^(-6:6), 0.0, 1.0)
+const alphas = clamp.(0.1*1.5.^(-6:1), 0.0, 1.0)
+
 
 const learning_update = "RTD"
 const truncations = [1, 2, 4, 8, 12, 16]
@@ -45,14 +46,14 @@ function main()
         action=:store_true
         "--numsteps"
         arg_type=Int64
-        default=750000
+        default=300000
     end
     parsed = parse_args(as)
     num_workers = parsed["numworkers"]
 
     arg_dict = Dict([
         #"horde"=>["chain", "gamma_chain", "gammas_aj_term"],
-	"horde"=>["half_chain", "gammas_term"],
+	"horde"=>["half_chain", "gamma_chain"],
         "alpha"=>alphas,
         "truncation"=>truncations,
         "activation"=>["relu", "sigmoid"],

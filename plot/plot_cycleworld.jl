@@ -70,6 +70,6 @@ function synopsis(exp_loc::String)
             clean_func=func_dict[a[2]],
             runs_func=runs_func,
             sort_idx=a[1],
-            save_locs=[joinpath(exp_loc, "synopsis/order_settings_$(a[1])_$(a[2]).$(ext)") for ext in [".jld2", ".txt"]])
+            save_locs=[joinpath(exp_loc, "synopsis/order_settings_$(a[1])_$(a[2]).$(ext)") for ext in ["jld2", "txt"]])
     end
 end
