@@ -20,7 +20,8 @@ using DataStructures: CircularBuffer
 
 
 # include("utils/util.jl")
-import GVFN.CycleWorldUtils
+CWU = GVFN.CycleWorldUtils
+FLU = GVFN.FluxUtils
 
 # function Flux.Optimise.apply!(o::Flux.RMSProp, x, Δ)
 #   η, ρ = o.eta, o.rho
@@ -34,39 +35,13 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings(exc_handler=Reproduce
     #Experiment
     
     GVFN.exp_settings!(as)
-    #Cycle world
-    @add_arg_table as begin
-        "--chain"
-        help="The length of the cycle world chain"
-        arg_type=Int64
-        default=6
-    end
+    CWU.env_settings!(as)
+    FLU.opt_settings!(as)
 
     # shared settings
-    @add_arg_table as begin
-        "--truncation", "-t"
-        help="Truncation parameter for bptt"
-        arg_type=Int64
-        default=1
-    end
+    GVFN.gvfn_arg_table!(as)
 
-    # GVFN 
     @add_arg_table as begin
-        "--alg"
-        help="Algorithm"
-        default="TDLambda"
-        "--params"
-        help="Parameters"
-        arg_type=Float64
-        nargs='+'
-        "--opt"
-        help="Optimizer"
-        default="Descent"
-        "--optparams"
-        help="Parameters"
-        arg_type=Float64
-        default=[]
-        nargs='+'
         "--horde"
         help="The horde used for training"
         default="gamma_chain"
@@ -74,10 +49,6 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings(exc_handler=Reproduce
         help="The gamma value for the gamma_chain horde"
         arg_type=Float64
         default=0.9
-        "--act"
-        help="Activation function for GVFN"
-        arg_type=String
-        default="identity"
     end
     return as
 end
@@ -134,9 +105,9 @@ function main_experiment(args::Vector{String})
 
     _, s_t = start!(env)
 
-    horde = CycleWorldUtils.get_horde(parsed)
+    horde = CWU.get_horde(parsed)
     out_horde = Horde([GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())])
-    fc = (state, action)->CycleWorldUtils.build_features_cycleworld(state)
+    fc = (state, action)->CWU.build_features_cycleworld(state)
     fs = 3
     ap = GVFN.RandomActingPolicy([1.0])
     
