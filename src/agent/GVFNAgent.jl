@@ -29,6 +29,7 @@ mutable struct GVFNAgent{O, T, F, H, Φ, Π, M, G} <: JuliaRL.AbstractAgent
     model::M
     out_horde::Horde{G}
     preds_tp1::Array{Float64, 1}
+    prev_action_or_not::Bool
 end
 
 
@@ -54,6 +55,8 @@ function GVFNAgent(horde, out_horde,
 
     act = FluxUtils.get_activation(parsed["act"])
 
+    prev_action_or_not = get(parsed, "prev_action_or_not", false)
+
     gvfn = GVFNetwork(num_gvfs, feature_size, horde;
                       init=init_func, σ_int=act)
 
@@ -70,7 +73,8 @@ function GVFNAgent(horde, out_horde,
               zeros(Float32, 1),
               acting_policy,
               -1, 0.0, model,
-              out_horde, zeros(length(horde)))
+              out_horde, zeros(length(horde)),
+              prev_action_or_not)
 
 end
 
@@ -94,7 +98,12 @@ function JuliaRL.step!(agent::GVFNAgent, env_s_tp1, r, terminal; rng=Random.GLOB
     new_action, new_prob = agent.π(env_s_tp1, rng)
 
     ## NOTE: Fix back to Action_t when done testing.
-    push!(agent.state_list, agent.build_features(env_s_tp1, new_action))
+    if agent.prev_action_or_not
+        push!(agent.state_list, agent.build_features(env_s_tp1, agent.action))
+    else
+        push!(agent.state_list, agent.build_features(env_s_tp1, new_action))
+    end
+    # push!(agent.state_list, agent.build_features(env_s_tp1, new_action))
 
     update!(agent.gvfn, agent.opt, agent.lu, agent.hidden_state_init, agent.state_list, env_s_tp1, agent.action, agent.action_prob)
 

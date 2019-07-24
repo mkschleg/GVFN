@@ -56,6 +56,8 @@ function exp_settings!(as::ArgParseSettings)
         help="number of steps"
         arg_type=Int64
         default=100
+        "--prev_action_or_not"
+        action=:store_true
         "--verbose"
         action=:store_true
         "--working"
