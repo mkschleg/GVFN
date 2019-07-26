@@ -54,7 +54,7 @@ runs_func(μ::Array{<:AbstractFloat}) = Dict(
     "worst"=>NaNMath.maximum(μ))
 
 
-function synopsis(exp_loc::String)
+function synopsis(exp_loc::String, best_args)
     
     # Iterators.product
     args = Iterators.product(["mean", "median", "best"], ["all", "end"])
@@ -76,4 +76,15 @@ function synopsis(exp_loc::String)
             sort_idx=a[1],
             save_locs=[joinpath(exp_loc, "synopsis/order_settings_$(a[1])_$(a[2]).$(ext)") for ext in ["jld2", "txt"]])
     end
+
+    ret = best_settings(exp_loc, best_args;
+                        run_key="seed", clean_func=compassworld_data_clean_func,
+                        runs_func=runs_func,
+                        sort_idx="mean",
+                        save_loc=[joinpath(exp_loc, "best_$(join(best_args, '_').txt")])
+    ret = best_settings(exp_loc, best_args;
+                        run_key="seed", clean_func=compassworld_data_clean_func_end,
+                        runs_func=runs_func,
+                        sort_idx="mean",
+                        save_loc=[joinpath(exp_loc, "best_$(join(best_args, '_')_end.txt")])
 end
