@@ -138,7 +138,7 @@ function main_experiment(args::Vector{String})
         savepath = Reproduce.get_save_dir(parsed)
         savefile = joinpath(savepath, "results.jld2")
         if isfile(savefile)
-            println("Here")
+            println("File exists")
             return
         end
     end
@@ -177,7 +177,7 @@ function main_experiment(args::Vector{String})
                                 init_func=(dims...)->glorot_uniform(rng, dims...))
     action = start!(agent, s_t; rng=rng)
 
-    @showprogress 0.1 "Step: " for step in 1:num_steps
+    for step in 1:num_steps
     # for step in 1:num_steps
         if step%100000 == 0
             # println("Garbage Clean!")

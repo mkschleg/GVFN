@@ -61,8 +61,8 @@ function main(args::Vector{String}=ARGS)
         "horde"=>["forward"],
         "alpha"=>alphas,
         "truncation"=>truncations,
-        "cell"=>["RNN", "LSTM", "GRU"],
-        "feature"=>["standard", "action"],
+        "cell"=>["RNN"],
+        "feature"=>["standard"],
         # "cell"=>["RNN", "GRU"],
         "seed"=>collect(1:5)
     ])
