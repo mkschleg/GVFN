@@ -1,8 +1,8 @@
 __precompile__(true)
 
-module CompassWorldExperiment
+module CompassWorldRNNActionExperiment
 
-using GVFN: CompassWorld, step!, start!
+using GVFN: CycleWorld, step!, start!
 using GVFN
 using Flux
 using Flux.Tracker
@@ -13,18 +13,12 @@ using ProgressMeter
 # using FileIO
 using JLD2
 using Reproduce
+# using Reproduce
 using Random
 
 using Flux.Tracker: TrackedArray, TrackedReal, track, @grad
 
 using DataStructures: CircularBuffer
-
-function Flux.Optimise.apply!(o::Flux.RMSProp, x, Δ)
-  η, ρ = o.eta, o.rho
-  acc = get!(o.acc, x, zero(x))::typeof(Flux.data(x))
-  @. acc = ρ * acc + (1 - ρ) * Δ^2
-  @. Δ *= η / (√acc + Flux.Optimise.ϵ)
-end
 
 function arg_parse(as::ArgParseSettings = ArgParseSettings())
 
@@ -42,14 +36,16 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         help="number of steps"
         arg_type=Int64
         default=100
+        "--verbose"
+        action=:store_true
         "--working"
         action=:store_true
-        "--verbose"
+        "--progress"
         action=:store_true
     end
 
 
-    #Compass World
+    #Compass world settings
     @add_arg_table as begin
         "--size"
         help="The size of the compass world chain"
@@ -57,20 +53,19 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         default=8
     end
 
-    # GVFN
+    # shared settings
     @add_arg_table as begin
-        "--alg"
-        help="Algorithm"
-        default="TDLambda"
-        "--params"
-        help="Parameters"
-        arg_type=Float64
-        default=[]
-        nargs='+'
         "--truncation", "-t"
         help="Truncation parameter for bptt"
         arg_type=Int64
         default=1
+        "--horde"
+        help="The horde used for training"
+        default="gamma_chain"
+    end
+
+    # RNN Settings
+    @add_arg_table as begin
         "--opt"
         help="Optimizer"
         default="Descent"
@@ -79,17 +74,12 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         arg_type=Float64
         default=[]
         nargs='+'
-        "--horde"
-        help="The horde used for training"
-        default="gamma_chain"
-        "--gamma"
-        help="The gamma value for the gamma_chain horde"
-        arg_type=Float64
-        default=0.9
-        "--act"
-        help="The activation used for the GVFN"
-        arg_type=String
-        default="sigmoid"
+        "--cell"
+        help="Cell"
+        default="RNNCell"
+        "--numhidden"
+        help="Number of hidden units in cell"
+        default=45
         "--feature"
         help="The feature creator to use"
         arg_type=String
@@ -99,49 +89,48 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
     return as
 end
 
+function oracle(env::CompassWorld, horde_str)
+    cwc = GVFN.CompassWorldConst
+    state = env.agent_state
+    ret = Array{Float64,1}()
+    if horde_str == "forward"
+        ret = zeros(5)
+        if state.dir == cwc.NORTH
+            ret[cwc.ORANGE] = 1
+        elseif state.dir == cwc.SOUTH
+            ret[cwc.RED] = 1
+        elseif state.dir == cwc.WEST
+            if state.y == 1
+                ret[cwc.GREEN] = 1
+            else
+                ret[cwc.BLUE] = 1
+            end
+        elseif state.dir == cwc.EAST
+            ret[cwc.YELLOW] = 1
+        else
+            println(state.dir)
+            throw("Bug Found in Oracle:Forward")
+        end
+    elseif horde_str == "rafols"
+        throw("Not Implemented...")
+    else
+        throw("Bug Found in Oracle")
+    end
 
-# function oracle(env::CompassWorld, horde_str)
-#     cwc = GVFN.CompassWorldConst
-#     state = env.agent_state
-#     ret = Array{Float64,1}()
-#     if horde_str == "forward"
-#         ret = zeros(5)
-#         if state.dir == cwc.NORTH
-#             ret[cwc.ORANGE] = 1
-#         elseif state.dir == cwc.SOUTH
-#             ret[cwc.RED] = 1
-#         elseif state.dir == cwc.WEST
-#             if state.y == 1
-#                 ret[cwc.GREEN] = 1
-#             else
-#                 ret[cwc.BLUE] = 1
-#             end
-#         elseif state.dir == cwc.EAST
-#             ret[cwc.YELLOW] = 1
-#         else
-#             println(state.dir)
-#             throw("Bug Found in Oracle:Forward")
-#         end
-#     elseif horde_str == "rafols"
-#         throw("Not Implemented...")
-#     else
-#         throw("Bug Found in Oracle")
-#     end
-
-#     return ret
-# end
+    return ret
+end
 
 
 function main_experiment(args::Vector{String})
 
     cwu = GVFN.CompassWorldUtils
 
+    #####
+    # Setup experiment environment
+    #####
     as = arg_parse()
     parsed = parse_args(args, as)
 
-    ######
-    # Experiment Setup
-    ######
     savepath = ""
     savefile = ""
     if !parsed["working"]
@@ -149,32 +138,28 @@ function main_experiment(args::Vector{String})
         savepath = Reproduce.get_save_dir(parsed)
         savefile = joinpath(savepath, "results.jld2")
         if isfile(savefile)
+            println("Here")
             return
         end
     end
 
+    ####
+    # General Experiment parameters
+    ####
     num_steps = parsed["steps"]
     seed = parsed["seed"]
     rng = Random.MersenneTwister(seed)
 
-    out_pred_strg = zeros(num_steps, 5)
-    out_err_strg = zeros(num_steps, 5)
-
-    ######
-    # Environment Setup
-    ######
-    
     env = CompassWorld(parsed["size"], parsed["size"])
     num_state_features = get_num_features(env)
 
-    _, s_t = start!(env) # Start environment
 
-    #####
-    # Agent specific setup.
-    #####
-    
-    horde = cwu.get_horde(parsed)
+    _, s_t = start!(env)
+
     out_horde = cwu.forward()
+
+    out_pred_strg = zeros(num_steps, length(out_horde))
+    out_err_strg = zeros(num_steps, length(out_horde))
 
     fc = cwu.StandardFeatureCreator()
     if parsed["feature"] == "action"
@@ -185,39 +170,38 @@ function main_experiment(args::Vector{String})
 
     ap = cwu.ActingPolicy()
     
-    agent = GVFN.GVFNAgent(horde, out_horde,
-                           fc, fs,
-                           ap,
-                           parsed;
-                           rng=rng,
-                           init_func=(dims...)->glorot_normal(rng, dims...))
-    
-    action = start!(agent, s_t; rng=rng) # Start agent
-    verbose = parsed["verbose"]
-    
+    # agent = RNNAgent(parsed; rng=rng)
+    agent = GVFN.RNNActionAgent(out_horde, fc, fs,
+                                3, ap, parsed;
+                                rng=rng,
+                                init_func=(dims...)->glorot_uniform(rng, dims...))
+    action = start!(agent, s_t; rng=rng)
+
     @showprogress 0.1 "Step: " for step in 1:num_steps
+    # for step in 1:num_steps
+        if step%100000 == 0
+            # println("Garbage Clean!")
+            GC.gc()
+        end
+        if parsed["verbose"]
+            if step%10000 == 0
+                print(step, "\r")
+            end
+        end
 
         _, s_tp1, _, _ = step!(env, action)
         out_preds, action = step!(agent, s_tp1, 0, false; rng=rng)
 
-        out_pred_strg[step, :] .= Flux.data(out_preds)
-        out_err_strg[step, :] .= out_pred_strg[step, :] .- cwu.oracle(env, "forward")
-
-        if verbose
-            println("step: $(step)")
-            println(env)
-            println(agent)
-            println(out_preds)
-        end
-
-        
+        out_pred_strg[step, :] .= Flux.data.(out_preds)
+        out_err_strg[step, :] .= out_pred_strg[step, :] .- oracle(env, "forward")
+        # println(out_pred_strg[step, :])
     end
 
     results = Dict(["rmse"=>sqrt.(mean(out_err_strg.^2; dims=2))])
     if !parsed["working"]
         JLD2.@save savefile results
     else
-        return results, out_pred_strg, out_err_strg
+        return out_pred_strg, out_err_strg, results
     end
 end
 
@@ -229,4 +213,5 @@ end
 end
 
 # CycleWorldExperiment.main_experiment()
+
 

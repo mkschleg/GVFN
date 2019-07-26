@@ -49,6 +49,7 @@ function main_experiment(args::Vector{String})
 
     as = arg_parse()
     parsed = parse_args(args, as)
+    parsed["prev_action_or_not"] = true
 
     savepath = ""
     savefile = ""
@@ -80,10 +81,10 @@ function main_experiment(args::Vector{String})
     fs = JuliaRL.FeatureCreators.feature_size(fc)
     ap = GVFN.RandomActingPolicy([0.75, 0.25])
     
-    agent = GVFN.GVFNActionAgent(horde, out_horde,
-                                 fc, fs, 2, ap, parsed;
-                                 rng=rng,
-                                 init_func=(dims...)->glorot_uniform(rng, dims...))
+    agent = GVFN.GVFNAgent(horde, out_horde,
+                           fc, fs, ap, parsed;
+                           rng=rng,
+                           init_func=(dims...)->glorot_uniform(rng, dims...))
     action = start!(agent, s_t; rng=rng)
 
     prg_bar = ProgressMeter.Progress(num_steps, "Step: ")
