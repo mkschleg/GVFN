@@ -191,7 +191,7 @@ function main_experiment(args::Vector{String})
                                  ap,
                                  parsed;
                                  rng=rng,
-                                 init_func=(dims...)->0.001f0*glorot_normal(rng, dims...))
+                                 init_func=(dims...)->glorot_uniform(rng, dims...))
     
     action = start!(agent, s_t; rng=rng) # Start agent
     verbose = parsed["verbose"]
