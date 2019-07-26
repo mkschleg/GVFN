@@ -98,9 +98,9 @@ function main_experiment(args::Vector{String})
         if verbose
             println("step: $(step)")
             println(env)
-            println(agent)
+            # println(agent)
             println(out_preds)
-            println("Agent rnn-init: ", agent.rnn.init)
+            println("preds: ", CycleWorldUtils.oracle(env, parsed["horde"], parsed["gamma"]))
             # println("Agent rnn-state: ", agent.rnn.state)
         end
 

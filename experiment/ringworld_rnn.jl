@@ -1,6 +1,6 @@
 __precompile__(true)
 
-module RingWorldRNNExperiment
+module RingWorldRNNSansActionExperiment
 
 import Flux
 import Flux.Tracker
@@ -39,6 +39,7 @@ function main_experiment(args::Vector{String})
 
     as = arg_parse()
     parsed = parse_args(args, as)
+    parsed["prev_action_or_not"] = true
 
     savepath = ""
     savefile = ""
