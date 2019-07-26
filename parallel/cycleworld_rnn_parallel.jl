@@ -17,7 +17,7 @@ const exp_module_name = :CycleWorldRNNExperiment
 const exp_func_name = :main_experiment
 const optimizer = "Descent"
 const alphas = clamp.(0.1*1.5.^(-6:6), 0.0, 1.0)
-const truncations = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+const truncations = [1, 2, 3, 4, 5, 6]
 
 function make_arguments(args::Dict)
     horde = args["horde"]
@@ -55,7 +55,7 @@ function main()
     ])
     arg_list = ["horde", "cell", "alpha", "truncation", "seed"]
 
-    static_args = ["--steps", "10", "--numhidden", "7", "--exp_loc", save_loc]
+    static_args = ["--steps", "300000", "--numhidden", "7", "--exp_loc", save_loc]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments)
 
     if parsed["numjobs"]

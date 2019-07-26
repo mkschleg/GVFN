@@ -12,7 +12,7 @@ function plot_gvfn_descent(network, algorithm, alphas, truncation, num_runs; n=1
             runs = Array{Array{Float64, 1}, 1}()
             for r in 1:num_runs
                 file_loc = joinpath(dir, "Descent_alpha_$(α)_truncation_$(τ)/run_$(r).jld2")
-                d = load(file_loc)
+                d = load(file_loc)["results"]
                 push!(runs, mean(reshape(sqrt.(mean(d["out_err_strg"].^2; dims=2)), n, Integer(size(d["out_err_strg"])[1]/n)); dims=1)[1,:])
             end
             if plt == nothing
@@ -55,16 +55,16 @@ function plot_gvfn_tdlambda(network, algorithm, alphas, lambdas, num_runs; n=100
     end
 end
 
-function plot_rnn_compassworld(network, cell, alphas, truncation, num_runs; n=1000, optimizer="Descent", load_loc="compassworld_rnn")
+function plot_rnn_compassworld(network, cell, alphas, truncation, num_runs; n=1000, optimizer="Descent", load_loc="compassworld_rnn", save_file="")
     gr()
     dir = "$(load_loc)/$(network)/$(cell)"
     plt = nothing
-    for α in alphas
+    @showprogress 0.1 "Alpha: " for α in alphas
         for τ in truncation
             runs = Array{Array{Float64, 1}, 1}()
             for r in 1:num_runs
                 file_loc = joinpath(dir, "$(optimizer)_alpha_$(α)_truncation_$(τ)/run_$(r).jld2")
-                d = load(file_loc)
+                d = load(file_loc)["results"]
                 push!(runs, mean(reshape(sqrt.(mean(d["out_err_strg"].^2; dims=2)), n, Integer(size(d["out_err_strg"])[1]/n)); dims=1)[1,:])
             end
             if plt == nothing
@@ -73,9 +73,33 @@ function plot_rnn_compassworld(network, cell, alphas, truncation, num_runs; n=10
                 plot!(mean(runs), lab="alpha: $(α), truncations: $(τ)")
             end
         end
+    end
+    if save_file == ""
         savefig(plt, "$(network)_$(cell)_$(optimizer).pdf")
+    else
+        savefig(plt, save_file)
     end
 end
+
+function uncompress_rnn_compassworld(network, cell, alphas, truncation, num_runs; optimizer="Descent", load_loc="compassworld_rnn", save_file="")
+    gr()
+    dir = "$(load_loc)/$(network)/$(cell)"
+    plt = nothing
+    @showprogress 0.1 "Alpha: " for α in alphas
+        for τ in truncation
+            runs = Array{Array{Float64, 1}, 1}()
+            for r in 1:num_runs
+                file_loc = joinpath(dir, "$(optimizer)_alpha_$(α)_truncation_$(τ)/run_$(r).jld2")
+                d = load(file_loc)["results"]
+                push!(runs, sqrt.(mean(d["out_err_strg"].^2; dims=2)))
+            end
+
+            file_loc = joinpath(dir, "$(optimizer)_alpha_$(α)_truncation_$(τ)/runs.jld2")
+            save(file_loc, Dict("runs"=>runs))
+        end
+    end
+end
+
 
 function plot_rnn_cycleworld(network, cell, alphas, truncation, num_runs; n=1000)
     gr()

@@ -70,7 +70,7 @@ GVFRActionLayer(num_gvfs, num_actions, num_ext_features, horde; init=Flux.glorot
 
 @forward GVFRActionLayer.horde get
 
-function (m::GVFRActionLayer)(h, x::Tuple{Int64, Array{Float64, 1}})
+function (m::GVFRActionLayer)(h, x::Tuple{Int64, Array{<:AbstractFloat, 1}})
     new_h = m.σ.(m.Wx[x[1], :, :]*x[2] + m.Wh[x[1], :, :]*h)
     return new_h, new_h
 end

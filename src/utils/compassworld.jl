@@ -76,6 +76,27 @@ function gammas_scaled()
     return Horde(gvfs)
 end
 
+function test_network()
+    cwc = GVFN.CompassWorldConst
+    gvfs = Array{GVF, 1}()
+    for color in 1:5
+        new_gvfs = [GVF(FeatureCumulant(color), ConstantDiscount(0.0), PersistentPolicy(cwc.FORWARD)),
+                    GVF(FeatureCumulant(color), ConstantDiscount(0.0), PersistentPolicy(cwc.LEFT)),
+                    GVF(FeatureCumulant(color), ConstantDiscount(0.0), PersistentPolicy(cwc.RIGHT)),
+                    GVF(FeatureCumulant(color), StateTerminationDiscount(1.0, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD)),
+                    # GVF(PredictionCumulant(7*(color-1) + 1), StateTerminationDiscount(1.0, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD)),
+                    GVF(PredictionCumulant(6*(color-1) + 2), StateTerminationDiscount(1.0, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD)),
+                    GVF(PredictionCumulant(6*(color-1) + 3), StateTerminationDiscount(1.0, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD))]
+                    # GVF(PredictionCumulant(8*(color-1) + 4), ConstantDiscount(0.0), PersistentPolicy(cwc.LEFT)),
+                    # GVF(PredictionCumulant(8*(color-1) + 4), ConstantDiscount(0.0), PersistentPolicy(cwc.RIGHT)),
+                    # GVF(PredictionCumulant(8*(color-1) + 5), StateTerminationDiscount(1.0, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD)),
+                    # GVF(PredictionCumulant(8*(color-1) + 6), StateTerminationDiscount(1.0, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD))]
+        append!(gvfs, new_gvfs)
+    end
+    println(length(gvfs))
+    return Horde(gvfs)
+end
+
 
 function get_horde(horde_str::AbstractString)
     horde = forward()
@@ -87,6 +108,8 @@ function get_horde(horde_str::AbstractString)
         horde = gammas_term()
     elseif horde_str == "gammas_scaled"
         horde = gammas_scaled()
+    elseif horde_str == "test"
+        horde = test_network()
     end
     return horde
 end

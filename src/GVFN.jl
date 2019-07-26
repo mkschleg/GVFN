@@ -35,15 +35,16 @@ export
 
 include("GVF.jl")
 
-export GVFNetwork, GVFActionNetwork, reset!, get
+export GVFNetwork, GVFActionNetwork, reset!, get, RNNActionLayer
 include("GVFNetwork.jl")
+include("RNN.jl")
 
 export RTD, RTD_jacobian, TDLambda, TD, update!
 include("Loss.jl")
 include("Update.jl")
 
 export OnlineJointTD, OnlineTD_RNN, train_step!
-include("RNN.jl")
+include("RNN_updates.jl")
 
 
 include("ActingPolicy.jl")

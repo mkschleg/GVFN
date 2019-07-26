@@ -1,6 +1,6 @@
 __precompile__(true)
 
-module CompassWorldRNNExperiment
+module CompassWorldRNNActionExperiment
 
 using GVFN: CycleWorld, step!, start!
 using GVFN
@@ -18,15 +18,7 @@ using Random
 
 using Flux.Tracker: TrackedArray, TrackedReal, track, @grad
 
-
 using DataStructures: CircularBuffer
-
-function Flux.Optimise.apply!(o::Flux.RMSProp, x, Δ)
-  η, ρ = o.eta, o.rho
-  acc = get!(o.acc, x, zero(x))::typeof(Flux.data(x))
-  @. acc = ρ * acc + (1 - ρ) * Δ^2
-  @. Δ *= η / (√acc + Flux.Optimise.ϵ)
-end
 
 function arg_parse(as::ArgParseSettings = ArgParseSettings())
 
@@ -146,7 +138,7 @@ function main_experiment(args::Vector{String})
         savepath = Reproduce.get_save_dir(parsed)
         savefile = joinpath(savepath, "results.jld2")
         if isfile(savefile)
-            println("Here")
+            println("File exists")
             return
         end
     end
@@ -179,12 +171,13 @@ function main_experiment(args::Vector{String})
     ap = cwu.ActingPolicy()
     
     # agent = RNNAgent(parsed; rng=rng)
-    agent = GVFN.RNNAgent(out_horde, fc, fs, ap, parsed;
-                          rng=rng,
-                          init_func=(dims...)->glorot_uniform(rng, dims...))
+    agent = GVFN.RNNActionAgent(out_horde, fc, fs,
+                                3, ap, parsed;
+                                rng=rng,
+                                init_func=(dims...)->glorot_uniform(rng, dims...))
     action = start!(agent, s_t; rng=rng)
 
-    @showprogress 0.1 "Step: " for step in 1:num_steps
+    for step in 1:num_steps
     # for step in 1:num_steps
         if step%100000 == 0
             # println("Garbage Clean!")

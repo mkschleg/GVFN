@@ -1,6 +1,6 @@
 __precompile__(true)
 
-module CycleWorldExperiment
+module RingWorldExperiment
 
 import Flux
 import Flux.Tracker
@@ -8,8 +8,7 @@ import JLD2
 import LinearAlgebra.Diagonal
 
 # using GVFN: CycleWorld, step!, start!
-using GVFN: CycleWorld, step!, start!
-using GVFN: CycleWorldAgent
+using GVFN: RingWorld, step!, start!
 using GVFN
 using Statistics
 using Random
@@ -18,29 +17,22 @@ using Reproduce
 using Random
 using DataStructures: CircularBuffer
 
-
-# include("utils/util.jl")
-CWU = GVFN.CycleWorldUtils
+RWU = GVFN.RingWorldUtils
 FLU = GVFN.FluxUtils
-
-# function Flux.Optimise.apply!(o::Flux.RMSProp, x, Δ)
-#   η, ρ = o.eta, o.rho
-#   acc = get!(o.acc, x, zero(x))::typeof(Flux.data(x))
-#   @. acc = ρ * acc + (1 - ρ) * Δ^2
-#   @. Δ *= η / (√acc + Flux.Optimise.ϵ)
-# end
 
 function arg_parse(as::ArgParseSettings = ArgParseSettings(exc_handler=Reproduce.ArgParse.debug_handler))
 
+
     #Experiment
-    
+
     GVFN.exp_settings!(as)
-    CWU.env_settings!(as)
+    RWU.env_settings!(as)
     FLU.opt_settings!(as)
 
     # shared settings
     GVFN.gvfn_arg_table!(as)
-
+    
+    # GVFN 
     @add_arg_table as begin
         "--horde"
         help="The horde used for training"
@@ -53,33 +45,11 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings(exc_handler=Reproduce
     return as
 end
 
-function oracle(env::CycleWorld, horde_str, γ=0.9)
-    chain_length = env.chain_length
-    state = env.agent_state
-    ret = Array{Float64,1}()
-    if horde_str == "chain"
-        ret = zeros(chain_length)
-        ret[chain_length - state] = 1
-    elseif horde_str == "gamma_chain"
-        ret = zeros(chain_length + 1)
-        ret[chain_length - state] = 1
-        ret[end] = γ^(chain_length - state - 1)
-    elseif horde_str == "gammas"
-        ret = collect(0.0:0.1:0.9).^(chain_length - state - 1)
-    elseif horde_str == "onestep"
-        ret = zeros(chain_length)
-        ret = chain_length - state == 1 ? 1.0 : 0.0
-    else
-        throw("Bug Found")
-    end
-
-    return ret
-end
-
 function main_experiment(args::Vector{String})
 
     as = arg_parse()
     parsed = parse_args(args, as)
+    parsed["prev_action_or_not"] = true
 
     savepath = ""
     savefile = ""
@@ -98,40 +68,40 @@ function main_experiment(args::Vector{String})
     progress = parsed["progress"]
     rng = Random.MersenneTwister(seed)
 
-    env = CycleWorld(parsed["chain"])
+    env = RingWorld(parsed["size"])
 
-    out_pred_strg = zeros(num_steps)
-    out_err_strg = zeros(num_steps)
+    out_pred_strg = zeros(num_steps, 2)
+    out_err_strg = zeros(num_steps, 2)
 
     _, s_t = start!(env)
 
-    horde = CWU.get_horde(parsed)
-    out_horde = Horde([GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())])
-    fc = (state, action)->CWU.build_features_cycleworld(state)
-    fs = 3
-    ap = GVFN.RandomActingPolicy([1.0])
+    horde = RWU.get_horde(parsed)
+    out_horde = RWU.onestep()
+    fc = RWU.StandardFeatureCreator()
+    fs = JuliaRL.FeatureCreators.feature_size(fc)
+    ap = GVFN.RandomActingPolicy([0.75, 0.25])
     
     agent = GVFN.GVFNAgent(horde, out_horde,
                            fc, fs, ap, parsed;
                            rng=rng,
                            init_func=(dims...)->glorot_uniform(rng, dims...))
-    start!(agent, s_t; rng=rng)
+    action = start!(agent, s_t; rng=rng)
 
     prg_bar = ProgressMeter.Progress(num_steps, "Step: ")
 
     for step in 1:num_steps
- 
-        _, s_tp1, _, _ = step!(env, 1)
+
+        _, s_tp1, _, _ = step!(env, action)
         out_preds, action = step!(agent, s_tp1, 0, false; rng=rng)
 
-        out_pred_strg[step] = Flux.data(out_preds)[1]
-        out_err_strg[step] = out_pred_strg[step][1] - oracle(env, "onestep", parsed["gamma"])[1]
+
+        out_pred_strg[step, :] .= Flux.data(out_preds)
+        out_err_strg[step, :] = out_pred_strg[step, :] .- RWU.oracle(env, "onestep", parsed["gamma"])
 
         if verbose
-            println("step: $(step)")
+            println(step)
             println(env)
             println(agent)
-            println(out_preds)
         end
 
         if progress
@@ -155,4 +125,3 @@ Base.@ccallable function julia_main(ARGS::Vector{String})::Cint
 end
 
 end
-

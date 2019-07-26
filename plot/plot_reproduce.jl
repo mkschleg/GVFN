@@ -33,7 +33,7 @@ Additional kwargs are passed to order_settings.
 
 
 function best_settings(exp_loc, product_args::Vector{String};
-                       save_loc="", kwargs...)
+                       save_locs=nothing, kwargs...)
 
     ic = ItemCollection(exp_loc)
     diff_dict = diff(ic.items)
@@ -48,9 +48,16 @@ function best_settings(exp_loc, product_args::Vector{String};
     end
 
     
-    if save_loc != ""
+    if save_locs != nothing
         # Save data
-        save_settings(save_loc, settings_dict)
+        # save_settings(save_loc, settings_dict)
+        if typeof(save_locs) <: AbstractString
+            save_settings(save_locs, settings_vec)
+        elseif typeof(save_locs) <: AbstractArray
+            for save_loc in save_locs
+                save_settings(save_loc, settings_vec)
+            end
+        end
     else
         return settings_dict
     end

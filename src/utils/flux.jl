@@ -2,6 +2,8 @@ module FluxUtils
 
 using ..Flux
 using Reproduce
+import ..GVFN.RNNActionLayer
+
 
 function rnn_settings!(as::ArgParseSettings)
     @add_arg_table as begin
@@ -44,12 +46,16 @@ end
 
 function construct_rnn(in::Integer, parsed::Dict, args...; kwargs...)
     kt = keytype(parsed)
-    return construct_rnn(kt(parsed["cell"]), in, parsed[kt("numhidden")], args...; kwargs...)
+    return construct_rnn(parsed[kt("cell")], in, parsed[kt("numhidden")], args...; kwargs...)
 end
 
 function construct_rnn(cell::AbstractString, in::Integer, num_hidden::Integer, args...; kwargs...)
     cell_func = getproperty(Flux, Symbol(cell))
     return cell_func(in, num_hidden, args...; kwargs...)
+end
+
+function construct_action_rnn(in::Integer, num_actions, num_hidden, args...; kwargs...)
+    return RNNActionLayer(num_hidden, num_actions, in, args...; kwargs...)
 end
 
 function clip(a)
@@ -74,6 +80,8 @@ function get_activation(act::AbstractString)
         return clip
     elseif act == "relu"
         return Flux.relu
+    elseif act == "softplus"
+        return Flux.softplus
     else
         throw("$(act) not known...")
     end
