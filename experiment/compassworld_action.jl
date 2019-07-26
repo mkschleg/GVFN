@@ -191,12 +191,12 @@ function main_experiment(args::Vector{String})
                                  ap,
                                  parsed;
                                  rng=rng,
-                                 init_func=(dims...)->0.001f0*glorot_normal(rng, dims...))
+                                 init_func=(dims...)->glorot_uniform(rng, dims...))
     
     action = start!(agent, s_t; rng=rng) # Start agent
     verbose = parsed["verbose"]
     
-    @showprogress 0.1 "Step: " for step in 1:num_steps
+    for step in 1:num_steps
 
         _, s_tp1, _, _ = step!(env, action)
         out_preds, action = step!(agent, s_tp1, 0, false; rng=rng)
