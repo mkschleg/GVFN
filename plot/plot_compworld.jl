@@ -1,13 +1,13 @@
 using Reproduce
 using Logging
 using DataStructures
-
+using NaNMath
 
 include("plot_reproduce.jl")
 
 
 compassworld_data_clean_func(di) = mean((di["results"]["rmse"]))
-compassworld_data_clean_func_end(di) = mean((di["results"]["rmse"][1500000:end]))
+compassworld_data_clean_func_end(di, range) = mean((di["results"]["rmse"][range]))
 
 
 function main(args::Vector{String})
@@ -54,13 +54,13 @@ runs_func(μ::Array{<:AbstractFloat}) = Dict(
     "worst"=>NaNMath.maximum(μ))
 
 
-function synopsis(exp_loc::String)
+function synopsis(exp_loc::String, range)
     
     # Iterators.product
     args = Iterators.product(["mean", "median", "best"], ["all", "end"])
     func_dict = Dict(
         "all"=>compassworld_data_clean_func,
-        "end"=>compassworld_data_clean_func_end)
+        "end"=>(dat)->compassworld_data_clean_func_end(dat, range))
 
     if !isdir(joinpath(exp_loc, "synopsis"))
         mkdir(joinpath(exp_loc, "synopsis"))
