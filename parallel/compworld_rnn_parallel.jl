@@ -21,7 +21,7 @@ const exp_func_name = :main_experiment
 
 # Parameters for the SGD Algorithm
 const optimizer = "Descent"
-const alphas = clamp.(0.1*1.5.^(-6:4), 0.0, 1.0)
+const alphas = clamp.(0.1*1.5.^(-2:4), 0.0, 1.0)
 const truncations = [1, 4, 8, 16, 24, 32, 48, 64]
 
 function make_arguments(args::Dict)
@@ -82,6 +82,7 @@ function main(args::Vector{String}=ARGS)
                             exp_module_name,
                             exp_func_name,
                             args_iterator)
+    
     create_experiment_dir(experiment)
     add_experiment(experiment; settings_dir="settings")
     ret = job(experiment; num_workers=num_workers, job_file_dir=parsed["jobloc"])
