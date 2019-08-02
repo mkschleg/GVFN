@@ -13,11 +13,12 @@ using Reproduce
 
 const save_loc = "ringworld_rnn_sweep_sgd"
 const exp_file = "experiment/ringworld_rnn.jl"
-const exp_module_name = :RingWorldRNNExperiment
+const exp_module_name = :RingWorldRNNSansActionExperiment
 const exp_func_name = :main_experiment
 const optimizer = "Descent"
 const alphas = clamp.(0.1*1.5.^(-6:6), 0.0, 1.0)
-const truncations = [1, 2, 4, 8, 12, 16]
+# const truncations = [1, 2, 4, 8, 12, 16]
+const truncations = [24, 32]
 
 function make_arguments(args::Dict)
     alpha = args["alpha"]
@@ -43,7 +44,7 @@ function main()
         action=:store_true
         "--numsteps"
         arg_type=Int64
-        default=750000
+        default=300000
     end
     parsed = parse_args(as)
     num_workers = parsed["numworkers"]
