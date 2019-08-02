@@ -81,10 +81,10 @@ function synopsis(exp_loc::String, best_args)
                         run_key="seed", clean_func=compassworld_data_clean_func,
                         runs_func=runs_func,
                         sort_idx="mean",
-                        save_loc=[joinpath(exp_loc, "best_$(join(best_args, '_').txt")])
+                        save_loc=[joinpath(exp_loc, "best_$(join(best_args, '_')).txt")])
     ret = best_settings(exp_loc, best_args;
                         run_key="seed", clean_func=compassworld_data_clean_func_end,
                         runs_func=runs_func,
                         sort_idx="mean",
-                        save_loc=[joinpath(exp_loc, "best_$(join(best_args, '_')_end.txt")])
+                        save_loc=[joinpath(exp_loc, "best_$(join(best_args, '_'))_end.txt")])
 end
