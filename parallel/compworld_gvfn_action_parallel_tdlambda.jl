@@ -1,43 +1,49 @@
 #!/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/julia/1.1.0/bin/julia
-#SBATCH --mail-user=mkschleg@ualberta.ca
-#SBATCH --mail-type=ALL
-#SBATCH -o comp_rnn.out # Standard output
-#SBATCH -e comp_rnn.err # Standard error
+#SBATCH -o comp_gvfn_tdlambda.out # Standard output
+#SBATCH -e comp_gvfn_tdlambda.err # Standard error
 #SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
-#SBATCH --time=12:00:00 # Running time of 12 hours
+#SBATCH --time=24:00:00 # Running time of 12 hours
 #SBATCH --ntasks=64
 #SBATCH --account=rrg-whitem
 
 using Pkg
+
+# cd("..")
 Pkg.activate(".")
+# include("parallel_experiment.jl")
+# println("Hello Wolrd...")
 
 using Reproduce
 
-
-#------ Optimizers ----------#
-const save_loc = "compworld_rnn_sweep"
-const exp_file = "experiment/compassworld_rnn.jl"
-const exp_module_name = :CompassWorldRNNExperiment
+const save_loc = "compassworld_gvfn_action_tdlambda"
+const exp_file = "experiment/compassworld_action.jl"
+const exp_module_name = :CompassWorldActionExperiment
 const exp_func_name = :main_experiment
 
+#------ Learning Updates -------#
+
+const learning_update = "TDLambda"
+const lambdas = 0.1:0.2:0.9
+
+#------ Optimizers ----------#
 
 # Parameters for the SGD Algorithm
 const optimizer = "Descent"
-const alphas = clamp.(0.1*1.5.^(-2:4), 0.0, 1.0)
-const truncations = [1, 4, 8, 16, 24, 32, 48, 64]
+const alphas = clamp.(0.1*1.5.^(-12:2:4), 0.0, 1.0)
+# const alphas = 0.1*1.5.^(-6:6)
 
-function make_arguments(args::Dict)
+function make_arguments_tdlambda(args::Dict)
     horde = args["horde"]
     alpha = args["alpha"]
-    cell = args["cell"]
-    truncation = args["truncation"]
-    feature = args["feature"]
+    lambda = args["lambda"]
     seed = args["seed"]
-    new_args=["--horde", horde, "--truncation", truncation, "--opt", optimizer, "--optparams", alpha, "--cell", cell, "--feature", feature, "--seed", seed]
+    feature = args["feature"]
+    act = args["act"]
+    new_args=["--horde", horde, "--act", act, "--params", lambda, "--opt", optimizer, "--optparams", alpha, "--feature", feature, "--seed", seed]
     return new_args
 end
 
-function main(args::Vector{String}=ARGS)
+function main()
 
     as = ArgParseSettings()
     @add_arg_table as begin
@@ -59,19 +65,20 @@ function main(args::Vector{String}=ARGS)
     arg_dict = Dict{String, Any}()
     arg_list = Array{String, 1}()
 
-    arg_dict = Dict([
-        "horde"=>["forward"],
-        "alpha"=>alphas,
-        "truncation"=>truncations,
-        "cell"=>["RNN", "LSTM", "GRU"],
-        "feature"=>["standard", "action"],
-        # "cell"=>["RNN", "GRU"],
-        "seed"=>collect(1:5)
-    ])
-    arg_list = ["feature", "horde", "alpha", "truncation", "seed", "cell"]
 
-    static_args = ["--steps", string(parsed["numsteps"]), "--exp_loc", save_loc]
-    args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments)
+    arg_dict = Dict([
+        "horde"=>["rafols", "forward"],
+        "alpha"=>alphas,
+        "lambda"=>lambdas,
+        "feature"=>["standard", "action"],
+        "seed"=>collect(1:5),
+        "act"=>["relu", "sigmoid"]
+    ])
+    arg_list = ["feature", "act", "horde", "alpha", "lambda", "seed"]
+    
+    static_args = ["--alg", learning_update, "--steps", string(parsed["numsteps"]), "--exp_loc", save_loc]
+    args_iterator = ArgIterator(arg_dict, static_args;
+                                arg_list=arg_list, make_args=make_arguments_tdlambda)
 
     if parsed["numjobs"]
         @info "This experiment has $(length(collect(args_iterator))) jobs."
@@ -84,11 +91,13 @@ function main(args::Vector{String}=ARGS)
                             exp_module_name,
                             exp_func_name,
                             args_iterator)
-    
+
     create_experiment_dir(experiment)
     add_experiment(experiment; settings_dir="settings")
     ret = job(experiment; num_workers=num_workers, job_file_dir=parsed["jobloc"])
     post_experiment(experiment, ret)
+
 end
+
 
 main()

@@ -28,7 +28,3 @@ end
 Flux.hidden(m::RNNActionCELL) = m.h
 Flux.@treelike RNNActionCELL
 RNNActionLayer(args...; kwargs...) = Flux.Recur(RNNActionCELL(args...; kwargs...))
-
-
-
-

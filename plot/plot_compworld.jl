@@ -1,13 +1,13 @@
 using Reproduce
 using Logging
 using DataStructures
-
+using NaNMath
 
 include("plot_reproduce.jl")
 
 
 compassworld_data_clean_func(di) = mean((di["results"]["rmse"]))
-compassworld_data_clean_func_end(di) = mean((di["results"]["rmse"][1500000:end]))
+compassworld_data_clean_func_end(di, range) = mean((di["results"]["rmse"][range]))
 
 
 function main(args::Vector{String})
@@ -49,18 +49,18 @@ end
 runs_func(μ::Array{<:AbstractFloat}) = Dict(
     "mean"=>mean(μ),
     "stderr"=>std(μ)/length(μ),
-    "median"=>median(μ),
+    "median"=>length(μ) == 0 ? NaN : median(μ),
     "best"=>NaNMath.minimum(μ),
     "worst"=>NaNMath.maximum(μ))
 
 
-function synopsis(exp_loc::String)
+function synopsis(exp_loc::String, best_args, range)
     
     # Iterators.product
     args = Iterators.product(["mean", "median", "best"], ["all", "end"])
     func_dict = Dict(
         "all"=>compassworld_data_clean_func,
-        "end"=>compassworld_data_clean_func_end)
+        "end"=>(dat)->compassworld_data_clean_func_end(dat, range))
 
     if !isdir(joinpath(exp_loc, "synopsis"))
         mkdir(joinpath(exp_loc, "synopsis"))
@@ -76,4 +76,25 @@ function synopsis(exp_loc::String)
             sort_idx=a[1],
             save_locs=[joinpath(exp_loc, "synopsis/order_settings_$(a[1])_$(a[2]).$(ext)") for ext in ["jld2", "txt"]])
     end
+
+    # best_args_str = join(best_args, '_')
+
+    ret = best_settings(exp_loc, best_args;
+                        run_key="seed", clean_func=compassworld_data_clean_func,
+                        runs_func=runs_func,
+                        sort_idx="mean",
+<<<<<<< HEAD
+                        save_locs=[joinpath(exp_loc, "synopsis/best_$(join(best_args, '_')).txt")])
+=======
+                        save_loc=[joinpath(exp_loc, "best_$(join(best_args, '_')).txt")])
+>>>>>>> 93c412463199a11f45644aaaae07f53b680ee05b
+    ret = best_settings(exp_loc, best_args;
+                        run_key="seed", clean_func=func_dict["end"],
+                        runs_func=runs_func,
+                        sort_idx="mean",
+<<<<<<< HEAD
+                        save_locs=[joinpath(exp_loc, "synopsis/best_$(join(best_args, '_'))_end.txt")])
+=======
+                        save_loc=[joinpath(exp_loc, "best_$(join(best_args, '_'))_end.txt")])
+>>>>>>> 93c412463199a11f45644aaaae07f53b680ee05b
 end

@@ -77,5 +77,5 @@ function synopsis(exp_loc::String; best_args=["truncation", "horde"])
                         run_key="seed", clean_func=cycleworld_data_clean_func,
                         runs_func=runs_func,
                         sort_idx="mean",
-                        save_loc=[joinpath(exp_loc, "best_trunc_horde.txt")])
+                        save_locs=[joinpath(exp_loc, "best_trunc_horde.txt")])
 end
