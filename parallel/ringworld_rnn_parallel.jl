@@ -51,6 +51,7 @@ function main()
     arg_dict = Dict([
         "alpha"=>alphas,
         "truncation"=>truncations,
+        # "cell"=>["RNN", "LSTM", "GRU"],
         "cell"=>["RNN", "LSTM", "GRU"],
         "seed"=>collect(1:5)
     ])
