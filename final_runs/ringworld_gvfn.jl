@@ -14,7 +14,7 @@ const exp_func_name = :main_experiment
 
 #------ Learning Updates -------#
 
-const learning_update = "TDLambda"
+const learning_update = "RTD"
 
 #------ Optimizers ----------#
 
