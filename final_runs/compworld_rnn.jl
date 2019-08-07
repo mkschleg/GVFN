@@ -38,7 +38,30 @@ function main()
     num_workers = parsed["numworkers"]
 
     arg_list = [
-
+        ["--cell", "RNN", "--truncation", "1", "--opt", "Descent", "--optparams", "0.225", "--feature", "action"],
+        ["--cell", "RNN", "--truncation", "4", "--opt", "Descent", "--optparams", "0.225", "--feature", "action"],
+        ["--cell", "RNN", "--truncation", "8", "--opt", "Descent", "--optparams", "0.15", "--feature", "action"],
+        ["--cell", "RNN", "--truncation", "16", "--opt", "Descent", "--optparams", "0.15", "--feature", "action"],
+        ["--cell", "RNN", "--truncation", "24", "--opt", "Descent", "--optparams", "0.15", "--feature", "action"],
+        ["--cell", "RNN", "--truncation", "32", "--opt", "Descent", "--optparams", "0.15", "--feature", "action"],
+        ["--cell", "RNN", "--truncation", "48", "--opt", "Descent", "--optparams", "0.15", "--feature", "action"],
+        ["--cell", "RNN", "--truncation", "64", "--opt", "Descent", "--optparams", "0.15", "--feature", "action"],
+        ["--cell", "LSTM", "--truncation", "1", "--opt", "Descent", "--optparams", "0.3375", "--feature", "action"],
+        ["--cell", "LSTM", "--truncation", "4", "--opt", "Descent", "--optparams", "0.50625", "--feature", "action"],
+        ["--cell", "LSTM", "--truncation", "8", "--opt", "Descent", "--optparams", "0.50625", "--feature", "action"],
+        ["--cell", "LSTM", "--truncation", "16", "--opt", "Descent", "--optparams", "0.50625", "--feature", "action"],
+        ["--cell", "LSTM", "--truncation", "24", "--opt", "Descent", "--optparams", "0.50625", "--feature", "action"],
+        ["--cell", "LSTM", "--truncation", "32", "--opt", "Descent", "--optparams", "0.3375", "--feature", "action"],
+        ["--cell", "LSTM", "--truncation", "48", "--opt", "Descent", "--optparams", "0.3375", "--feature", "action"],
+        ["--cell", "LSTM", "--truncation", "64", "--opt", "Descent", "--optparams", "0.50625", "--feature", "action"],
+        ["--cell", "GRU", "--truncation", "1", "--opt", "Descent", "--optparams", "0.50625", "--feature", "action"],
+        ["--cell", "GRU", "--truncation", "4", "--opt", "Descent", "--optparams", "0.50625", "--feature", "action"],
+        ["--cell", "GRU", "--truncation", "8", "--opt", "Descent", "--optparams", "0.50625", "--feature", "action"],
+        ["--cell", "GRU", "--truncation", "16", "--opt", "Descent", "--optparams", "0.50625", "--feature", "action"],
+        ["--cell", "GRU", "--truncation", "24", "--opt", "Descent", "--optparams", "0.50625", "--feature", "action"],
+        ["--cell", "GRU", "--truncation", "32", "--opt", "Descent", "--optparams", "0.3375", "--feature", "action"],
+        ["--cell", "GRU", "--truncation", "48", "--opt", "Descent", "--optparams", "0.50625", "--feature", "action"],
+        ["--cell", "GRU", "--truncation", "64", "--opt", "Descent", "--optparams", "0.50625", "--feature", "action"]
     ]
     runs_iter = 6:(6+20)
 

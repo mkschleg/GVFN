@@ -12,7 +12,7 @@ Pkg.activate(".")
 using Reproduce
 
 const save_loc = "ringworld_gvfn_sweep_sgd"
-const exp_file = "experiment/ringworld.jl"
+const exp_file = "experiment/ringworld_action.jl"
 const exp_module_name = :RingWorldExperiment
 const exp_func_name = :main_experiment
 const optimizer = "Descent"
