@@ -7,7 +7,7 @@ Pkg.activate(".")
 
 using Reproduce
 
-const save_loc = "final_ringworld_gvfn_action_rtd"
+const save_loc = "final_ringworld_gvfn_action_tdlambda"
 const exp_file = "experiment/ringworld_action.jl"
 const exp_module_name = :RingWorldExperiment
 const exp_func_name = :main_experiment
@@ -38,12 +38,12 @@ function main()
     num_workers = parsed["numworkers"]
 
     arg_list = [
-        ["--act", "sigmoid", "--lambda", "0.0", "--horde", "gamma_chain", "--opt", "Descent", "--optparams", "0.0131687"],
-        ["--act", "sigmoid", "--lambda", "0.2", "--horde", "gamma_chain", "--opt", "Descent", "--optparams", "0.1"],
-        ["--act", "sigmoid", "--lambda", "0.4", "--horde", "gamma_chain", "--opt", "Descent", "--optparams", "0.15"],
-        ["--act", "sigmoid", "--lambda", "0.6", "--horde", "gamma_chain", "--opt", "Descent", "--optparams", "0.0666667"],
-        ["--act", "sigmoid", "--lambda", "0.8", "--horde", "gamma_chain", "--opt", "Descent", "--optparams", "0.15"],
-        ["--act", "sigmoid", "--lambda", "0.9", "--horde", "gamma_chain", "--opt", "Descent", "--optparams", "0.225"]
+        ["--act", "sigmoid", "--params", "0.0", "--horde", "gamma_chain", "--opt", "Descent", "--optparams", "0.0131687"],
+        ["--act", "sigmoid", "--params", "0.2", "--horde", "gamma_chain", "--opt", "Descent", "--optparams", "0.1"],
+        ["--act", "sigmoid", "--params", "0.4", "--horde", "gamma_chain", "--opt", "Descent", "--optparams", "0.15"],
+        ["--act", "sigmoid", "--params", "0.6", "--horde", "gamma_chain", "--opt", "Descent", "--optparams", "0.0666667"],
+        ["--act", "sigmoid", "--params", "0.8", "--horde", "gamma_chain", "--opt", "Descent", "--optparams", "0.15"],
+        ["--act", "sigmoid", "--params", "0.9", "--horde", "gamma_chain", "--opt", "Descent", "--optparams", "0.225"]
     ]
     runs_iter = 6:(6+30)
 
