@@ -7,14 +7,14 @@ Pkg.activate(".")
 
 using Reproduce
 
-const save_loc = "final_compassworld_rnn_action"
-const exp_file = "experiment/compassworld_rnn_action.jl"
-const exp_module_name = :CompassWorldRNNActionExperiment
+const save_loc = "final_ringworld_gvfn_action_tdlambda"
+const exp_file = "experiment/ringworld_action.jl"
+const exp_module_name = :RingWorldExperiment
 const exp_func_name = :main_experiment
 
 #------ Learning Updates -------#
 
-const learning_update = "TD"
+const learning_update = "TDLambda"
 
 #------ Optimizers ----------#
 
@@ -32,23 +32,22 @@ function main()
         action=:store_true
         "--numsteps"
         arg_type=Int64
-        default=1000000
+        default=500000
     end
     parsed = parse_args(as)
     num_workers = parsed["numworkers"]
 
     arg_list = [
-        ["--horde", "forward", "--truncation", "1", "--opt", "Descent", "--optparams", "0.3375", "--feature", "standard"],
-        ["--horde", "forward", "--truncation", "2", "--opt", "Descent", "--optparams", "0.225", "--feature", "standard"],
-        ["--horde", "forward", "--truncation", "4", "--opt", "Descent", "--optparams", "0.50625", "--feature", "standard"],
-        ["--horde", "forward", "--truncation", "8", "--opt", "Descent", "--optparams", "0.3375", "--feature", "standard"],
-        ["--horde", "forward", "--truncation", "16", "--opt", "Descent", "--optparams", "0.3375", "--feature", "standard"],
-        ["--horde", "forward", "--truncation", "24", "--opt", "Descent", "--optparams", "0.3375", "--feature", "standard"],
-        ["--horde", "forward", "--truncation", "32", "--opt", "Descent", "--optparams", "0.50625", "--feature", "standard"]
+        ["--act", "sigmoid", "--params", "0.0", "--horde", "gamma_chain", "--opt", "Descent", "--optparams", "0.0131687"],
+        ["--act", "sigmoid", "--params", "0.2", "--horde", "gamma_chain", "--opt", "Descent", "--optparams", "0.1"],
+        ["--act", "sigmoid", "--params", "0.4", "--horde", "gamma_chain", "--opt", "Descent", "--optparams", "0.15"],
+        ["--act", "sigmoid", "--params", "0.6", "--horde", "gamma_chain", "--opt", "Descent", "--optparams", "0.0666667"],
+        ["--act", "sigmoid", "--params", "0.8", "--horde", "gamma_chain", "--opt", "Descent", "--optparams", "0.15"],
+        ["--act", "sigmoid", "--params", "0.9", "--horde", "gamma_chain", "--opt", "Descent", "--optparams", "0.225"]
     ]
-    runs_iter = 6:(6+10)
+    runs_iter = 6:(6+30)
 
-    static_args = ["--steps", string(parsed["numsteps"]), "--exp_loc", save_loc]
+    static_args = ["--alg", learning_update, "--steps", string(parsed["numsteps"]), "--exp_loc", save_loc]
     args_iterator = ArgLooper(arg_list, static_args, runs_iter, "--seed")
 
     if parsed["numjobs"]
@@ -69,6 +68,5 @@ function main()
     post_experiment(experiment, ret)
 
 end
-
 
 main()

@@ -9,7 +9,7 @@ using Reproduce
 
 const save_loc = "final_ringworld_rnn"
 const exp_file = "experiment/ringworld_rnn.jl"
-const exp_module_name = :RingWorldRNNExperiment
+const exp_module_name = :RingWorldRNNSansActionExperiment
 const exp_func_name = :main_experiment
 
 
@@ -60,7 +60,7 @@ function main()
     ]
     runs_iter = 6:(6+30)
 
-    static_args = ["--alg", learning_update, "--steps", string(parsed["numsteps"]), "--exp_loc", save_loc]
+    static_args = ["--steps", string(parsed["numsteps"]), "--exp_loc", save_loc]
     args_iterator = ArgLooper(arg_list, static_args, runs_iter, "--seed")
 
     if parsed["numjobs"]

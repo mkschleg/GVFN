@@ -5,6 +5,8 @@ using ProgressMeter
 using FileIO
 using JLD2
 
+# These functions are for grid searches.
+
 
 function save_settings(save_loc, settings_vec)
     if split(basename(save_loc), ".")[end] == "txt"
