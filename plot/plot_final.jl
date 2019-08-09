@@ -53,7 +53,7 @@ end
 function collect_sens_data(exp_loc, sens_param, product_args;
                            run_arg="run",
                            results_file="results.jld2", settings_file="settings.jld2", clean_func=identity,
-                           save_dir="collected_sens")
+                           save_dir="collected_sens", ignore_nans=false)
 
     if exp_loc[end] == '/'
         exp_loc = exp_loc[1:end-1]
@@ -97,11 +97,13 @@ function collect_sens_data(exp_loc, sens_param, product_args;
             for (idx, h) in enumerate(hashes)
                 v[idx] = clean_func(load(joinpath(head_dir, h, results_file)))
             end
-            println(stngs, ": ", v)
+
 
             sens_idx = findfirst(x->x==stngs[sens_param], diff_dict[sens_param])
-            avg_res[sens_idx] = mean(v)
-            std_err[sens_idx] = std(v)/sqrt(length(hashes))
+            filtered = filter(x->!isnan(x), v)
+            println(stngs, ": ", filtered)
+            avg_res[sens_idx] = mean(filtered)
+            std_err[sens_idx] = std(filter(x->!isnan(x), v))/sqrt(length(filter(x->!isnan(x), v)))
 
         end
 
@@ -132,7 +134,7 @@ function plot_sens_files(file_list, line_settings_list, save_file="tmp.pdf", ci 
 
 end
 
-function plot_lc_files(file_list, line_settings_list; save_file="tmp.pdf", ci=1.97, n=1, clean_func=identity, plot_back=gr, kwargs...)
+function plot_lc_files(file_list, line_settings_list; save_file="tmp.pdf", ci=1.97, n=1, clean_func=identity, plot_back=gr, ignore_nans=false, kwargs...)
 
     plot_back()
 
@@ -142,8 +144,13 @@ function plot_lc_files(file_list, line_settings_list; save_file="tmp.pdf", ci=1.
 
         ret = load(f)
         l = length(clean_func(ret["results"][1]))
-        avg = mean([mean(reshape(clean_func(v), n, Int64(l/n)); dims=1) for v in ret["results"]])'
-        std_err = (std([mean(reshape(clean_func(v), n, Int64(l/n)); dims=1) for v in ret["results"]])./sqrt(length(ret["results"])))'
+
+        filtered = ret["results"]
+        if ignore_nans
+            filtered = filter(x->mean(x)!=NaN, ret["results"])
+        end
+        avg = mean([mean(reshape(clean_func(v), n, Int64(l/n)); dims=1) for v in filtered])'
+        std_err = (std([mean(reshape(clean_func(v), n, Int64(l/n)); dims=1) for v in filtered])./sqrt(length(filtered)))'
 
         x = 0:n:l
 
