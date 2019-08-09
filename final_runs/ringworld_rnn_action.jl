@@ -33,16 +33,16 @@ function main()
     num_workers = parsed["numworkers"]
 
     arg_list = [
-        ["--truncation", "1", "--opt", "Descent", "--optparams", "0.00877915"]
-        ["--truncation", "2", "--opt", "Descent", "--optparams", "0.15"]
-        ["--truncation", "4", "--opt", "Descent", "--optparams", "0.1"]
-        ["--truncation", "8", "--opt", "Descent", "--optparams", "0.15"]
-        ["--truncation", "12", "--opt", "Descent", "--optparams", "0.1"]
+        ["--truncation", "1", "--opt", "Descent", "--optparams", "0.00877915"],
+        ["--truncation", "2", "--opt", "Descent", "--optparams", "0.15"],
+        ["--truncation", "4", "--opt", "Descent", "--optparams", "0.1"],
+        ["--truncation", "8", "--opt", "Descent", "--optparams", "0.15"],
+        ["--truncation", "12", "--opt", "Descent", "--optparams", "0.1"],
         ["--truncation", "16", "--opt", "Descent", "--optparams", "0.1"]
     ]
     runs_iter = 6:(6+30)
 
-    static_args = ["--alg", learning_update, "--steps", string(parsed["numsteps"]), "--exp_loc", save_loc]
+    static_args = ["--steps", string(parsed["numsteps"]), "--exp_loc", save_loc]
     args_iterator = ArgLooper(arg_list, static_args, runs_iter, "--seed")
 
     if parsed["numjobs"]
