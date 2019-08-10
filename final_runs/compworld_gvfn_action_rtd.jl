@@ -49,13 +49,12 @@ function main()
 
     arg_list = [
         ["--act", "sigmoid","--horde", "rafols", "--truncation", "1", "--opt", "Descent", "--optparams", "0.1", "--feature", "standard"],
-        ["--act", "sigmoid","--horde", "rafols", "--truncation", "2", "--opt", "Descent", "--optparams", "0.08", "--feature", "standard"],
-        ["--act", "sigmoid","--horde", "rafols", "--truncation", "4", "--opt", "Descent", "--optparams", "0.05", "--feature", "standard"],
-        ["--act", "sigmoid","--horde", "rafols", "--truncation", "8", "--opt", "Descent", "--optparams", "0.05", "--feature", "standard"],
-        ["--act", "sigmoid","--horde", "rafols", "--truncation", "12", "--opt", "Descent", "--optparams", "0.05", "--feature", "standard"],
-        ["--act", "sigmoid","--horde", "rafols", "--truncation", "16", "--opt", "Descent", "--optparams", "0.05", "--feature", "standard"],
-        ["--act", "sigmoid","--horde", "rafols", "--truncation", "24", "--opt", "Descent", "--optparams", "0.05", "--feature", "standard"],
-        ["--act", "sigmoid","--horde", "rafols", "--truncation", "32", "--opt", "Descent", "--optparams", "0.05", "--feature", "standard"]
+        ["--act", "sigmoid","--horde", "rafols", "--truncation", "2", "--opt", "Descent", "--optparams", "0.1", "--feature", "standard"],
+        ["--act", "sigmoid","--horde", "rafols", "--truncation", "4", "--opt", "Descent", "--optparams", "0.0444444", "--feature", "standard"],
+        ["--act", "sigmoid","--horde", "rafols", "--truncation", "8", "--opt", "Descent", "--optparams", "0.0444444", "--feature", "standard"],
+        ["--act", "sigmoid","--horde", "rafols", "--truncation", "16", "--opt", "Descent", "--optparams", "0.0444444", "--feature", "standard"],
+        ["--act", "sigmoid","--horde", "rafols", "--truncation", "24", "--opt", "Descent", "--optparams", "0.0444444", "--feature", "standard"],
+        ["--act", "sigmoid","--horde", "rafols", "--truncation", "32", "--opt", "Descent", "--optparams", "0.0666667", "--feature", "standard"]
     ]
     runs_iter = 6:(6+10)
 
