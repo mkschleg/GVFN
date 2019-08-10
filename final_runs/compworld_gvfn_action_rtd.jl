@@ -1,3 +1,13 @@
+#!/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/julia/1.1.0/bin/julia
+#SBATCH --mail-user=mkschleg@ualberta.ca
+#SBATCH --mail-type=ALL
+#SBATCH -o comp_rnn_final.out # Standard output
+#SBATCH -e comp_rnn_final.err # Standard error
+#SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
+#SBATCH --time=24:00:00 # Running time of 12 hours
+#SBATCH --ntasks=40
+#SBATCH --account=rrg-whitem
+
 using Pkg
 
 # cd("..")
@@ -7,7 +17,7 @@ Pkg.activate(".")
 
 using Reproduce
 
-const save_loc = "final_compassworld_gvfn_action_tdlambda"
+const save_loc = "final_compassworld_gvfn_action_rtd"
 const exp_file = "experiment/compassworld_action.jl"
 const exp_module_name = :CompassWorldActionExperiment
 const exp_func_name = :main_experiment
@@ -39,15 +49,15 @@ function main()
 
     arg_list = [
         ["--act", "sigmoid","--horde", "rafols", "--truncation", "1", "--opt", "Descent", "--optparams", "0.1", "--feature", "standard"],
-        ["--act", "sigmoid","--horde", "rafols", "--truncation", "2", "--opt", "Descent", "--optparams", "0.1", "--feature", "standard"],
-        ["--act", "sigmoid","--horde", "rafols", "--truncation", "4", "--opt", "Descent", "--optparams", "0.1", "--feature", "standard"],
-        ["--act", "sigmoid","--horde", "rafols", "--truncation", "8", "--opt", "Descent", "--optparams", "0.1", "--feature", "standard"],
-        ["--act", "sigmoid","--horde", "rafols", "--truncation", "12", "--opt", "Descent", "--optparams", "0.1", "--feature", "standard"],
-        ["--act", "sigmoid","--horde", "rafols", "--truncation", "16", "--opt", "Descent", "--optparams", "0.1", "--feature", "standard"],
-        ["--act", "sigmoid","--horde", "rafols", "--truncation", "24", "--opt", "Descent", "--optparams", "0.1", "--feature", "standard"],
-        ["--act", "sigmoid","--horde", "rafols", "--truncation", "32", "--opt", "Descent", "--optparams", "0.1", "--feature", "standard"]
+        ["--act", "sigmoid","--horde", "rafols", "--truncation", "2", "--opt", "Descent", "--optparams", "0.08", "--feature", "standard"],
+        ["--act", "sigmoid","--horde", "rafols", "--truncation", "4", "--opt", "Descent", "--optparams", "0.05", "--feature", "standard"],
+        ["--act", "sigmoid","--horde", "rafols", "--truncation", "8", "--opt", "Descent", "--optparams", "0.05", "--feature", "standard"],
+        ["--act", "sigmoid","--horde", "rafols", "--truncation", "12", "--opt", "Descent", "--optparams", "0.05", "--feature", "standard"],
+        ["--act", "sigmoid","--horde", "rafols", "--truncation", "16", "--opt", "Descent", "--optparams", "0.05", "--feature", "standard"],
+        ["--act", "sigmoid","--horde", "rafols", "--truncation", "24", "--opt", "Descent", "--optparams", "0.05", "--feature", "standard"],
+        ["--act", "sigmoid","--horde", "rafols", "--truncation", "32", "--opt", "Descent", "--optparams", "0.05", "--feature", "standard"]
     ]
-    runs_iter = 6:(6+20)
+    runs_iter = 6:(6+10)
 
     static_args = ["--alg", learning_update, "--steps", string(parsed["numsteps"]), "--exp_loc", save_loc]
     args_iterator = ArgLooper(arg_list, static_args, runs_iter, "--seed")

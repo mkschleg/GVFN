@@ -1,6 +1,6 @@
 #!/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/julia/1.1.0/bin/julia
-#SBATCH -o comp_gvfn_tdlambda.out # Standard output
-#SBATCH -e comp_gvfn_tdlambda.err # Standard error
+#SBATCH -o comp_gvfn_action_rtd.out # Standard output
+#SBATCH -e comp_gvfn_action_rtd.err # Standard error
 #SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
 #SBATCH --time=24:00:00 # Running time of 12 hours
 #SBATCH --ntasks=64
@@ -15,7 +15,7 @@ Pkg.activate(".")
 
 using Reproduce
 
-const save_loc = "compassworld_gvfn_action_tdlambda"
+const save_loc = "compassworld_gvfn_action_sgd"
 const exp_file = "experiment/compassworld_action.jl"
 const exp_module_name = :CompassWorldActionExperiment
 const exp_func_name = :main_experiment
@@ -30,7 +30,7 @@ const truncations = [1, 4, 8, 16, 24, 32]
 
 # Parameters for the SGD Algorithm
 const optimizer = "Descent"
-const alphas = clamp.(0.1*1.5.^(-12:2:4), 0.0, 1.0)
+const alphas = clamp.(0.1*1.5.^(-6:6), 0.0, 1.0)
 # const alphas = 0.1*1.5.^(-6:6)
 
 function make_arguments_tdlambda(args::Dict)
@@ -71,9 +71,9 @@ function main()
         "horde"=>["rafols", "forward"],
         "alpha"=>alphas,
         "truncation"=>truncations,
-        "feature"=>["standard", "action"],
+        "feature"=>["standard"],
         "seed"=>collect(1:5),
-        "act"=>["relu", "sigmoid"]
+        "act"=>["sigmoid"]
     ])
     arg_list = ["feature", "act", "horde", "alpha", "truncation", "seed"]
     

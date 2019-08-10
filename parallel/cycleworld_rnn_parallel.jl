@@ -2,8 +2,8 @@
 #SBATCH -o cycle_rnn.out # Standard output
 #SBATCH -e cycle_rnn.err # Standard error
 #SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
-#SBATCH --time=12:00:00 # Running time of 12 hours
-#SBATCH --ntasks=128
+#SBATCH --time=24:00:00 # Running time of 12 hours
+#SBATCH --ntasks=64
 #SBATCH --account=rrg-whitem
 
 using Pkg
