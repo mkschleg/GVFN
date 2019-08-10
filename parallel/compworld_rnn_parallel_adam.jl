@@ -1,9 +1,11 @@
 #!/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/julia/1.1.0/bin/julia
+#SBATCH --mail-user=mkschleg@ualberta.ca
+#SBATCH --mail-type=ALL
 #SBATCH -o comp_rnn_adam.out # Standard output
 #SBATCH -e comp_rnn_adam.err # Standard error
 #SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
 #SBATCH --time=24:00:00 # Running time of 12 hours
-#SBATCH --ntasks=128
+#SBATCH --ntasks=64
 #SBATCH --account=rrg-whitem
 
 using Pkg
@@ -22,7 +24,8 @@ const exp_func_name = :main_experiment
 # Parameters for the SGD Algorithm
 const optimizer = "ADAM"
 const alphas = 0.01*1.5.^(-8:3)
-const truncations = [1, 5, 10, 16, 24, 32]
+# const truncations = [1, 5, 10, 16, 24, 32]
+const truncations = [1, 4, 8, 16, 24, 32, 48, 64]
 
 function make_arguments(args::Dict)
     horde = args["horde"]
@@ -68,7 +71,7 @@ function main(args::Vector{String}=ARGS)
     ])
     arg_list = ["feature", "horde", "alpha", "truncation", "seed", "cell"]
 
-    static_args = ["--steps", string(parsed[numsteps]), "--exp_loc", save_loc]
+    static_args = ["--steps", string(parsed["numsteps"]), "--exp_loc", save_loc]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments)
 
     if parsed["numjobs"]

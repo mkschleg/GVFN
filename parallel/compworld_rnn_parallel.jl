@@ -23,7 +23,8 @@ const exp_func_name = :main_experiment
 
 # Parameters for the SGD Algorithm
 const optimizer = "Descent"
-const alphas = clamp.(0.1*1.5.^(-2:4), 0.0, 1.0)
+# const alphas = clamp.(0.1*1.5.^(-2:4), 0.0, 1.0)
+const alphas = clamp.(0.1*1.5.^(5:6), 0.0, 1.0)
 const truncations = [1, 4, 8, 16, 24, 32, 48, 64]
 
 function make_arguments(args::Dict)

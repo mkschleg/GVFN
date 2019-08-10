@@ -1,9 +1,9 @@
 #!/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/julia/1.1.0/bin/julia
-#SBATCH -o comp_rnn.out # Standard output
-#SBATCH -e comp_rnn.err # Standard error
+#SBATCH -o comp_rnn_action.out # Standard output
+#SBATCH -e comp_rnn_action.err # Standard error
 #SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
-#SBATCH --time=24:00:00 # Running time of 12 hours
-#SBATCH --ntasks=128
+#SBATCH --time=12:00:00 # Running time of 12 hours
+#SBATCH --ntasks=32
 #SBATCH --account=rrg-whitem
 
 using Pkg
@@ -22,7 +22,7 @@ const exp_func_name = :main_experiment
 # Parameters for the SGD Algorithm
 const optimizer = "Descent"
 const alphas = clamp.(0.1*1.5.^(-6:4), 0.0, 1.0)
-const truncations = [1, 4, 8, 16, 24, 32]
+const truncations = [1, 2, 4, 8, 16, 24, 32]
 
 function make_arguments(args::Dict)
     horde = args["horde"]
