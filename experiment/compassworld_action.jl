@@ -196,7 +196,7 @@ function main_experiment(args::Vector{String})
     action = start!(agent, s_t; rng=rng) # Start agent
     verbose = parsed["verbose"]
     
-    for step in 1:num_steps
+    @showprogress 0.1 "Step: " for step in 1:num_steps
 
         _, s_tp1, _, _ = step!(env, action)
         out_preds, action = step!(agent, s_tp1, 0, false; rng=rng)
