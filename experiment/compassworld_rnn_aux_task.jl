@@ -46,13 +46,13 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         default=8
     end
 
-    # shared settings
-    @add_arg_table as begin
-        "--truncation", "-t"
-        help="Truncation parameter for bptt"
-        arg_type=Int64
-        default=1
-    end
+    # # shared settings
+    # @add_arg_table as begin
+    #     "--truncation", "-t"
+    #     help="Truncation parameter for bptt"
+    #     arg_type=Int64
+    #     default=1
+    # end
 
     cwu.horde_settings!(as, "aux")
     FLU.opt_settings!(as)
@@ -177,7 +177,7 @@ function main_experiment(args::Vector{String})
         out_preds, action = step!(agent, s_tp1, 0, false; rng=rng)
 
         out_pred_strg[step, :] .= Flux.data.(out_preds[1:length(out_horde)])
-        out_err_strg[step, :] .= out_pred_strg[step, :] .- oracle(env, "forward")
+        out_err_strg[step, :] .= out_pred_strg[step, :] .- cwu.oracle(env, "forward")
         # println(out_pred_strg[step, :])
     end
 
