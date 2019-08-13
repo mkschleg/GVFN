@@ -15,7 +15,7 @@ Pkg.activate(".")
 
 using Reproduce
 
-const save_loc = "compassworld_gvfn_action_sgd"
+const save_loc = "compassworld_gvfn_action_sgd_gammas"
 const exp_file = "experiment/compassworld_action.jl"
 const exp_module_name = :CompassWorldActionExperiment
 const exp_func_name = :main_experiment
@@ -94,7 +94,7 @@ function main()
                             args_iterator)
 
     create_experiment_dir(experiment)
-    add_experiment(experiment; settings_dir="settings", tldr="Gamma Hordes with Weightings from AJ")
+    add_experiment(experiment; settings_dir="settings")
     ret = job(experiment; num_workers=num_workers, job_file_dir=parsed["jobloc"])
     post_experiment(experiment, ret)
 
