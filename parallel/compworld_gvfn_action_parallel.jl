@@ -68,7 +68,7 @@ function main()
 
 
     arg_dict = Dict([
-        "horde"=>["rafols", "forward"],
+        "horde"=>["aj_gammas_term", "aj_gammas_scaled"],
         "alpha"=>alphas,
         "truncation"=>truncations,
         "feature"=>["standard"],
@@ -94,7 +94,7 @@ function main()
                             args_iterator)
 
     create_experiment_dir(experiment)
-    add_experiment(experiment; settings_dir="settings")
+    add_experiment(experiment; settings_dir="settings", tldr="Gamma Hordes with Weightings from AJ")
     ret = job(experiment; num_workers=num_workers, job_file_dir=parsed["jobloc"])
     post_experiment(experiment, ret)
 
