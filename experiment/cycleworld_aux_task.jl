@@ -1,6 +1,6 @@
 __precompile__(true)
 
-module CycleWorldRNNExperiment
+module CycleWorldRNNATExperiment
 
 using GVFN: CycleWorld, step!, start!
 using GVFN
@@ -19,12 +19,7 @@ using DataStructures: CircularBuffer
 import GVFN.CycleWorldUtils
 import GVFN.FluxUtils
 
-function Flux.Optimise.apply!(o::Flux.RMSProp, x, Δ)
-  η, ρ = o.eta, o.rho
-  acc = get!(o.acc, x, zero(x))::typeof(Flux.data(x))
-  @. acc = ρ * acc + (1 - ρ) * Δ^2
-  @. Δ *= η / (√acc + Flux.Optimise.ϵ)
-end
+
 
 function exp_settings(as::ArgParseSettings = ArgParseSettings())
 
@@ -33,8 +28,9 @@ function exp_settings(as::ArgParseSettings = ArgParseSettings())
 
     #Cycle world specific settings
     CycleWorldUtils.env_settings!(as)
-    CycleWorldUtils.horde_settings!(as)
+    CycleWorldUtils.horde_settings!(as, "aux")
 
+    
     # RNN
     FluxUtils.rnn_settings!(as)
     FluxUtils.opt_settings!(as)
@@ -42,7 +38,7 @@ function exp_settings(as::ArgParseSettings = ArgParseSettings())
     return as
 end
 
-build_features(s) = [1.0, s[1], 1-s[1]]
+# build_features(s) = [1.0, s[1], 1-s[1]]
 
 function main_experiment(args::Vector{String})
 
@@ -67,20 +63,26 @@ function main_experiment(args::Vector{String})
     rng = Random.MersenneTwister(seed)
 
     env = CycleWorld(parsed["chain"])
-    
-    horde = CycleWorldUtils.get_horde(parsed)
+
+
+
+    horde = CycleWorldUtils.get_horde("onestep", parsed["chain"], 0.0)
+    aux_horde = CycleWorldUtils.get_horde(parsed, "aux", length(horde))
     fc = (state, action)->CycleWorldUtils.build_features_cycleworld(state)
     fs = 3
     ap = GVFN.RandomActingPolicy([1.0])
     
     # agent = CycleWorldRNNAgent(parsed)
-    agent = GVFN.RNNAgent(horde, fc, fs, ap, parsed;
+    agent = GVFN.RNNAgent(GVFN.Horde([horde.gvfs; aux_horde.gvfs]), fc, fs, ap, parsed;
                           rng=rng,
                           init_func=(dims...)->glorot_uniform(rng, dims...))
-    num_gvfs = length(agent.horde)
+    num_gvfs = length(horde)
 
     out_pred_strg = zeros(num_steps, num_gvfs)
     out_err_strg = zeros(num_steps, num_gvfs)
+
+    at_pred_strg = zeros(num_steps, length(aux_horde))
+    at_err_strg = zeros(num_steps, length(aux_horde))
 
     _, s_t = start!(env)
     action = start!(agent, s_t; rng=rng)
@@ -92,15 +94,18 @@ function main_experiment(args::Vector{String})
         _, s_tp1, _, _ = step!(env, action)
         out_preds, action = step!(agent, s_tp1, 0, false; rng=rng)
 
-        out_pred_strg[step,:] = Flux.data(out_preds)
-        out_err_strg[step, :] = out_pred_strg[step, :] .- CycleWorldUtils.oracle(env, parsed["horde"], parsed["gamma"])
+        out_pred_strg[step, :] = Flux.data(out_preds[1:num_gvfs])
+        out_err_strg[step, :] = out_pred_strg[step, :] .- CycleWorldUtils.oracle(env, "onestep", 0.0)
+
+        at_pred_strg[step, :] = Flux.data(out_preds[(num_gvfs+1):end])
+        at_err_strg[step, :] = at_pred_strg[step, :] .- CycleWorldUtils.oracle(env, parsed["auxhorde"], parsed["auxgamma"])
 
         if verbose
             println("step: $(step)")
             println(env)
             # println(agent)
             println(out_preds)
-            println("preds: ", CycleWorldUtils.oracle(env, parsed["horde"], parsed["gamma"]))
+            # println("preds: ", CycleWorldUtils.oracle(env, "onestep", parsed["gamma"]))
             # println("Agent rnn-state: ", agent.rnn.state)
         end
 
@@ -109,7 +114,7 @@ function main_experiment(args::Vector{String})
         end
     end
 
-    results = Dict(["out_pred"=>out_pred_strg, "out_err_strg"=>out_err_strg])
+    results = Dict(["out_pred"=>out_pred_strg, "out_err_strg"=>out_err_strg, "at_err_strg"=>at_err_strg, "at_pred"=>at_pred_strg])
     if !parsed["working"]
         save(savefile, results)
     else

@@ -78,7 +78,7 @@ function JuliaRL.step!(agent::RNNAuxTaskAgent, env_s_tp1, r, terminal; rng=Rando
 
     # RNN update function
     update!(agent.out_model, agent.rnn,
-            agent.horde, agent.opt,
+            agent.horde, agent.at_horde, agent.opt,
             agent.lu, agent.hidden_state_init,
             agent.state_list, env_s_tp1,
             agent.action, agent.action_prob)

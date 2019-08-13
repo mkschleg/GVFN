@@ -3,7 +3,7 @@ module RingWorldUtils
 
 using ..GVFN, Reproduce
 
-RWC = GVFN.RingWorldConst
+const RWC = GVFN.RingWorldConst
 
 # export settings!, onestep, chain, gamma_chain, get_horde, oracle
 
@@ -33,44 +33,44 @@ function onestep()
     return Horde(gvfs)
 end
 
-function half_chain(chain_length::Integer)
+function half_chain(chain_length::Integer, pred_offset::Integer=0)
     gvfs = [[GVF(FeatureCumulant(1), ConstantDiscount(0.0), PersistentPolicy(RWC.FORWARD))];
-            [GVF(PredictionCumulant(i-1), ConstantDiscount(0.0), PersistentPolicy(RWC.FORWARD)) for i in 2:chain_length];
+            [GVF(PredictionCumulant(i-1 + pred_offset), ConstantDiscount(0.0), PersistentPolicy(RWC.FORWARD)) for i in 2:chain_length];
             ]
     return Horde(gvfs)
 end
 
-function gamma_half_chain(chain_length::Integer, γ::AbstractFloat)
+function gamma_half_chain(chain_length::Integer, γ::AbstractFloat, pred_offset::Integer=0)
     gvfs = [[GVF(FeatureCumulant(1), ConstantDiscount(0.0), PersistentPolicy(RWC.FORWARD))];
-            [GVF(PredictionCumulant(i-1), ConstantDiscount(0.0), PersistentPolicy(RWC.FORWARD)) for i in 2:chain_length];
+            [GVF(PredictionCumulant(i-1 + pred_offset), ConstantDiscount(0.0), PersistentPolicy(RWC.FORWARD)) for i in 2:chain_length];
             [GVF(FeatureCumulant(1), StateTerminationDiscount(γ, ((env_state)->env_state[1] == 1)), PersistentPolicy(RWC.FORWARD))];
             ]
     return Horde(gvfs)
 end
 
-function chain(chain_length::Integer)
+function chain(chain_length::Integer, pred_offset::Integer=0)
     gvfs = [[GVF(FeatureCumulant(1), ConstantDiscount(0.0), PersistentPolicy(RWC.FORWARD))];
-            [GVF(PredictionCumulant(i-1), ConstantDiscount(0.0), PersistentPolicy(RWC.FORWARD)) for i in 2:chain_length];
+            [GVF(PredictionCumulant(i-1 + pred_offset), ConstantDiscount(0.0), PersistentPolicy(RWC.FORWARD)) for i in 2:chain_length];
             [GVF(FeatureCumulant(1), ConstantDiscount(0.0), PersistentPolicy(RWC.BACKWARD))];
-            [GVF(PredictionCumulant(chain_length + i-1), ConstantDiscount(0.0), PersistentPolicy(RWC.BACKWARD)) for i in 2:chain_length]
+            [GVF(PredictionCumulant(chain_length + i-1 + pred_offset), ConstantDiscount(0.0), PersistentPolicy(RWC.BACKWARD)) for i in 2:chain_length]
             ]
     return Horde(gvfs)
 end
 
-function gamma_chain(chain_length::Integer, γ::AbstractFloat)
+function gamma_chain(chain_length::Integer, γ::AbstractFloat, pred_offset::Integer=0)
     gvfs = [[GVF(FeatureCumulant(1), ConstantDiscount(0.0), PersistentPolicy(RWC.FORWARD))];
-            [GVF(PredictionCumulant(i-1), ConstantDiscount(0.0), PersistentPolicy(RWC.FORWARD)) for i in 2:chain_length];
+            [GVF(PredictionCumulant(i-1 + pred_offset), ConstantDiscount(0.0), PersistentPolicy(RWC.FORWARD)) for i in 2:chain_length];
             [GVF(FeatureCumulant(1), StateTerminationDiscount(γ, ((env_state)->env_state[1] == 1)), PersistentPolicy(RWC.FORWARD))];
             [GVF(FeatureCumulant(1), ConstantDiscount(0.0), PersistentPolicy(RWC.BACKWARD))];
-            [GVF(PredictionCumulant(chain_length + 1 + i-1), ConstantDiscount(0.0), PersistentPolicy(RWC.BACKWARD)) for i in 2:chain_length];
+            [GVF(PredictionCumulant(chain_length + 1 + i-1 + pred_offset), ConstantDiscount(0.0), PersistentPolicy(RWC.BACKWARD)) for i in 2:chain_length];
             [GVF(FeatureCumulant(1), StateTerminationDiscount(γ, ((env_state)->env_state[1] == 1)), PersistentPolicy(RWC.BACKWARD))];
             ]
     return Horde(gvfs)
 end
 
-function gamma_chain_scaled(chain_length::Integer, γ::AbstractFloat)
+function gamma_chain_scaled(chain_length::Integer, γ::AbstractFloat, pred_offset::Integer=0)
     gvfs = [[GVF(FeatureCumulant(1), ConstantDiscount(0.0), PersistentPolicy(RWC.FORWARD))];
-            [GVF(PredictionCumulant(i-1), ConstantDiscount(0.0), PersistentPolicy(RWC.FORWARD)) for i in 2:chain_length];
+            [GVF(PredictionCumulant(i-1 + pred_offset), ConstantDiscount(0.0), PersistentPolicy(RWC.FORWARD)) for i in 2:chain_length];
             [GVF(ScaledCumulant(1-γ, FeatureCumulant(1)), ConstantDiscount(γ), PersistentPolicy(RWC.FORWARD))];
             [GVF(FeatureCumulant(1), ConstantDiscount(0.0), PersistentPolicy(RWC.BACKWARD))];
             [GVF(PredictionCumulant(chain_length + 1 + i-1), ConstantDiscount(0.0), PersistentPolicy(RWC.BACKWARD)) for i in 2:chain_length]
@@ -111,14 +111,14 @@ function gammas_aj_scaled()
     return gammas_scaled(gms)
 end
 
-function get_horde(horde_str::AbstractString, chain_length::Integer, gamma::AbstractFloat)
-    horde = chain(chain_length)
+function get_horde(horde_str::AbstractString, chain_length::Integer, gamma::AbstractFloat, pred_offset::Integer=0)
+    horde = chain(chain_length, pred_offset)
     if horde_str == "gamma_chain"
-        horde = gamma_chain(chain_length, gamma)
+        horde = gamma_chain(chain_length, gamma, pred_offset)
     elseif horde_str == "half_chain"
-        horde = half_chain(chain_length)
+        horde = half_chain(chain_length, pred_offset)
     elseif horde_str == "gamma_half_chain"
-        horde = gamma_half_chain(chain_length, gammaz)
+        horde = gamma_half_chain(chain_length, gamma, pred_offset)
     elseif horde_str == "onestep"
         horde = onestep()
     elseif horde_str == "gammas"
@@ -137,20 +137,24 @@ function get_horde(horde_str::AbstractString, chain_length::Integer, gamma::Abst
     return horde
 end
 
-get_horde(parsed::Dict, prefix="") = get_horde(parsed["$(prefix)horde"], parsed["size"], parsed["$(prefix)gamma"])
+get_horde(parsed::Dict, prefix="", pred_offset::Integer=0) =
+    get_horde(parsed["$(prefix)horde"], parsed["size"], parsed["$(prefix)gamma"], pred_offset)
 
 function oracle(env::RingWorld, horde_str, γ=0.9)
     chain_length = env.ring_size
     state = env.agent_state
     ret = Array{Float64,1}()
-    # if horde_str == "chain"
-    #     ret = zeros(chain_length)
-    #     ret[chain_length - state] = 1
-    # elseif horde_str == "gamma_chain"
-    #     ret = zeros(chain_length + 1)
-    #     ret[chain_length - state] = 1
-    #     ret[end] = γ^(chain_length - state - 1)
-    if horde_str == "onestep"
+    if horde_str == "chain"
+        ret = zeros(chain_length*2)
+        ret[1 + chain_length - state] = 1
+        ret[chain_length + state] = 1
+    elseif horde_str == "gamma_chain"
+        ret = zeros(chain_length*2 + 2)
+        ret[1 + chain_length - state] = 1
+        ret[chain_length + 1 + state] = 1
+        ret[chain_length + 1] = γ^(chain_length - state)
+        ret[end] = γ^(state - 1)
+    elseif horde_str == "onestep"
         #TODO: Hack fix.
         ret = zeros(2)
         ret[1] = state == chain_length ? 1 : 0

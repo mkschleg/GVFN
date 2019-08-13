@@ -29,24 +29,26 @@ end
 function arg_parse(as::ArgParseSettings = ArgParseSettings())
 
     #Experiment
-    @add_arg_table as begin
-        "--exp_loc"
-        help="Location of experiment"
-        arg_type=String
-        default="tmp"
-        "--seed"
-        help="Seed of rng"
-        arg_type=Int64
-        default=0
-        "--steps"
-        help="number of steps"
-        arg_type=Int64
-        default=100
-        "--working"
-        action=:store_true
-        "--verbose"
-        action=:store_true
-    end
+    # @add_arg_table as begin
+    #     "--exp_loc"
+    #     help="Location of experiment"
+    #     arg_type=String
+    #     default="tmp"
+    #     "--seed"
+    #     help="Seed of rng"
+    #     arg_type=Int64
+    #     default=0
+    #     "--steps"
+    #     help="number of steps"
+    #     arg_type=Int64
+    #     default=100
+    #     "--working"
+    #     action=:store_true
+    #     "--verbose"
+    #     action=:store_true
+    # end
+
+    GVFN.exp_settings!(as)
 
 
     #Compass World
@@ -195,8 +197,11 @@ function main_experiment(args::Vector{String})
     
     action = start!(agent, s_t; rng=rng) # Start agent
     verbose = parsed["verbose"]
+    progress = parsed["progress"]
+
+    prg_bar = ProgressMeter.Progress(num_steps, "Step: ")
     
-    @showprogress 0.1 "Step: " for step in 1:num_steps
+    for step in 1:num_steps
 
         _, s_tp1, _, _ = step!(env, action)
         out_preds, action = step!(agent, s_tp1, 0, false; rng=rng)
@@ -209,6 +214,10 @@ function main_experiment(args::Vector{String})
             println(env)
             println(agent)
             println(out_preds)
+        end
+
+        if progress
+           next!(prg_bar)
         end
 
         

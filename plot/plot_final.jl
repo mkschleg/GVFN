@@ -53,7 +53,7 @@ end
 function collect_sens_data(exp_loc, sens_param, product_args;
                            run_arg="run",
                            results_file="results.jld2", settings_file="settings.jld2", clean_func=identity,
-                           save_dir="collected_sens", ignore_nans=false)
+                           save_dir="collected_sens", ignore_nans=false, ignore_sens=nothing)
 
     if exp_loc[end] == '/'
         exp_loc = exp_loc[1:end-1]
@@ -66,6 +66,10 @@ function collect_sens_data(exp_loc, sens_param, product_args;
 
     ic = ItemCollection(exp_loc)
     diff_dict = diff(ic.items)
+    if ignore_sens != nothing
+        diff_dict[sens_param] = filter(x->x!=ignore_sens, diff_dict[sens_param])
+        println(diff_dict[sens_param])
+    end
     args = Iterators.product([diff_dict[arg] for arg in product_args]...)
 
     println(collect(args))
@@ -100,10 +104,12 @@ function collect_sens_data(exp_loc, sens_param, product_args;
 
 
             sens_idx = findfirst(x->x==stngs[sens_param], diff_dict[sens_param])
-            filtered = filter(x->!isnan(x), v)
-            println(stngs, ": ", filtered)
-            avg_res[sens_idx] = mean(filtered)
-            std_err[sens_idx] = std(filter(x->!isnan(x), v))/sqrt(length(filter(x->!isnan(x), v)))
+            if sens_idx != nothing
+                filtered = filter(x->!isnan(x), v)
+                println(stngs, ": ", filtered)
+                avg_res[sens_idx] = mean(filtered)
+                std_err[sens_idx] = std(filter(x->!isnan(x), v))/sqrt(length(filter(x->!isnan(x), v)))
+            end
 
         end
 

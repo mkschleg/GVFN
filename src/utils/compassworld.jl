@@ -49,27 +49,27 @@ function forward()
     return Horde(gvfs)
 end
 
-function gammas_term()
+function gammas_term(gammas = [collect(0.0:0.05:0.95); [0.975, 0.99]])
     cwc = GVFN.CompassWorldConst
     gvfs = Array{GVF, 1}()
     for color in 1:5
         new_gvfs = [GVF(
             FeatureCumulant(color),
             StateTerminationDiscount(γ, ((env_state)->env_state[cwc.WHITE] == 0)),
-            PersistentPolicy(cwc.FORWARD)) for γ in [collect(0.0:0.05:0.95); [0.975, 0.99]]]
+            PersistentPolicy(cwc.FORWARD)) for γ in gammas]
         append!(gvfs, new_gvfs)
     end
     return Horde(gvfs)
 end
 
-function gammas_scaled()
+function gammas_scaled(gammas = [collect(0.0:0.05:0.95); [0.975, 0.99]])
     cwc = GVFN.CompassWorldConst
     gvfs = Array{GVF, 1}()
     for color in 1:5
         new_gvfs = [GVF(
             ScaledCumulant(1-γ, FeatureCumulant(color)),
             ConstantDiscount(γ),
-            PersistentPolicy(cwc.FORWARD)) for γ in [collect(0.0:0.05:0.95); [0.975, 0.99]]]
+            PersistentPolicy(cwc.FORWARD)) for γ in gammas]
         append!(gvfs, new_gvfs)
         # new_gvfs = [GVF(FeatureCumulant(color), StateTerminationDiscount(γ, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD)) for γ in 0.0:0.05:0.95]
     end
@@ -108,6 +108,10 @@ function get_horde(horde_str::AbstractString)
         horde = gammas_term()
     elseif horde_str == "gammas_scaled"
         horde = gammas_scaled()
+    elseif horde_str == "aj_gammas_scaled"
+        horde = gammas_scaled(1.0 .- 2.0 .^ collect(-7:-1))
+    elseif horde_str == "aj_gammas_term"
+        horde = gammas_term(1.0 .- 2.0 .^ collect(-7:-1))
     elseif horde_str == "test"
         horde = test_network()
     end
