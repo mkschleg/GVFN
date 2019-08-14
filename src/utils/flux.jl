@@ -71,7 +71,11 @@ function get_activation(act::AbstractString)
     elseif act == "linear"
         return Flux.identity
     elseif act == "clip"
-        
+        return clip
+    elseif act == "relu"
+        return Flux.relu
+    elseif act == "softplus"
+        return Flux.softplus
     else
         throw("$(act) not known...")
     end

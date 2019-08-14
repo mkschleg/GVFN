@@ -38,12 +38,14 @@ end
 
 get(cumulant::PredictionCumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1) = preds_tp1[cumulant.idx]
 
-struct ScaledCumulant{T} <: AbstractCumulant
-    idx::Int
-    γ::T
+struct ScaledCumulant{F<:Number, T<:AbstractCumulant} <: AbstractCumulant
+    scale::F
+    cumulant::T
 end
 
-get(c::ScaledCumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1) = preds_tp1[c.idx] * (1.0-c.γ)
+get(cumulant::ScaledCumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1) =
+    cumulant.scale*get(cumulant.cumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1)
+
 
 """
 Discounting
@@ -93,17 +95,17 @@ get(π::PersistentPolicy, state_t, action_t, state_tp1, action_tp1, preds_tp1) =
 struct RandomPolicy{T<:AbstractFloat} <: AbstractPolicy
     probabilities::Array{T,1}
     weight_vec::Weights{T, T, Array{T, 1}}
-    RandomPolicy{T}(probabilities::Array{T,1}) where {T<:AbstractFloat} = new{T}(probabilities, Weights(probabilities))
+    RandomPolicy(probabilities::Array{T,1}) where {T<:AbstractFloat} = new{T}(probabilities, Weights(probabilities))
 end
 
 get(π::RandomPolicy, state_t, action_t, state_tp1, action_tp1, preds_tp1) = π.probabilities[action_t]
 
-StatsBase.sample(π::RandomPolicy) = sample(Random.GLOBAL_RNG, π)
-StatsBase.sample(rng::Random.AbstractRNG, π::RandomPolicy) = sample(rng, π.weight_vec, 1:length(π.weight_vec))
+StatsBase.sample(π::RandomPolicy) = StatsBase.sample(Random.GLOBAL_RNG, π)
+StatsBase.sample(rng::Random.AbstractRNG, π::RandomPolicy) = StatsBase.sample(rng, π.weight_vec)
+StatsBase.sample(rng::Random.AbstractRNG, π::RandomPolicy, state) = StatsBase.sample(rng, π.weight_vec)
 
 struct FunctionalPolicy{F} <: AbstractPolicy
     func::F
-    
 end
 
 Base.get(π::FunctionalPolicy, state_t, action_t, state_tp1, action_tp1, preds_tp1) =
