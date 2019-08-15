@@ -34,6 +34,14 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         help="number of steps"
         arg_type=Int64
         default=600000
+        "--valSteps"
+        help="number of validation steps"
+        arg_type=Int64
+        default=200000
+        "--testSteps"
+        help="number of test steps"
+        arg_type=Int64
+        default=200000
         "--working"
         action=:store_true
     end
@@ -104,6 +112,8 @@ function main_experiment(args::Vector{String})
     end
 
     num_steps = parsed["steps"]
+    num_val = parsed["valSteps"]
+    num_test = parsed["testSteps"]
     seed = parsed["seed"]
     rng = Random.MersenneTwister(seed)
 
@@ -132,7 +142,21 @@ function main_experiment(args::Vector{String})
         predictions[step] = Flux.data(pred[1])
     end
 
-    results = Dict("GroundTruth"=>gt, "Predictions"=>predictions)
+    valPreds=zeros(Float64,num_val)
+    @showprogress 0.1 "Validation Step: " for step in 1:valSteps
+        s_tp1= step!(env)
+        pred = predict!(agent, s_tp1,0,false;rng=rng)
+        valPreds[step] = Flux.data(pred[1])
+    end
+
+    testPreds=zeros(Float64,num_test)
+    @showprogress 0.1 "Test Step: " for step in 1:testSteps
+        s_tp1= step!(env)
+        pred = predict!(agent, s_tp1,0,false;rng=rng)
+        testPreds[step] = Flux.data(pred[1])
+    end
+
+    results = Dict("GroundTruth"=>gt, "Predictions"=>predictions, "ValidationPredictions"=>valPreds,"TestPredictions"=>testPreds)
     if !parsed["working"]
         JLD2.@save savefile results
     else

@@ -50,8 +50,6 @@ function MackeyGlassAgent(parsed; rng=Random.GLOBAL_RNG)
     return MackeyGlassAgent(lu, opt, gvfn, state_list, hidden_state_init, zeros(Float32, 1), model, out_horde, horizon, ϕbuff)
 end
 
-end
-
 function start!(agent::MackeyGlassAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
 
     fill!(agent.state_list, zeros(1))
@@ -80,6 +78,28 @@ function step!(agent::MackeyGlassAgent, env_s_tp1, r, terminal; rng=Random.GLOBA
     agent.hidden_state_init .= Flux.data(preds[1])
 
     return Flux.data.(out_preds)
+end
+
+function predict!(agent::MackeyGlassAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG,kwargs...)
+    push!(agent.state_list, env_s_tp1)
+
+    #update!(agent.gvfn, agent.opt, agent.lu, agent.hidden_state_init, agent.state_list, env_s_tp1)
+
+    reset!(agent.gvfn, agent.hidden_state_init)
+    preds = agent.gvfn.(agent.state_list)
+
+    #push!(agent.ϕbuff, Flux.data.(preds))
+    # if DataStructures.isfull(agent.ϕbuff)
+    #     update!(agent.model, agent.out_horde, agent.opt, agent.lu, popfirst!(agent.ϕbuff), env_s_tp1)
+    # end
+
+    out_preds = agent.model(preds[end])
+
+    agent.s_t .= env_s_tp1
+    agent.hidden_state_init .= Flux.data(preds[1])
+
+    return Flux.data.(out_preds)
+
 end
 
 mutable struct MackeyGlassRNNAgent{O, T, F, H, Φ, M, G} <: JuliaRL.AbstractAgent
