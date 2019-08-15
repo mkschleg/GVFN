@@ -228,6 +228,8 @@ function (π::ActingPolicy)(state_t, rng::Random.AbstractRNG=Random.GLOBAL_RNG)
     return action[1], action[1]
 end
 
+
+
 onehot(size, idx) = begin; a=zeros(size);a[idx] = 1.0; return a end;
 build_features(state, action) = [[1.0]; state; 1.0.-state; onehot(3, action); 1.0.-onehot(3,action)]
 # build_features_action(state, action) = [[1.0]; state; 1.0.-state; onehot(3, action); 1.0.-onehot(3,action)]

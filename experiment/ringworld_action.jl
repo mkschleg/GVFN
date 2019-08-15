@@ -79,7 +79,7 @@ function main_experiment(args::Vector{String})
     out_horde = RWU.onestep()
     fc = RWU.StandardFeatureCreator()
     fs = JuliaRL.FeatureCreators.feature_size(fc)
-    ap = GVFN.RandomActingPolicy([0.75, 0.25])
+    ap = GVFN.RandomActingPolicy([0.5, 0.5])
     
     agent = GVFN.GVFNActionAgent(horde, out_horde,
                                  fc, fs, 2, ap, parsed;
