@@ -76,9 +76,7 @@ function JuliaRL.start!(agent::GVFNActionAgent, env_s_tp1; rng=Random.GLOBAL_RNG
     fill!(agent.state_list, (1, zeros(length(agent.build_features(env_s_tp1, agent.action)))))
     push!(agent.state_list, (agent.action, agent.build_features(env_s_tp1, agent.action)))
     agent.hidden_state_init .= zero(agent.hidden_state_init)
-    println("Here")
     agent.s_t = (agent.action, copy(env_s_tp1))
-    println("Here")
     return agent.action
 end
 

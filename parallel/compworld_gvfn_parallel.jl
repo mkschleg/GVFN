@@ -1,4 +1,6 @@
 #!/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/julia/1.1.0/bin/julia
+#SBATCH --mail-user=mkschleg@ualberta.ca
+#SBATCH --mail-type=ALL
 #SBATCH -o comp_gvfn.out # Standard output
 #SBATCH -e comp_gvfn.err # Standard error
 #SBATCH --mem-per-cpu=2000M # Memory request of 2 GB

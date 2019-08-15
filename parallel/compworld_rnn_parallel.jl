@@ -1,9 +1,11 @@
 #!/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/julia/1.1.0/bin/julia
+#SBATCH --mail-user=mkschleg@ualberta.ca
+#SBATCH --mail-type=ALL
 #SBATCH -o comp_rnn.out # Standard output
 #SBATCH -e comp_rnn.err # Standard error
 #SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
-#SBATCH --time=24:00:00 # Running time of 12 hours
-#SBATCH --ntasks=128
+#SBATCH --time=12:00:00 # Running time of 12 hours
+#SBATCH --ntasks=64
 #SBATCH --account=rrg-whitem
 
 using Pkg
@@ -21,7 +23,8 @@ const exp_func_name = :main_experiment
 
 # Parameters for the SGD Algorithm
 const optimizer = "Descent"
-const alphas = clamp.(0.1*1.5.^(-6:4), 0.0, 1.0)
+# const alphas = clamp.(0.1*1.5.^(-2:4), 0.0, 1.0)
+const alphas = clamp.(0.1*1.5.^(5:6), 0.0, 1.0)
 const truncations = [1, 4, 8, 16, 24, 32, 48, 64]
 
 function make_arguments(args::Dict)
@@ -82,6 +85,7 @@ function main(args::Vector{String}=ARGS)
                             exp_module_name,
                             exp_func_name,
                             args_iterator)
+    
     create_experiment_dir(experiment)
     add_experiment(experiment; settings_dir="settings")
     ret = job(experiment; num_workers=num_workers, job_file_dir=parsed["jobloc"])

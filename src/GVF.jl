@@ -148,6 +148,9 @@ struct Horde{T<:AbstractGVF} <: AbstractHorde
     gvfs::Vector{T}
 end
 
+
+# combine(gvfh_1::Horde, gvfh_2::Horde) = Horde([gvfh_1.gvfs; ])
+
 function get(gvfh::Horde, state_t, action_t, state_tp1, action_tp1, preds_tp1)
     C = map(gvf -> get(cumulant(gvf), state_t, action_t, state_tp1, action_tp1, preds_tp1), gvfh.gvfs)
     Γ = map(gvf -> get(discount(gvf), state_t, action_t, state_tp1, action_tp1, preds_tp1), gvfh.gvfs)
@@ -169,3 +172,7 @@ get(gvfh::Horde, state_t, action_t, state_tp1, preds_tp1) = get(gvfh::Horde, sta
 get!(C, Γ, Π_probs,gvfh::Horde, action_t, state_tp1, preds_tp1) = get!(C, Γ, Π_probs, gvfh::Horde, nothing, action_t, state_tp1, nothing, preds_tp1)
 
 @forward Horde.gvfs Base.length
+
+
+
+

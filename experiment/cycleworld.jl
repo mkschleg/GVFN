@@ -20,7 +20,8 @@ using DataStructures: CircularBuffer
 
 
 # include("utils/util.jl")
-import GVFN.CycleWorldUtils
+CWU = GVFN.CycleWorldUtils
+FLU = GVFN.FluxUtils
 
 # function Flux.Optimise.apply!(o::Flux.RMSProp, x, Δ)
 #   η, ρ = o.eta, o.rho
@@ -29,61 +30,18 @@ import GVFN.CycleWorldUtils
 #   @. Δ *= η / (√acc + Flux.Optimise.ϵ)
 # end
 
-function arg_parse(as::ArgParseSettings = ArgParseSettings())
+function arg_parse(as::ArgParseSettings = ArgParseSettings(exc_handler=Reproduce.ArgParse.debug_handler))
 
     #Experiment
-    @add_arg_table as begin
-        "--exp_loc"
-        help="Location of experiment"
-        arg_type=String
-        default="tmp"
-        "--seed"
-        help="Seed of rng"
-        arg_type=Int64
-        default=0
-        "--steps"
-        help="number of steps"
-        arg_type=Int64
-        default=100
-        "--verbose"
-        action=:store_true
-        "--working"
-        action=:store_true
-    end
-
-    #Cycle world
-    @add_arg_table as begin
-        "--chain"
-        help="The length of the cycle world chain"
-        arg_type=Int64
-        default=6
-    end
+    
+    GVFN.exp_settings!(as)
+    CWU.env_settings!(as)
+    FLU.opt_settings!(as)
 
     # shared settings
-    @add_arg_table as begin
-        "--truncation", "-t"
-        help="Truncation parameter for bptt"
-        arg_type=Int64
-        default=1
-    end
+    GVFN.gvfn_arg_table!(as)
 
-    # GVFN 
     @add_arg_table as begin
-        "--alg"
-        help="Algorithm"
-        default="TDLambda"
-        "--params"
-        help="Parameters"
-        arg_type=Float64
-        nargs='+'
-        "--opt"
-        help="Optimizer"
-        default="Descent"
-        "--optparams"
-        help="Parameters"
-        arg_type=Float64
-        default=[]
-        nargs='+'
         "--horde"
         help="The horde used for training"
         default="gamma_chain"
@@ -91,10 +49,6 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         help="The gamma value for the gamma_chain horde"
         arg_type=Float64
         default=0.9
-        "--act"
-        help="Activation function for GVFN"
-        arg_type=String
-        default="identity"
     end
     return as
 end
@@ -140,6 +94,8 @@ function main_experiment(args::Vector{String})
 
     num_steps = parsed["steps"]
     seed = parsed["seed"]
+    verbose = parsed["verbose"]
+    progress = parsed["progress"]
     rng = Random.MersenneTwister(seed)
 
     env = CycleWorld(parsed["chain"])
@@ -149,25 +105,38 @@ function main_experiment(args::Vector{String})
 
     _, s_t = start!(env)
 
-    horde = CycleWorldUtils.get_horde(parsed)
+    horde = CWU.get_horde(parsed)
     out_horde = Horde([GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())])
-    fc = (state, action)->CycleWorldUtils.build_features_cycleworld(state)
+    fc = (state, action)->CWU.build_features_cycleworld(state)
     fs = 3
     ap = GVFN.RandomActingPolicy([1.0])
     
-    agent = GVFN.GVFNActionAgent(horde, out_horde,
-                                  fc, fs, 1, ap, parsed;
-                                  rng=rng,
-                                  init_func=(dims...)->glorot_uniform(rng, dims...))
+    agent = GVFN.GVFNAgent(horde, out_horde,
+                           fc, fs, ap, parsed;
+                           rng=rng,
+                           init_func=(dims...)->glorot_uniform(rng, dims...))
     start!(agent, s_t; rng=rng)
 
-    @showprogress 0.1 "Step: " for step in 1:num_steps
+    prg_bar = ProgressMeter.Progress(num_steps, "Step: ")
 
+    for step in 1:num_steps
+ 
         _, s_tp1, _, _ = step!(env, 1)
         out_preds, action = step!(agent, s_tp1, 0, false; rng=rng)
 
         out_pred_strg[step] = Flux.data(out_preds)[1]
         out_err_strg[step] = out_pred_strg[step][1] - oracle(env, "onestep", parsed["gamma"])[1]
+
+        if verbose
+            println("step: $(step)")
+            println(env)
+            println(agent)
+            println(out_preds)
+        end
+
+        if progress
+           next!(prg_bar)
+        end
     end
 
     results = Dict(["out_pred"=>out_pred_strg, "out_err_strg"=>out_err_strg])

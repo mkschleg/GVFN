@@ -1,0 +1,246 @@
+#+title: Exploring Gamma GVFs in Cycle World
+
+
+
+
+First, we want to figure out if there exists a parameterization for the GVF to learn these predictions (given the correct hidden state). I will start with a single prediction, and move to the multiple prediction case. The following is setup as a julia program integrated with orgmode. We first need to set up the julia environment (including packages I'm going to be using).
+
+#+BEGIN_SRC jupyter-julia :results output :session *julia:GVFN*
+using LinearAlgebra # for pinv
+using Statistics
+#+END_SRC
+
+#+RESULTS:
+: 
+
+* Cycle world with perfect predictions with linear regression
+
+We want to get predictions for a set of discount values
+
+#+BEGIN_SRC julia :results output :session *julia:GVFN*
+gammas = 1 .- 2.0.^(-7:-1)
+#+END_SRC
+
+#+RESULTS:
+: 7-element Array{Float64,1}:
+:  0.9921875
+:  0.984375 
+:  0.96875  
+:  0.9375   
+:  0.875    
+:  0.75     
+:  0.5
+
+We first need to setup two prediction vectors, predictions for the targets and predictions as apart of the feature matrix.
+
+The targets will act as the predictions we want our linear system to solve for.
+#+BEGIN_SRC julia :results output :session *julia:GVFN*
+targets = [[sum([gamma^(i-(s)) * (1-gamma) * (i%6 == 0) for i in (s):100000+s]) for s in 1:6] for gamma in gammas]
+#+END_SRC
+
+#+RESULTS:
+: 7-element Array{Array{Float64,1},1}:
+:  [0.163416, 0.164703, 0.165999, 0.167307, 0.168624, 0.169952]  
+:  [0.160174, 0.162717, 0.1653, 0.167923, 0.170589, 0.173297]    
+:  [0.153723, 0.158682, 0.163801, 0.169085, 0.174539, 0.180169]  
+:  [0.140975, 0.150373, 0.160398, 0.171092, 0.182498, 0.194664]  
+:  [0.116315, 0.132932, 0.151922, 0.173625, 0.198429, 0.226776]  
+:  [0.0721711, 0.0962281, 0.128304, 0.171072, 0.228096, 0.304128]
+:  [0.015873, 0.031746, 0.0634921, 0.126984, 0.253968, 0.507937]
+
+These predictions will act as features for our linear system, and will be apart of the X matrix.
+#+BEGIN_SRC julia :results output :session *julia:GVFN*
+preds = [[sum([gamma^(i-s) * (1-gamma) * (i%6 == 0) for i in s:100000+s]) for s in 0:5] for gamma in gammas]
+#+END_SRC
+
+#+RESULTS:
+: 7-element Array{Array{Float64,1},1}:
+:  [0.169952, 0.163416, 0.164703, 0.165999, 0.167307, 0.168624]  
+:  [0.173297, 0.160174, 0.162717, 0.1653, 0.167923, 0.170589]    
+:  [0.180169, 0.153723, 0.158682, 0.163801, 0.169085, 0.174539]  
+:  [0.194664, 0.140975, 0.150373, 0.160398, 0.171092, 0.182498]  
+:  [0.226776, 0.116315, 0.132932, 0.151922, 0.173625, 0.198429]  
+:  [0.304128, 0.0721711, 0.0962281, 0.128304, 0.171072, 0.228096]
+:  [0.507937, 0.015873, 0.031746, 0.0634921, 0.126984, 0.253968]
+
+
+We will start with a single gvf, particularly $\gamma = 0.5$
+
+#+BEGIN_SRC julia :results output :session *julia:GVFN*
+x_vecs = [(i%6==0) ? [1.0, 1.0, 0.0, preds[end][i+1]] : [1.0, 0.0, 1.0, preds[end][i+1]] for i in 0:5];
+X = hcat(x_vecs...)'
+#+END_SRC
+
+#+RESULTS:
+: 
+: 6×4 Adjoint{Float64,Array{Float64,2}}:
+:  1.0  1.0  0.0  0.507937 
+:  1.0  0.0  1.0  0.015873 
+:  1.0  0.0  1.0  0.031746 
+:  1.0  0.0  1.0  0.0634921
+:  1.0  0.0  1.0  0.126984 
+:  1.0  0.0  1.0  0.253968
+
+
+With the targets and X's defined for a single GVF we can solve the linear system for the weight vector associated with these predictions.
+
+#+BEGIN_SRC julia :results output :session *julia:GVFN*
+w = pinv(X'X)*X'*targets[end]
+#+END_SRC
+
+#+RESULTS:
+: 4-element Array{Float64,1}:
+:  -0.3333333333333278
+:  -0.6666666666666745
+:   0.333333333333327 
+:   2.0000000000000036
+
+and we can describe the error
+
+#+BEGIN_SRC julia :results output :session *julia:GVFN*
+mean((X*w - targets[end]).^2)
+#+END_SRC
+
+#+RESULTS:
+: 3.3690934493814044e-31
+
+
+
+We can then do this process for each GVF in isolation.
+
+#+BEGIN_SRC julia :results value :session *julia:GVFN*
+mse_vec = zeros(length(gammas))
+for gvf in 1:length(gammas)
+  x_vecs = [(i%6==0) ? [1.0, 1.0, 0.0, preds[gvf][i+1]] : [1.0, 0.0, 1.0, preds[gvf][i+1]] for i in 0:5];
+  X = hcat(x_vecs...)'
+  w = pinv(X'X)*X'*targets[gvf]
+  mse_vec[gvf] = mean((X*w - targets[gvf]).^2)
+end
+mse_vec
+#+END_SRC
+
+#+RESULTS:
+|  1.183242888594584e-26 |
+| 1.2471480046489395e-27 |
+| 2.1028201900127223e-29 |
+|  6.544309951027827e-31 |
+|  2.408696383780303e-31 |
+| 1.8007444980020655e-32 |
+| 3.3690934493814044e-31 |
+
+
+Now lets consider the features of all the predictions.
+
+#+BEGIN_SRC julia :results output :session *julia:GVFN*
+x_vecs_all = [(i%6==0) ? [1.0, 1.0, 0.0, [preds[gvf][i+1] for gvf in 1:length(gammas)]...] : [1.0, 0.0, 1.0, [preds[gvf][i+1] for gvf in 1:length(gammas)]...] for i in 0:5];
+X_all = hcat(x_vecs_all...)'
+#+END_SRC
+
+#+RESULTS:
+: 
+: 6×10 Adjoint{Float64,Array{Float64,2}}:
+:  1.0  1.0  0.0  0.169952  0.173297  0.180169  0.194664  0.226776  0.304128   0.507937 
+:  1.0  0.0  1.0  0.163416  0.160174  0.153723  0.140975  0.116315  0.0721711  0.015873 
+:  1.0  0.0  1.0  0.164703  0.162717  0.158682  0.150373  0.132932  0.0962281  0.031746 
+:  1.0  0.0  1.0  0.165999  0.1653    0.163801  0.160398  0.151922  0.128304   0.0634921
+:  1.0  0.0  1.0  0.167307  0.167923  0.169085  0.171092  0.173625  0.171072   0.126984 
+:  1.0  0.0  1.0  0.168624  0.170589  0.174539  0.182498  0.198429  0.228096   0.253968
+
+Then we can get the weights as above
+
+
+#+BEGIN_SRC julia :results value :session *julia:GVFN*
+mse_vec = zeros(length(gammas))
+for gvf in 1:length(gammas)
+  w = pinv(X_all'X_all)*X_all'*targets[gvf]
+  mse_vec[gvf] = mean((X_all*w - targets[gvf]).^2)
+end
+mse_vec
+#+END_SRC
+
+#+RESULTS:
+| 2.5965426462337006e-18 |
+|  2.536361359061045e-18 |
+| 2.4333041928973318e-18 |
+| 2.2897460897732848e-18 |
+| 2.2707780538406137e-18 |
+|  3.548255807822394e-18 |
+|  1.760093866198605e-17 |
+
+
+We might also want to try getting the one step prediction from the perfect feature vector.
+
+#+BEGIN_SRC julia :results output :session *julia:GVFN*
+# Overly obtuse way to get the one step prediction targets, but it works.
+targets_onestep = [sum([0.0^(i-(s)) * (i%6 == 0) for i in (s):100000+s]) for s in 1:6];
+w = pinv(X_all'X_all)*X_all'targets_onestep;
+mse = mean((X_all*w - targets_onestep).^2);
+println("preds: ", X_all*w)
+println("mse: ", mse)
+#+END_SRC
+
+#+RESULTS:
+: 
+: 
+: 
+: 
+: preds: [1.47709e-8, 5.04046e-9, -4.46377e-9, 1.57253e-8, 3.14208e-9, 1.0]
+: mse: 1.0873563667785797e-16
+
+* Cycle world with perfect predictions with logistic regression
+
+First, we need to define the logit function
+
+#+BEGIN_SRC julia :results output :session *julia:GVFN*
+logit(x) = log(x/(1-x))
+sigmoid(x) = 1/(1+exp(-x))
+#+END_SRC
+
+#+RESULTS:
+: logit (generic function with 1 method)
+: sigmoid (generic function with 1 method)
+
+#+BEGIN_SRC julia :results output :session *julia:GVFN*
+gammas = 1 .- 2.0.^(-7:-1);
+targets = [[sum([gamma^(i-(s)) * (1-gamma) * (i%6 == 0) for i in (s):100000+s]) for s in 1:6] for gamma in gammas];
+preds = [[sum([gamma^(i-s) * (1-gamma) * (i%6 == 0) for i in s:100000+s]) for s in 0:5] for gamma in gammas];
+x_vecs_all = [(i%6==0) ? [1.0, 1.0, 0.0, [preds[gvf][i+1] for gvf in 1:length(gammas)]...] : [1.0, 0.0, 1.0, [preds[gvf][i+1] for gvf in 1:length(gammas)]...] for i in 0:5];
+X_all = hcat(x_vecs_all...)'
+w = pinv(X_all'X_all)*X_all'logit.(targets[end])
+mse = mean((sigmoid.(X_all*w) - targets[end]).^2);
+println("mse: $(mse)")
+println("preds: ", sigmoid.(X_all*w))
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+6×10 Adjoint{Float64,Array{Float64,2}}:
+ 1.0  1.0  0.0  0.169952  0.173297  0.180169  0.194664  0.226776  0.304128   0.507937 
+ 1.0  0.0  1.0  0.163416  0.160174  0.153723  0.140975  0.116315  0.0721711  0.015873 
+ 1.0  0.0  1.0  0.164703  0.162717  0.158682  0.150373  0.132932  0.0962281  0.031746 
+ 1.0  0.0  1.0  0.165999  0.1653    0.163801  0.160398  0.151922  0.128304   0.0634921
+ 1.0  0.0  1.0  0.167307  0.167923  0.169085  0.171092  0.173625  0.171072   0.126984 
+ 1.0  0.0  1.0  0.168624  0.170589  0.174539  0.182498  0.198429  0.228096   0.253968
+10-element Array{Float64,1}:
+   8.743151783943176 
+   1.3828162103891373
+   7.3604589849710464
+ -39.29256922006607  
+ -68.07581698894501  
+ -93.91347241401672  
+ -47.935781598091125 
+ 206.9127972126007   
+ -72.68541915714741  
+  11.136435224674642
+
+mse: 5.350031445728895e-16
+preds: [0.015873, 0.031746, 0.0634921, 0.126984, 0.253968, 0.507937]
+#+end_example
+
+
+
+* Learning Cycle World recursive predictions incrementally
+  
+
+  This is the big question, can we get to a predictive state incrementally using Gamma functions.
+

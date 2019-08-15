@@ -19,7 +19,7 @@ const optimizer = "Descent"
 const alphas = clamp.(0.1*1.5.^(-6:6), 0.0, 1.0)
 
 const learning_update = "RTD"
-const truncations = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+const truncations = [1, 2, 3, 4, 5, 6]
 
 # const learning_update = "TDLambda"
 # const lambdas = 0.0:0.1:0.9
@@ -55,7 +55,7 @@ function main()
     num_workers = parsed["numworkers"]
 
     arg_dict = Dict([
-        "horde"=>["chain", "gamma_chain", "gamma_chain_scaled", "gammas_aj", "gammas_aj_scaled"],
+        "horde"=>["chain", "gamma_chain", "gamma_chain_scaled", "gammas_aj_scaled"],
         "alpha"=>alphas,
         "truncation"=>truncations,
         "activation"=>["sigmoid", "relu"],
