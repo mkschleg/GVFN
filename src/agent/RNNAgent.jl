@@ -16,6 +16,7 @@ mutable struct RNNAgent{O, T, F, H, Φ, Π, M, G} <: JuliaRL.AbstractAgent
     action::Int64
     action_prob::Float64
     horde::Horde{G}
+    prev_action_or_not::Bool
 end
 
 
@@ -34,7 +35,9 @@ function RNNAgent(out_horde,
     τ=parsed["truncation"]
     opt = FluxUtils.get_optimizer(parsed)
     rnn = FluxUtils.construct_rnn(feature_size, parsed; init=init_func)
-    out_model = Flux.Dense(parsed["numhidden"], length(horde); initW=init_func)
+    out_model = Flux.Dense(parsed["numhidden"], length(out_horde); initW=init_func)
+
+    prev_action_or_not = get(parsed, "prev_action_or_not", false)
 
     state_list =  DataStructures.CircularBuffer{Array{Float32, 1}}(τ+1)
     hidden_state_init = GVFN.get_initial_hidden_state(rnn)
@@ -46,7 +49,8 @@ function RNNAgent(out_horde,
              hidden_state_init,
              zeros(Float32, 1),
              acting_policy,
-             1, 0.0, out_horde)
+             1, 0.0, out_horde,
+             prev_action_or_not)
 
 end
 
@@ -69,8 +73,12 @@ function JuliaRL.step!(agent::RNNAgent, env_s_tp1, r, terminal; rng=Random.GLOBA
 
     # new_action = sample(rng, agent.π, env_s_tp1)
     new_action, new_prob = agent.π(env_s_tp1, rng)
-    
-    push!(agent.state_list, agent.build_features(env_s_tp1, new_action))
+
+    if agent.prev_action_or_not
+        push!(agent.state_list, agent.build_features(env_s_tp1, agent.action))
+    else
+        push!(agent.state_list, agent.build_features(env_s_tp1, new_action))
+    end
 
     # RNN update function
     update!(agent.out_model, agent.rnn,
@@ -92,8 +100,6 @@ function JuliaRL.step!(agent::RNNAgent, env_s_tp1, r, terminal; rng=Random.GLOBA
     
     agent.action = copy(new_action)
     agent.action_prob = new_prob
-    agent.action_prob = get(agent.π, env_s_tp1, new_action)
-    
 
     return Flux.data.(out_preds), agent.action
 end

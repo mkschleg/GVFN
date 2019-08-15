@@ -29,24 +29,7 @@ end
 function exp_settings(as::ArgParseSettings = ArgParseSettings())
 
     #Experiment
-    @add_arg_table as begin
-        "--exp_loc"
-        help="Location of experiment"
-        arg_type=String
-        default="tmp"
-        "--seed"
-        help="Seed of rng"
-        arg_type=Int64
-        default=0
-        "--steps"
-        help="number of steps"
-        arg_type=Int64
-        default=100
-        "--verbose"
-        action=:store_true
-        "--working"
-        action=:store_true
-    end
+    GVFN.exp_settings!(as)
 
     #Cycle world specific settings
     CycleWorldUtils.env_settings!(as)
@@ -79,10 +62,21 @@ function main_experiment(args::Vector{String})
 
     num_steps = parsed["steps"]
     seed = parsed["seed"]
+    progress = parsed["progress"]
+    verbose = parsed["verbose"]
     rng = Random.MersenneTwister(seed)
 
     env = CycleWorld(parsed["chain"])
-    agent = CycleWorldRNNAgent(parsed)
+    
+    horde = CycleWorldUtils.get_horde(parsed)
+    fc = (state, action)->CycleWorldUtils.build_features_cycleworld(state)
+    fs = 3
+    ap = GVFN.RandomActingPolicy([1.0])
+    
+    # agent = CycleWorldRNNAgent(parsed)
+    agent = GVFN.RNNAgent(horde, fc, fs, ap, parsed;
+                          rng=rng,
+                          init_func=(dims...)->glorot_uniform(rng, dims...))
     num_gvfs = length(agent.horde)
 
     out_pred_strg = zeros(num_steps, num_gvfs)
@@ -91,17 +85,28 @@ function main_experiment(args::Vector{String})
     _, s_t = start!(env)
     action = start!(agent, s_t; rng=rng)
 
-    @showprogress 0.1 "Step: " for step in 1:num_steps
-        if parsed["verbose"]
-            if step % 1000 == 0
-                print(step, "\r")
-            end
-        end
+    prg_bar = ProgressMeter.Progress(num_steps, "Step: ")
+
+    for step in 1:num_steps
+
         _, s_tp1, _, _ = step!(env, action)
         out_preds, action = step!(agent, s_tp1, 0, false; rng=rng)
 
         out_pred_strg[step,:] = Flux.data(out_preds)
         out_err_strg[step, :] = out_pred_strg[step, :] .- CycleWorldUtils.oracle(env, parsed["horde"], parsed["gamma"])
+
+        if verbose
+            println("step: $(step)")
+            println(env)
+            # println(agent)
+            println(out_preds)
+            println("preds: ", CycleWorldUtils.oracle(env, parsed["horde"], parsed["gamma"]))
+            # println("Agent rnn-state: ", agent.rnn.state)
+        end
+
+        if progress
+           next!(prg_bar)
+        end
     end
 
     results = Dict(["out_pred"=>out_pred_strg, "out_err_strg"=>out_err_strg])

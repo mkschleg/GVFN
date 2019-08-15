@@ -30,22 +30,22 @@ function onestep(chain_length::Integer)
     return Horde(gvfs)
 end
 
-function chain(chain_length::Integer)
+function chain(chain_length::Integer, pred_offset::Integer=0)
     gvfs = [[GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())];
-            [GVF(PredictionCumulant(i-1), ConstantDiscount(0.0), NullPolicy()) for i in 2:chain_length]]
+            [GVF(PredictionCumulant(i-1 + pred_offset), ConstantDiscount(0.0), NullPolicy()) for i in 2:chain_length]]
     return Horde(gvfs)
 end
 
-function gamma_chain(chain_length::Integer, γ::AbstractFloat)
+function gamma_chain(chain_length::Integer, γ::AbstractFloat, pred_offset::Integer=0)
     gvfs = [[GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())];
-            [GVF(PredictionCumulant(i-1), ConstantDiscount(0.0), NullPolicy()) for i in 2:chain_length];
+            [GVF(PredictionCumulant(i-1 + pred_offset), ConstantDiscount(0.0), NullPolicy()) for i in 2:chain_length];
             [GVF(FeatureCumulant(1), StateTerminationDiscount(γ, ((env_state)->env_state[1] == 1)), NullPolicy())]]
     return Horde(gvfs)
 end
 
-function gamma_chain_scaled(chain_length::Integer, γ::AbstractFloat)
+function gamma_chain_scaled(chain_length::Integer, γ::AbstractFloat, pred_offset::Integer=0)
     gvfs = [[GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())];
-            [GVF(PredictionCumulant(i-1), ConstantDiscount(0.0), NullPolicy()) for i in 2:chain_length];
+            [GVF(PredictionCumulant(i-1 + pred_offset), ConstantDiscount(0.0), NullPolicy()) for i in 2:chain_length];
             [GVF(ScaledCumulant(1-γ, FeatureCumulant(1)), ConstantDiscount(γ), NullPolicy())]]
     return Horde(gvfs)
 end
@@ -80,12 +80,18 @@ function gammas_aj_scaled()
     return gammas_scaled(gms)
 end
 
-function get_horde(horde_str::AbstractString, chain_length::Integer, gamma::AbstractFloat)
-    horde = chain(chain_length)
-    if horde_str == "gamma_chain"
-        horde = gamma_chain(chain_length, gamma)
+function single_gamma_scaled(γ::AbstractFloat)
+    Horde([GVF(ScaledCumulant(1-γ, FeatureCumulant(1)), ConstantDiscount(γ), NullPolicy())])
+end
+
+function get_horde(horde_str::AbstractString, chain_length::Integer, gamma::AbstractFloat, pred_offset::Integer=0)
+    horde = nothing
+    if horde_str == "chain"
+        horde = chain(chain_length, pred_offset)
     elseif horde_str == "gamma_chain"
-        horde = gamma_chain_scaled(chain_length, gamma)
+        horde = gamma_chain(chain_length, gamma, pred_offset)
+    elseif horde_str == "gamma_chain_scaled"
+        horde = gamma_chain_scaled(chain_length, gamma, pred_offset)
     elseif horde_str == "onestep"
         horde = onestep(chain_length)
     elseif horde_str == "gammas"
@@ -100,11 +106,15 @@ function get_horde(horde_str::AbstractString, chain_length::Integer, gamma::Abst
         horde = gammas_aj_term()
     elseif horde_str == "gammas_aj_scaled"
         horde = gammas_aj_scaled()
+    elseif horde_str == "single_gamma_scaled"
+        horde = single_gamma_scaled(gamma)
+    else
+        throw("Horde not available $(horde_str)")
     end
     return horde
 end
 
-get_horde(parsed::Dict, prefix="") = get_horde(parsed["$(prefix)horde"], parsed["chain"], parsed["$(prefix)gamma"])
+get_horde(parsed::Dict, prefix="", pred_offset::Integer=0) = get_horde(parsed["$(prefix)horde"], parsed["chain"], parsed["$(prefix)gamma"], pred_offset)
 
 function oracle(env::CycleWorld, horde_str, γ=0.9)
     chain_length = env.chain_length
@@ -130,7 +140,6 @@ function oracle(env::CycleWorld, horde_str, γ=0.9)
 
     return ret
 end
-
 
 build_features_cycleworld(s) = Float32[1.0, s[1], 1-s[1]]
 

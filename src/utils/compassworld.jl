@@ -20,10 +20,10 @@ function horde_settings!(as::ArgParseSettings, prefix::AbstractString="")
     add_arg_table(as,
                   "--$(prefix)horde",
                   Dict(:help=>"The horde used for training",
-                       :default=>"gamma_chain"))
+                       :default=>"rafols"))
 end
 
-function rafols()
+function rafols(pred_offset::Integer=0)
 
     cwc = GVFN.CompassWorldConst
     gvfs = Array{GVF, 1}()
@@ -32,10 +32,10 @@ function rafols()
                     GVF(FeatureCumulant(color), ConstantDiscount(0.0), PersistentPolicy(cwc.LEFT)),
                     GVF(FeatureCumulant(color), ConstantDiscount(0.0), PersistentPolicy(cwc.RIGHT)),
                     GVF(FeatureCumulant(color), StateTerminationDiscount(1.0, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD)),
-                    GVF(PredictionCumulant(8*(color-1) + 4), ConstantDiscount(0.0), PersistentPolicy(cwc.LEFT)),
-                    GVF(PredictionCumulant(8*(color-1) + 4), ConstantDiscount(0.0), PersistentPolicy(cwc.RIGHT)),
-                    GVF(PredictionCumulant(8*(color-1) + 5), StateTerminationDiscount(1.0, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD)),
-                    GVF(PredictionCumulant(8*(color-1) + 6), StateTerminationDiscount(1.0, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD))]
+                    GVF(PredictionCumulant(8*(color-1) + 4 + pred_offset), ConstantDiscount(0.0), PersistentPolicy(cwc.LEFT)),
+                    GVF(PredictionCumulant(8*(color-1) + 4 + pred_offset), ConstantDiscount(0.0), PersistentPolicy(cwc.RIGHT)),
+                    GVF(PredictionCumulant(8*(color-1) + 5 + pred_offset), StateTerminationDiscount(1.0, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD)),
+                    GVF(PredictionCumulant(8*(color-1) + 6 + pred_offset), StateTerminationDiscount(1.0, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD))]
         append!(gvfs, new_gvfs)
     end
     return Horde(gvfs)
@@ -49,34 +49,34 @@ function forward()
     return Horde(gvfs)
 end
 
-function gammas_term()
+function gammas_term(gammas = [collect(0.0:0.05:0.95); [0.975, 0.99]])
     cwc = GVFN.CompassWorldConst
     gvfs = Array{GVF, 1}()
     for color in 1:5
         new_gvfs = [GVF(
             FeatureCumulant(color),
             StateTerminationDiscount(γ, ((env_state)->env_state[cwc.WHITE] == 0)),
-            PersistentPolicy(cwc.FORWARD)) for γ in [collect(0.0:0.05:0.95); [0.975, 0.99]]]
+            PersistentPolicy(cwc.FORWARD)) for γ in gammas]
         append!(gvfs, new_gvfs)
     end
     return Horde(gvfs)
 end
 
-function gammas_scaled()
+function gammas_scaled(gammas = [collect(0.0:0.05:0.95); [0.975, 0.99]])
     cwc = GVFN.CompassWorldConst
     gvfs = Array{GVF, 1}()
     for color in 1:5
         new_gvfs = [GVF(
             ScaledCumulant(1-γ, FeatureCumulant(color)),
             ConstantDiscount(γ),
-            PersistentPolicy(cwc.FORWARD)) for γ in [collect(0.0:0.05:0.95); [0.975, 0.99]]]
+            PersistentPolicy(cwc.FORWARD)) for γ in gammas]
         append!(gvfs, new_gvfs)
         # new_gvfs = [GVF(FeatureCumulant(color), StateTerminationDiscount(γ, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD)) for γ in 0.0:0.05:0.95]
     end
     return Horde(gvfs)
 end
 
-function test_network()
+function test_network(pred_offset::Integer=0)
     cwc = GVFN.CompassWorldConst
     gvfs = Array{GVF, 1}()
     for color in 1:5
@@ -85,8 +85,8 @@ function test_network()
                     GVF(FeatureCumulant(color), ConstantDiscount(0.0), PersistentPolicy(cwc.RIGHT)),
                     GVF(FeatureCumulant(color), StateTerminationDiscount(1.0, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD)),
                     # GVF(PredictionCumulant(7*(color-1) + 1), StateTerminationDiscount(1.0, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD)),
-                    GVF(PredictionCumulant(6*(color-1) + 2), StateTerminationDiscount(1.0, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD)),
-                    GVF(PredictionCumulant(6*(color-1) + 3), StateTerminationDiscount(1.0, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD))]
+                    GVF(PredictionCumulant(6*(color-1) + 2 + pred_offset), StateTerminationDiscount(1.0, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD)),
+                    GVF(PredictionCumulant(6*(color-1) + 3 + pred_offset), StateTerminationDiscount(1.0, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD))]
                     # GVF(PredictionCumulant(8*(color-1) + 4), ConstantDiscount(0.0), PersistentPolicy(cwc.LEFT)),
                     # GVF(PredictionCumulant(8*(color-1) + 4), ConstantDiscount(0.0), PersistentPolicy(cwc.RIGHT)),
                     # GVF(PredictionCumulant(8*(color-1) + 5), StateTerminationDiscount(1.0, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD)),
@@ -98,23 +98,29 @@ function test_network()
 end
 
 
-function get_horde(horde_str::AbstractString)
+function get_horde(horde_str::AbstractString, pred_offset::Integer=0)
     horde = forward()
     if horde_str == "forward"
         horde = forward()
     elseif horde_str == "rafols"
-        horde = rafols()
+        horde = rafols(pred_offset)
     elseif horde_str == "gammas"
         horde = gammas_term()
     elseif horde_str == "gammas_scaled"
         horde = gammas_scaled()
+    elseif horde_str == "aj_gammas_scaled"
+        horde = gammas_scaled(1.0 .- 2.0 .^ collect(-7:-1))
+    elseif horde_str == "aj_gammas_term"
+        horde = gammas_term(1.0 .- 2.0 .^ collect(-7:-1))
     elseif horde_str == "test"
-        horde = test_network()
+        horde = test_network(pred_offset)
+    else
+        throw("Unknown horde")
     end
     return horde
 end
 
-get_horde(parsed::Dict, prefix::AbstractString="") = get_horde(parsed["$(prefix)horde"])
+get_horde(parsed::Dict, prefix::AbstractString="", pred_offset::Integer=0) = get_horde(parsed["$(prefix)horde"], pred_offset)
 
 function oracle_forward(state)
     ret = zeros(5)

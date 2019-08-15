@@ -29,12 +29,14 @@ mutable struct RingWorld <: AbstractEnvironment
     agent_state::Int64
     actions::AbstractSet
     partially_observable::Bool
-    RingWorld(ring_size::Int64; rng=Random.GLOBAL_RNG, partially_observable=true) =
-        new(ring_size,
-            1,
-            RingWorldConst.ACTIONS,
-            partially_observable)
+
 end
+
+RingWorld(ring_size::Int64; partially_observable=true) =
+    RingWorld(ring_size,
+              1,
+              RingWorldConst.ACTIONS,
+              partially_observable)
 
 Base.size(env::RingWorld) = env.ring_size
 
