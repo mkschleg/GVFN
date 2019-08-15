@@ -341,7 +341,7 @@ end
 
 function update!(out_model, rnn::Flux.Recur{T},
                  horde::AbstractHorde,
-                 opt, lu::TD, h_init,
+                 opt, lu::BatchTD, h_init,
                  state_seq, env_state_tp1,
                  action_t=nothing, b_prob=1.0; prms=nothing) where {T}
 
@@ -366,7 +366,7 @@ function update!(out_model, rnn::Flux.Recur{T},
 end
 
 # GVFN
-function update!(model, horde::AbstractHorde, opt, lu::TD, state_seq, env_state_tp1, action_t=nothing, b_prob=1.0; prms=nothing)
+function update!(model, horde::AbstractHorde, opt, lu::BatchTD, state_seq, env_state_tp1, action_t=nothing, b_prob=1.0; prms=nothing)
     
     prms = Params([gvfn.cell.Wx, gvfn.cell.Wh])
 
@@ -390,7 +390,7 @@ function update!(model, horde::AbstractHorde, opt, lu::TD, state_seq, env_state_
 end
 
 
-function update!(model::SingleLayer, horde::AbstractHorde, opt, lu::TD, state_seq, env_state_tp1, action_t=nothing, b_prob=1.0; prms=nothing)
+function update!(model::SingleLayer, horde::AbstractHorde, opt, lu::BatchTD, state_seq, env_state_tp1, action_t=nothing, b_prob=1.0; prms=nothing)
     
     v = model.(state_seq)
     v_prime_t = [deriv(model, state) for state in state_seq]
@@ -405,7 +405,7 @@ function update!(model::SingleLayer, horde::AbstractHorde, opt, lu::TD, state_se
     
 end
 
-function update!(gvfn::Flux.Recur{T}, opt, lu::TD, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: GVFRActionLayer}
+function update!(gvfn::Flux.Recur{T}, opt, lu::BatchTD, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: GVFRActionLayer}
 
 
     # return preds
