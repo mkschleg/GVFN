@@ -16,34 +16,60 @@ const save_loc = "mackeyglass_gvfn"
 const exp_file = joinpath(@__DIR__,"../experiment/mackeyglass.jl")
 const exp_module_name = :MackeyGlassExperiment
 const exp_func_name = :main_experiment
+const steps = 600000
+const valSteps = 200000
+const testSteps = 200000
 
 #------ Learning Updates -------#
 
-const learning_update = "RTD"
-const truncations = [1, 5, 10, 16, 24, 32]
+const learning_update = "BatchTD"
 
 
-# const learning_update = "TDLambda"
-# const lambdas = 0.0:0.1:0.9
-# const truncations = [1, 10, 24]
+#------ Model ----------#
 
-
-#------ Optimizers ----------#
+const batchsize = [32]
 
 # Parameters for the SGD Algorithm
-const optimizer = "ADAM"
-const alphas = collect(2.0.^(-15:1))
+const model_opt = ["ADAM"]
+const model_stepsize = [0.001]
 
-const max_exponents=[7]
-
+#------ GVFN ------#
+const gvfn_stepsize = [3e-5]
+const γlo = [0.2]
+const γhi = [0.95]
+const num_gvfs = [128]
+const gvfn_opt = ["Descent"]
 
 function make_arguments_rtd(args::Dict)
     horizon=args["horizon"]
-    max_exp=args["max-exponent"]
-    alpha = args["alpha"]
-    truncation = args["truncation"]
+    batchsize=args["batchsize"]
+
+    model_stepsize=args["model_stepsize"]
+    model_opt=args["model_opt"]
+
+    gvfn_stepsize=args["gvfn_stepsize"]
+    gvfn_opt=args["gvfn_opt"]
+    gamma_high=args["gamma_high"]
+    gamma_low=args["gamma_low"]
+    num_gvfs=args["num_gvfs"]
+
     seed = args["seed"]
-    new_args=["--max-exponent",max_exp, "--truncation", truncation, "--opt", optimizer, "--optparams", alpha, "--seed", seed, "--horizon", horizon]
+
+    new_args=[
+        "--horizon",horizon,
+        "--batchsize",batchsize,
+
+        "--model_stepsize",model_stepsize,
+        "--model_opt",model_opt,
+
+        "--gvfn_stepsize" , gvfn_stepsize,
+        "--gvfn_opt" , gvfn_opt,
+        "--gamma_high",γhi,
+        "--gamma_low",γlo,
+        "--num_gvfs",num_gvfs,
+
+        "--seed",seed
+    ]
     return new_args
 end
 
@@ -67,15 +93,27 @@ function main()
     arg_list = Array{String, 1}()
 
     arg_dict = Dict([
-        "max-exponent"=>max_exponents,
         "horizon"=>12,
-        "alpha"=>alphas,
-        "truncation"=>truncations,
+        "batchsize"=>batchsize,
+
+        "model_stepsize"=>model_stepsize,
+        "model_opt"=>model_opt,
+
+        "gvfn_stepsize" => gvfn_stepsize,
+        "gvfn_opt" => gvfn_opt,
+        "gamma_high"=>γhi,
+        "gamma_low"=>γlo,
+        "num_gvfs"=>num_gvfs,
+
         "seed"=>collect(1:5)
     ])
-    arg_list = ["horizon", "max-exponent","alpha", "truncation", "seed"]
+    arg_list = collect(keys(arg_dict))
 
-    static_args = ["--alg", learning_update, "--steps", "60000", "--exp_loc", save_loc]
+    static_args = ["--alg", learning_update,
+                   "--steps", string(steps),
+                   "--valSteps", string(valSteps),
+                   "--testSteps", string(testSteps),
+                   "--exp_loc", save_loc]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments_rtd)
 
     println(collect(args_iterator)[num_workers])
@@ -93,7 +131,7 @@ function main()
 
     create_experiment_dir(experiment)
     add_experiment(experiment; settings_dir="settings")
-    ret = job(experiment; num_workers=4)
+    ret = job(experiment; num_workers=num_workers)
     post_experiment(experiment, ret)
 
 end

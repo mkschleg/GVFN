@@ -8,32 +8,40 @@ import DataStructures
 
 mutable struct MackeyGlassAgent{O, T, H, Φ, M, G} <: JuliaRL.AbstractAgent
     lu::LearningUpdate
-    opt::O
+    gvfn_opt::O
+    model_opt::O
     gvfn::Flux.Recur{T}
     state_list::DataStructures.CircularBuffer{Φ}
+    pbuff::DataStructures.CircularBuffer{Φ}
+    targetbuff::DataStructures.CircularBuffer{<:Float32}
     hidden_state_init::H
     s_t::Φ
     model::M
     out_horde::Horde{G}
 
     horizon::Int
+    step::Int
     ϕbuff::DataStructures.CircularBuffer{Vector{Φ}}
 end
 
 
 function MackeyGlassAgent(parsed; rng=Random.GLOBAL_RNG)
 
-    horde = TimeSeriesUtils.get_horde(parsed["max-exponent"])
+    horde = TimeSeriesUtils.get_horde(parsed)
     num_gvfs = length(horde)
 
     alg_string = parsed["alg"]
     gvfn_lu_func = getproperty(GVFN, Symbol(alg_string))
-    lu = gvfn_lu_func(Float64.(parsed["params"])...)
-    τ=parsed["truncation"]
+    lu = gvfn_lu_func()
 
-    opt_string = parsed["opt"]
-    opt_func = getproperty(Flux, Symbol(opt_string))
-    opt = opt_func(Float64.(parsed["optparams"])...)
+    gvfn_opt_string = parsed["gvfn_opt"]
+    gvfn_opt_func = getproperty(Flux, Symbol(gvfn_opt_string))
+    gvfn_opt = opt_func(parsed["gvfn_stepsize"])
+    batchsize=parsed["batchsize"]
+
+    model_opt_string = parsed["model_opt"]
+    model_opt_func = getproperty(Flux, Symbol(model_opt_string))
+    model_opt = opt_func(parsed["model_stepsize"])
 
     act = FluxUtils.get_activation(parsed["act"])
 
@@ -41,13 +49,16 @@ function MackeyGlassAgent(parsed; rng=Random.GLOBAL_RNG)
     model = SingleLayer(num_gvfs, 1, relu, relu′; init=(dims...)->glorot_uniform(rng, dims...))
     out_horde = Horde([GVF(FeatureCumulant(1),ConstantDiscount(0.0), NullPolicy())])
 
-    state_list = DataStructures.CircularBuffer{Array{Float32, 1}}(τ+1)
+    state_list = DataStructures.CircularBuffer{Array{Float32, 1}}(batchsize)
     hidden_state_init = zeros(Float32, num_gvfs)
+
+    targetbuff = Float32[]
+    pbuff = Vector{Float32}[]
 
     horizon = Int(parsed["horizon"])
     ϕbuff = DataStructures.CircularBuffer{Vector{Array{Float32,1}}}(horizon)
 
-    return MackeyGlassAgent(lu, opt, gvfn, state_list, hidden_state_init, zeros(Float32, 1), model, out_horde, horizon, ϕbuff)
+    return MackeyGlassAgent(lu, gvfn_opt, model_opt, gvfn, state_list, pbuff, targetbuff, hidden_state_init, zeros(Float32, 1), model, out_horde, horizon, 0, ϕbuff)
 end
 
 function start!(agent::MackeyGlassAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
@@ -56,20 +67,30 @@ function start!(agent::MackeyGlassAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwarg
     push!(agent.state_list, env_s_tp1)
     agent.hidden_state_init .= zero(agent.hidden_state_init)
     agent.s_t = copy(env_s_tp1)
+
+    agent.step+=1
 end
 
 function step!(agent::MackeyGlassAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
 
     push!(agent.state_list, env_s_tp1)
-
-    update!(agent.gvfn, agent.opt, agent.lu, agent.hidden_state_init, agent.state_list, env_s_tp1)
+    if isfull(agent.state_list)
+        update!(agent.gvfn, agent.opt, agent.lu, agent.hidden_state_init, agent.state_list, env_s_tp1)
+    end
 
     reset!(agent.gvfn, agent.hidden_state_init)
     preds = agent.gvfn.(agent.state_list)
 
     push!(agent.ϕbuff, Flux.data.(preds))
-    if DataStructures.isfull(agent.ϕbuff)
-        update!(agent.model, agent.out_horde, agent.opt, agent.lu, popfirst!(agent.ϕbuff), env_s_tp1)
+    if agent.step>=agent.horizon
+        push!(agent.pbuff, pop_first!(agent.ϕbuff))
+        push!(agent.targetbuff, env_s_tp1[1])
+        if length(agent.targetbuff) == agent.batchsize
+            update!(agent.model, agent.out_horde, agent.opt, agent.lu, agent.pbuff, agent.targetbuff)
+
+            agent.targetbuff = Float32[]
+            agent.pbuff = Vector{Float32}[]
+        end
     end
 
     out_preds = agent.model(preds[end])
@@ -77,21 +98,17 @@ function step!(agent::MackeyGlassAgent, env_s_tp1, r, terminal; rng=Random.GLOBA
     agent.s_t .= env_s_tp1
     agent.hidden_state_init .= Flux.data(preds[1])
 
+    agent.step+=1
+
     return Flux.data.(out_preds)
 end
 
 function predict!(agent::MackeyGlassAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG,kwargs...)
+    # for validation/test; predict, updating hidden states, but don't update models
     push!(agent.state_list, env_s_tp1)
-
-    #update!(agent.gvfn, agent.opt, agent.lu, agent.hidden_state_init, agent.state_list, env_s_tp1)
 
     reset!(agent.gvfn, agent.hidden_state_init)
     preds = agent.gvfn.(agent.state_list)
-
-    #push!(agent.ϕbuff, Flux.data.(preds))
-    # if DataStructures.isfull(agent.ϕbuff)
-    #     update!(agent.model, agent.out_horde, agent.opt, agent.lu, popfirst!(agent.ϕbuff), env_s_tp1)
-    # end
 
     out_preds = agent.model(preds[end])
 

@@ -47,47 +47,47 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
     end
 
 
-    # GVFN
     @add_arg_table as begin
-        "--max-exponent"
-        help="max discount=1.0-2^(-max-exponent)"
-        arg_type=Int64
-        default=7
         "--horizon"
         help="prediction horizon"
         default=12
         arg_type=Int64
+        "--batchsize",
+        help="batchsize"
+        arg_type=Int64
+        default=32
         "--alg"
         help="Algorithm"
-        default="RTD"
-        "--params"
-        help="Parameters"
-        arg_type=Float64
-        default=[]
-        nargs='+'
-        "--truncation", "-t"
-        help="Truncation parameter for bptt"
-        arg_type=Int64
-        default=1
-        "--opt"
+        default="BatchTD"
+
+        # GVFN
+        "--gvfn_opt"
         help="Optimizer"
         default="Descent"
-        "--optparams"
-        help="Parameters"
-        arg_type=Float64
-        default=[]
-        nargs='+'
-        "--horde"
-        help="The horde used for training"
-        default="gamma_chain"
-        "--gamma"
-        help="The gamma value for the gamma_chain horde"
-        arg_type=Float64
-        default=0.9
         "--act"
         help="The activation used for the GVFN"
         arg_type=String
         default="linear"
+        "--gamma_low"
+        arg_type=Float64
+        default=0.2
+        "--gamma_high"
+        arg_type=Float64
+        default=0.9
+        "--num_gvfs"
+        arg_type=Int
+        default=128
+        "--gvfn_stepsize"
+        arg_type=Int
+        default=3e-5
+
+        # Model
+        "--model_opt"
+        arg_type=String
+        default="ADAM"
+        "--model_stepsize"
+        arg_type=Float64
+        default=0.001
     end
 
     return as

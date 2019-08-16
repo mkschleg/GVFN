@@ -354,7 +354,7 @@ function update!(out_model, rnn::Flux.Recur{T},
     for t in 1:(length(preds)-1)
         cumulants, discounts, π_prob = get(horde, action_t, env_state_tp1, Flux.data(preds[t+1]))
         ρ = Float32.(π_prob./b_prob)
-        δ_all[t] = mean(tderror(preds[t], Float32.(cumulants), Float32.(discounts), Flux.data(preds[t+1])).^2)
+        δ_all[t] = mean(0.5.*tderror(preds[t], Float32.(cumulants), Float32.(discounts), Flux.data(preds[t+1])).^2)
     end
 
     grads = Flux.Tracker.gradient(()->mean(δ_all), Flux.params(out_model, rnn))
@@ -379,7 +379,7 @@ function update!(model, horde::AbstractHorde, opt, lu::BatchTD, state_seq, env_s
     for t in 1:(length(preds)-1)
         cumulants, discounts, π_prob = get(gvfn.cell, action_t, env_state_tp1, Flux.data(preds[t+1]))
         ρ = π_prob ./ b_prob
-        δ_all[t] = mean(tderror(preds[t], Float32.(cumulants), Float32.(discounts), Flux.data(preds[t+1])).^2)
+        δ_all[t] = mean(0.5.*tderror(preds[t], Float32.(cumulants), Float32.(discounts), Flux.data(preds[t+1])).^2)
     end
 
     grads = Tracker.gradient(()->mean(δ_all), prms)
