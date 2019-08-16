@@ -64,8 +64,8 @@ function make_arguments_rtd(args::Dict)
 
         "--gvfn_stepsize" , gvfn_stepsize,
         "--gvfn_opt" , gvfn_opt,
-        "--gamma_high",γhi,
-        "--gamma_low",γlo,
+        "--gamma_high",gamma_high,
+        "--gamma_low",gamma_low,
         "--num_gvfs",num_gvfs,
 
         "--seed",seed
@@ -79,7 +79,7 @@ function main()
     @add_arg_table as begin
         "--numworkers"
         arg_type=Int64
-        default=1
+        default=4
         "--jobloc"
         arg_type=String
         default=joinpath(save_loc, "jobs")

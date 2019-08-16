@@ -12,8 +12,8 @@ mutable struct MackeyGlassAgent{O, T, H, Φ, M, G} <: JuliaRL.AbstractAgent
     model_opt::O
     gvfn::Flux.Recur{T}
     state_list::DataStructures.CircularBuffer{Φ}
-    pbuff::DataStructures.CircularBuffer{Φ}
-    targetbuff::DataStructures.CircularBuffer{<:Float32}
+    pbuff::Vector{Φ}
+    targetbuff::Vector{Float32}
     hidden_state_init::H
     s_t::Φ
     model::M
@@ -21,7 +21,7 @@ mutable struct MackeyGlassAgent{O, T, H, Φ, M, G} <: JuliaRL.AbstractAgent
 
     horizon::Int
     step::Int
-    ϕbuff::DataStructures.CircularBuffer{Vector{Φ}}
+    ϕbuff::DataStructures.CircularBuffer{Vector{Array{Φ,1}}}
 end
 
 
@@ -36,12 +36,12 @@ function MackeyGlassAgent(parsed; rng=Random.GLOBAL_RNG)
 
     gvfn_opt_string = parsed["gvfn_opt"]
     gvfn_opt_func = getproperty(Flux, Symbol(gvfn_opt_string))
-    gvfn_opt = opt_func(parsed["gvfn_stepsize"])
+    gvfn_opt = gvfn_opt_func(parsed["gvfn_stepsize"])
     batchsize=parsed["batchsize"]
 
     model_opt_string = parsed["model_opt"]
     model_opt_func = getproperty(Flux, Symbol(model_opt_string))
-    model_opt = opt_func(parsed["model_stepsize"])
+    model_opt = model_opt_func(parsed["model_stepsize"])
 
     act = FluxUtils.get_activation(parsed["act"])
 
@@ -53,7 +53,7 @@ function MackeyGlassAgent(parsed; rng=Random.GLOBAL_RNG)
     hidden_state_init = zeros(Float32, num_gvfs)
 
     targetbuff = Float32[]
-    pbuff = Vector{Float32}[]
+    pbuff = Array{Float32,1}[]
 
     horizon = Int(parsed["horizon"])
     ϕbuff = DataStructures.CircularBuffer{Vector{Array{Float32,1}}}(horizon)

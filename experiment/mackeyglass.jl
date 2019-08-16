@@ -52,8 +52,8 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         help="prediction horizon"
         default=12
         arg_type=Int64
-        "--batchsize",
-        help="batchsize"
+        "--batchsize"
+        help="batchsize for models"
         arg_type=Int64
         default=32
         "--alg"
@@ -78,7 +78,7 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         arg_type=Int
         default=128
         "--gvfn_stepsize"
-        arg_type=Int
+        arg_type=Float64
         default=3e-5
 
         # Model

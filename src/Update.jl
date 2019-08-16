@@ -391,7 +391,6 @@ end
 
 
 function update!(model::SingleLayer, horde::AbstractHorde, opt, lu::BatchTD, state_seq, env_state_tp1, action_t=nothing, b_prob=1.0; prms=nothing)
-    
     v = model.(state_seq)
     v_prime_t = [deriv(model, state) for state in state_seq]
 
@@ -401,8 +400,6 @@ function update!(model::SingleLayer, horde::AbstractHorde, opt, lu::BatchTD, sta
     Δ = δ.*v_prime_t
     model.W .-= apply!(opt, model.W, Δ*state_seq[end-1]')
     model.b .-= apply!(opt, model.b, Δ)
-
-    
 end
 
 function update!(gvfn::Flux.Recur{T}, opt, lu::BatchTD, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: GVFRActionLayer}
