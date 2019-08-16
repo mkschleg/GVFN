@@ -191,7 +191,7 @@ function main_experiment(args::Vector{String})
 
     ap = cwu.ActingPolicy()
     if parsed["policy"] == "random"
-        ap = GVFN.RandomActingPolicy([1/3, 1/3, 1/3])
+        ap = GVFN.RandomActingPolicy([1/4, 1/4, 1/2])
     end
 
     
