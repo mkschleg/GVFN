@@ -189,11 +189,14 @@ function main_experiment(args::Vector{String})
 
     fs = JuliaRL.FeatureCreators.feature_size(fc)
 
-    ap = cwu.ActingPolicy()
-    if parsed["policy"] == "random"
-        ap = GVFN.RandomActingPolicy([1/4, 1/4, 1/2])
-    end
+    # ap = cwu.ActingPolicy()
+    # if parsed["policy"] == "forward"
+    #     ap = GVFN.RandomActingPolicy([1/4, 1/4, 1/2])
+    # elseif parsed["policy"] == "random"
+    #     ap = GVFN.RandomActingPolicy([1/3, 1/3, 1/3])
+    # end
 
+    ap = cwu.get_behavior_policy(parsed["policy"])
     
     agent = GVFN.GVFNActionAgent(horde, out_horde,
                                  fc, fs,

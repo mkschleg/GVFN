@@ -229,6 +229,21 @@ function (π::ActingPolicy)(state_t, rng::Random.AbstractRNG=Random.GLOBAL_RNG)
 end
 
 
+function get_behavior_policy(policy_str)
+
+    if policy_str == "rafols"
+        ap = ActingPolicy()
+    elseif policy_str == "forward"
+        ap = GVFN.RandomActingPolicy([1/4, 1/4, 1/2])
+    elseif policy_str == "random"
+        ap = GVFN.RandomActingPolicy([1/3, 1/3, 1/3])
+    else
+        throw("Unknown behavior policy")
+    end
+end
+
+
+
 
 onehot(size, idx) = begin; a=zeros(size);a[idx] = 1.0; return a end;
 build_features(state, action) = [[1.0]; state; 1.0.-state; onehot(3, action); 1.0.-onehot(3,action)]
