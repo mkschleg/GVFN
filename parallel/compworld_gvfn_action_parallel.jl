@@ -68,12 +68,12 @@ function main()
 
 
     arg_dict = Dict([
-        "horde"=>["aj_gammas_term", "aj_gammas_scaled"],
+        "horde"=>["aj_gammas", "aj_gammas_term", "aj_gammas_scaled"],
         "alpha"=>alphas,
         "truncation"=>truncations,
         "feature"=>["standard"],
         "seed"=>collect(1:5),
-        "act"=>["sigmoid"]
+        "act"=>["sigmoid", "relu"]
     ])
     arg_list = ["feature", "act", "horde", "alpha", "truncation", "seed"]
     
