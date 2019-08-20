@@ -15,7 +15,7 @@ Pkg.activate(".")
 
 using Reproduce
 
-const save_loc = "compassworld_gvfn_action_sgd_gammas"
+const save_loc = "compassworld_gvfn_action_sgd_policies"
 const exp_file = "experiment/compassworld_action.jl"
 const exp_module_name = :CompassWorldActionExperiment
 const exp_func_name = :main_experiment
@@ -24,13 +24,14 @@ const exp_func_name = :main_experiment
 
 const learning_update = "RTD"
 # const lambdas = 0.1:0.2:0.9
-const truncations = [1, 4, 8, 16, 24, 32]
+const truncations = [1, 8, 16, 24, 32]
 
 #------ Optimizers ----------#
 
 # Parameters for the SGD Algorithm
 const optimizer = "Descent"
-const alphas = clamp.(0.1*1.5.^(-6:6), 0.0, 1.0)
+# const alphas = clamp.(0.1*1.5.^(-6:6), 0.0, 1.0)
+const alphas = [0.0001, 0.0005, 0.001, 0.005, 0.01]
 # const alphas = 0.1*1.5.^(-6:6)
 
 function make_arguments_tdlambda(args::Dict)
@@ -40,7 +41,15 @@ function make_arguments_tdlambda(args::Dict)
     seed = args["seed"]
     feature = args["feature"]
     act = args["act"]
-    new_args=["--horde", horde, "--act", act, "--truncation", truncation, "--opt", optimizer, "--optparams", alpha, "--feature", feature, "--seed", seed]
+    policy = args["policy"]
+    new_args=["--horde", horde,
+              "--act", act,
+              "--truncation", truncation,
+              "--opt", optimizer,
+              "--optparams", alpha,
+              "--feature", feature,
+              "--policy", policy,
+              "--seed", seed]
     return new_args
 end
 
@@ -58,7 +67,7 @@ function main()
         action=:store_true
         "--numsteps"
         arg_type=Int64
-        default=1000000
+        default=5000000
     end
     parsed = parse_args(as)
     num_workers = parsed["numworkers"]
@@ -68,14 +77,15 @@ function main()
 
 
     arg_dict = Dict([
-        "horde"=>["aj_gammas_term", "aj_gammas_scaled"],
+        "horde"=>["rafols", "aj_gammas_term", "aj_gammas"],
         "alpha"=>alphas,
         "truncation"=>truncations,
         "feature"=>["standard"],
+        "policy"=>["random", "forward"],
         "seed"=>collect(1:5),
         "act"=>["sigmoid"]
     ])
-    arg_list = ["feature", "act", "horde", "alpha", "truncation", "seed"]
+    arg_list = ["policy", "feature", "act", "horde", "alpha", "truncation", "seed"]
     
     static_args = ["--alg", learning_update, "--steps", string(parsed["numsteps"]), "--exp_loc", save_loc]
     args_iterator = ArgIterator(arg_dict, static_args;

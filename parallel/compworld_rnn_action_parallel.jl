@@ -13,7 +13,7 @@ using Reproduce
 
 
 #------ Optimizers ----------#
-const save_loc = "compworld_rnn_action_sweep"
+const save_loc = "compworld_rnn_action_sweep_policies"
 const exp_file = "experiment/compassworld_rnn_action.jl"
 const exp_module_name = :CompassWorldRNNActionExperiment
 const exp_func_name = :main_experiment
@@ -21,8 +21,9 @@ const exp_func_name = :main_experiment
 
 # Parameters for the SGD Algorithm
 const optimizer = "Descent"
-const alphas = clamp.(0.1*1.5.^(-6:4), 0.0, 1.0)
-const truncations = [1, 2, 4, 8, 16, 24, 32]
+# const alphas = clamp.(0.1*1.5.^(-6:4), 0.0, 1.0)
+const alphas = [0.0001, 0.0005, 0.001, 0.005, 0.01]
+const truncations = [1, 8, 16, 24, 32]
 
 function make_arguments(args::Dict)
     horde = args["horde"]
@@ -30,8 +31,16 @@ function make_arguments(args::Dict)
     cell = args["cell"]
     truncation = args["truncation"]
     feature = args["feature"]
+    policy = args["policy"]
     seed = args["seed"]
-    new_args=["--horde", horde, "--truncation", truncation, "--opt", optimizer, "--optparams", alpha, "--cell", cell, "--feature", feature, "--seed", seed]
+    new_args=["--horde", horde,
+              "--truncation", truncation,
+              "--opt", optimizer,
+              "--optparams", alpha,
+              "--cell", cell,
+              "--feature", feature,
+              "--policy", policy,
+              "--seed", seed]
     return new_args
 end
 
@@ -49,7 +58,7 @@ function main(args::Vector{String}=ARGS)
         action=:store_true
         "--numsteps"
         arg_type=Int64
-        default=1000000
+        default=5000000
     end
     parsed = parse_args(as)
     num_workers = parsed["numworkers"]
@@ -63,10 +72,11 @@ function main(args::Vector{String}=ARGS)
         "truncation"=>truncations,
         "cell"=>["RNN"],
         "feature"=>["standard"],
+        "policy"=>["random", "forward"],
         # "cell"=>["RNN", "GRU"],
         "seed"=>collect(1:5)
     ])
-    arg_list = ["feature", "horde", "alpha", "truncation", "seed", "cell"]
+    arg_list = ["policy", "feature", "horde", "alpha", "truncation", "seed", "cell"]
 
     static_args = ["--steps", string(parsed["numsteps"]), "--exp_loc", save_loc]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments)
