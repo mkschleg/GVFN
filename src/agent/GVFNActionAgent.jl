@@ -45,8 +45,6 @@ function GVFNActionAgent(horde, out_horde,
 
     act = FluxUtils.get_activation(parsed["act"])
 
-    # gvfn = GVFNetwork(num_gvfs, feature_size, horde;
-    #                   init=init_func, σ_int=act)
     gvfn = GVFActionNetwork(num_gvfs, num_actions, feature_size, horde; init=init_func, σ_int=act)
 
     num_out_gvfs = length(out_horde)
