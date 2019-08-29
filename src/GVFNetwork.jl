@@ -52,7 +52,7 @@ function reset!(m::Flux.Recur{T}, h_init) where {T<:Flux.LSTMCell}
 end
 
 
-mutable struct GVFRActionLayer{F, A, B V, T<:AbstractGVF} <: AbstractGVFLayer
+mutable struct GVFRActionLayer{F, A, B, V, T<:AbstractGVF} <: AbstractGVFLayer
     σ::F
     Wx::A
     Wh::A
