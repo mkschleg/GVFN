@@ -3,6 +3,7 @@ module FluxUtils
 using ..Flux
 using Reproduce
 import ..GVFN.RNNActionLayer
+import ..GVFN.RNNInv
 
 
 function rnn_settings!(as::ArgParseSettings)
@@ -50,8 +51,13 @@ function construct_rnn(in::Integer, parsed::Dict, args...; kwargs...)
 end
 
 function construct_rnn(cell::AbstractString, in::Integer, num_hidden::Integer, args...; kwargs...)
-    cell_func = getproperty(Flux, Symbol(cell))
-    return cell_func(in, num_hidden, args...; kwargs...)
+    if cell == "RNNInv"
+        cell_func = RNNInv
+        return cell_func(in, num_hidden, args...; kwargs...)
+    else
+        cell_func = getproperty(Flux, Symbol(cell))
+        return cell_func(in, num_hidden, args...; kwargs...)
+    end
 end
 
 function construct_action_rnn(in::Integer, num_actions, num_hidden, args...; kwargs...)
