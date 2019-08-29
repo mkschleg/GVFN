@@ -24,7 +24,8 @@ const exp_func_name = :main_experiment
 
 const learning_update = "RTD"
 # const lambdas = 0.1:0.2:0.9
-const truncations = [1, 4, 8, 16, 24, 32]
+# const truncations = [1, 4, 8, 16, 24, 32]
+const truncations = [2]
 
 #------ Optimizers ----------#
 

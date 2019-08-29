@@ -7,6 +7,9 @@ include("../plot/plot_reproduce.jl")
 cycleworld_data_clean_func(di) = mean(abs.(di["results"]["out_err_strg"]))
 cycleworld_data_clean_func_end(di) = mean(abs.(di["results"]["out_err_strg"][250000:300000]))
 
+cycleworld_data_clean_func_rnn(di) = di["results"]["mean"]
+cycleworld_data_clean_func_rnn_end(di) = di["results"]["mean_end"]
+
 
 function main(args::Vector{String}=ARGS)
 
@@ -81,6 +84,42 @@ function synopsis(exp_loc::String; best_args=["truncation", "horde"])
 
     ret = best_settings(exp_loc, best_args;
                         run_key="seed", clean_func=cycleworld_data_clean_func_end,
+                        runs_func=runs_func,
+                        sort_idx="mean",
+                        save_locs=[joinpath(exp_loc, "best_trunc_horde_end.txt")])
+end
+
+function synopsis_rnn(exp_loc::String; best_args=["truncation", "cell"])
+    
+    # Iterators.product
+    args = Iterators.product(["mean", "median", "best"], ["all", "end"])
+    func_dict = Dict(
+        "all"=>cycleworld_data_clean_func_rnn,
+        "end"=>cycleworld_data_clean_func_rnn_end)
+
+    if !isdir(joinpath(exp_loc, "synopsis"))
+        mkdir(joinpath(exp_loc, "synopsis"))
+    end
+    
+    for a in args
+        @info "Current Arg $(a)"
+        order_settings(
+            exp_loc;
+            run_key="seed",
+            clean_func=func_dict[a[2]],
+            runs_func=runs_func,
+            sort_idx=a[1],
+            save_locs=[joinpath(exp_loc, "synopsis/order_settings_$(a[1])_$(a[2]).$(ext)") for ext in ["jld2", "txt"]])
+    end
+
+    ret = best_settings(exp_loc, best_args;
+                        run_key="seed", clean_func=cycleworld_data_clean_func_rnn,
+                        runs_func=runs_func,
+                        sort_idx="mean",
+                        save_locs=[joinpath(exp_loc, "best_trunc_horde.txt")])
+
+    ret = best_settings(exp_loc, best_args;
+                        run_key="seed", clean_func=cycleworld_data_clean_func_rnn_end,
                         runs_func=runs_func,
                         sort_idx="mean",
                         save_locs=[joinpath(exp_loc, "best_trunc_horde_end.txt")])

@@ -11,24 +11,24 @@ Pkg.activate(".")
 
 using Reproduce
 
-const save_loc = "ringworld_gvfn_sweep_sgd"
+const save_loc = "ringworld_gvfn_sweep_tdlambda"
 const exp_file = "experiment/ringworld_action.jl"
 const exp_module_name = :RingWorldExperiment
 const exp_func_name = :main_experiment
 const optimizer = "Descent"
-const alphas = clamp.(0.1*1.5.^(-6:1), 0.0, 1.0)
+const alphas = clamp.(0.1*1.5.^(-6:6), 0.0, 1.0)
 
 
-const learning_update = "RTD"
-const truncations = [1, 2, 4, 8, 12, 16]
+const learning_update = "TDLambda"
+const lambdas = [0.0, 0.2, 0.4, 0.6, 0.8, 0.9]
 
 function make_arguments(args::Dict)
     horde = args["horde"]
     alpha = args["alpha"]
-    trunc = args["truncation"]
+    lambda = args["lambda"]
     act = args["activation"]
     seed = args["seed"]
-    new_args=["--horde", horde, "--truncation", trunc, "--act", act, "--opt", optimizer, "--optparams", alpha, "--seed", seed]
+    new_args=["--horde", horde, "--params", lambda, "--act", act, "--opt", optimizer, "--optparams", alpha, "--seed", seed]
     return new_args
 end
 
@@ -53,14 +53,13 @@ function main()
 
     arg_dict = Dict([
         #"horde"=>["chain", "gamma_chain", "gammas_aj_term"],
-	# "horde"=>["half_chain", "gamma_chain"],
-        "horde"=>["full_chain"]
+	"horde"=>["half_chain", "gamma_chain"],
         "alpha"=>alphas,
-        "truncation"=>truncations,
+        "lambda"=>lambdas,
         "activation"=>["relu", "sigmoid"],
         "seed"=>collect(1:5)
     ])
-    arg_list = ["activation", "horde", "alpha", "truncation", "seed"]
+    arg_list = ["activation", "horde", "alpha", "lambda", "seed"]
 
     static_args = ["--steps", string(parsed["numsteps"]), "--alg", learning_update, "--exp_loc", save_loc]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments)
