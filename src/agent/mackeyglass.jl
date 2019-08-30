@@ -6,10 +6,10 @@ import DataStructures
 
 #import JuliaRL
 
-mutable struct MackeyGlassAgent{O, T, H, Φ, M, G} <: JuliaRL.AbstractAgent
+mutable struct MackeyGlassAgent{GVFNOpt,ModelOpt, T, H, Φ, M, G} <: JuliaRL.AbstractAgent
     lu::LearningUpdate
-    gvfn_opt::O
-    model_opt::O
+    gvfn_opt::GVFNOpt
+    model_opt::ModelOpt
     gvfn::Flux.Recur{T}
     state_list::DataStructures.CircularBuffer{Φ}
     pbuff::Vector{Φ}
@@ -21,7 +21,8 @@ mutable struct MackeyGlassAgent{O, T, H, Φ, M, G} <: JuliaRL.AbstractAgent
 
     horizon::Int
     step::Int
-    ϕbuff::DataStructures.CircularBuffer{Vector{Array{Φ,1}}}
+    batchsize::Int
+    ϕbuff::DataStructures.CircularBuffer{Vector{Float32}}
 end
 
 
@@ -46,7 +47,11 @@ function MackeyGlassAgent(parsed; rng=Random.GLOBAL_RNG)
     act = FluxUtils.get_activation(parsed["act"])
 
     gvfn = GVFNetwork(num_gvfs, 1, horde; init=(dims...)->glorot_uniform(rng, dims...), σ_int=act)
-    model = SingleLayer(num_gvfs, 1, relu, relu′; init=(dims...)->glorot_uniform(rng, dims...))
+    #model = SingleLayer(num_gvfs, 1, relu, relu′; init=(dims...)->glorot_uniform(rng, dims...))
+    model = Flux.Chain(
+        Flux.Dense(num_gvfs,num_gvfs,relu),
+        Flux.Dense(num_gvfs, 1)
+    )
     out_horde = Horde([GVF(FeatureCumulant(1),ConstantDiscount(0.0), NullPolicy())])
 
     state_list = DataStructures.CircularBuffer{Array{Float32, 1}}(batchsize)
@@ -56,9 +61,9 @@ function MackeyGlassAgent(parsed; rng=Random.GLOBAL_RNG)
     pbuff = Array{Float32,1}[]
 
     horizon = Int(parsed["horizon"])
-    ϕbuff = DataStructures.CircularBuffer{Vector{Array{Float32,1}}}(horizon)
+    ϕbuff = DataStructures.CircularBuffer{Vector{Float32}}(horizon)
 
-    return MackeyGlassAgent(lu, gvfn_opt, model_opt, gvfn, state_list, pbuff, targetbuff, hidden_state_init, zeros(Float32, 1), model, out_horde, horizon, 0, ϕbuff)
+    return MackeyGlassAgent(lu, gvfn_opt, model_opt, gvfn, state_list, pbuff, targetbuff, hidden_state_init, zeros(Float32, 1), model, out_horde, horizon, 0, batchsize,ϕbuff)
 end
 
 function start!(agent::MackeyGlassAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
@@ -74,19 +79,19 @@ end
 function step!(agent::MackeyGlassAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
 
     push!(agent.state_list, env_s_tp1)
-    if isfull(agent.state_list)
-        update!(agent.gvfn, agent.opt, agent.lu, agent.hidden_state_init, agent.state_list, env_s_tp1)
+    if DataStructures.isfull(agent.state_list)
+        update!(agent.gvfn, agent.gvfn_opt, agent.lu, agent.hidden_state_init, agent.state_list, env_s_tp1)
     end
 
     reset!(agent.gvfn, agent.hidden_state_init)
     preds = agent.gvfn.(agent.state_list)
 
-    push!(agent.ϕbuff, Flux.data.(preds))
+    push!(agent.ϕbuff, Flux.data(preds[end-1]))
     if agent.step>=agent.horizon
-        push!(agent.pbuff, pop_first!(agent.ϕbuff))
+        push!(agent.pbuff, popfirst!(agent.ϕbuff))
         push!(agent.targetbuff, env_s_tp1[1])
         if length(agent.targetbuff) == agent.batchsize
-            update!(agent.model, agent.out_horde, agent.opt, agent.lu, agent.pbuff, agent.targetbuff)
+            update!(agent.model, agent.out_horde, agent.model_opt, agent.lu, agent.pbuff, agent.targetbuff)
 
             agent.targetbuff = Float32[]
             agent.pbuff = Vector{Float32}[]

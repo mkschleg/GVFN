@@ -366,7 +366,7 @@ function update!(out_model, rnn::Flux.Recur{T},
 end
 
 # GVFN
-function update!(model, horde::AbstractHorde, opt, lu::BatchTD, state_seq, env_state_tp1, action_t=nothing, b_prob=1.0; prms=nothing)
+function update!(gvfn, opt, lu::BatchTD, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: AbstractGVFLayer}
     
     prms = Params([gvfn.cell.Wx, gvfn.cell.Wh])
 
@@ -375,14 +375,14 @@ function update!(model, horde::AbstractHorde, opt, lu::BatchTD, state_seq, env_s
     
     # preds_t = preds[end-1]
     # preds_tilde = Flux.data(preds[end])
-    δ_all = param(zeros(length(preds)-1))
+    δ_all = param(0)
     for t in 1:(length(preds)-1)
         cumulants, discounts, π_prob = get(gvfn.cell, action_t, env_state_tp1, Flux.data(preds[t+1]))
         ρ = π_prob ./ b_prob
-        δ_all[t] = mean(0.5.*tderror(preds[t], Float32.(cumulants), Float32.(discounts), Flux.data(preds[t+1])).^2)
+        δ_all += 1/t * (0.5.*mean(tderror(preds[t], Float32.(cumulants), Float32.(discounts), Flux.data(preds[t+1])).^2)-δ_all)
     end
 
-    grads = Tracker.gradient(()->mean(δ_all), prms)
+    grads = Tracker.gradient(()->δ_all, prms)
     for weights in prms
         Flux.Tracker.update!(opt, weights, grads[weights])
     end
@@ -391,6 +391,8 @@ end
 
 
 function update!(model::SingleLayer, horde::AbstractHorde, opt, lu::BatchTD, state_seq, env_state_tp1, action_t=nothing, b_prob=1.0; prms=nothing)
+    @show size(model.W), size(model.b)
+    @show size(state_seq[1])
     v = model.(state_seq)
     v_prime_t = [deriv(model, state) for state in state_seq]
 
