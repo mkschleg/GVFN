@@ -1,4 +1,4 @@
-export MackeyGlassAgent, MackeyGlassRNNAgent
+export MackeyGlassAgent, MackeyGlassRNNAgent, predict!
 
 import Flux
 import Random
@@ -47,7 +47,6 @@ function MackeyGlassAgent(parsed; rng=Random.GLOBAL_RNG)
     act = FluxUtils.get_activation(parsed["act"])
 
     gvfn = GVFNetwork(num_gvfs, 1, horde; init=(dims...)->glorot_uniform(rng, dims...), σ_int=act)
-    #model = SingleLayer(num_gvfs, 1, relu, relu′; init=(dims...)->glorot_uniform(rng, dims...))
     model = Flux.Chain(
         Flux.Dense(num_gvfs,num_gvfs,relu),
         Flux.Dense(num_gvfs, 1)

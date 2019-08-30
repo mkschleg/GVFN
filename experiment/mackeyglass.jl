@@ -143,25 +143,22 @@ function main_experiment(args::Vector{String})
     end
 
     valPreds=zeros(Float64,num_val)
-    @showprogress 0.1 "Validation Step: " for step in 1:valSteps
+    @showprogress 0.1 "Validation Step: " for step in 1:num_val
         s_tp1= step!(env)
         pred = predict!(agent, s_tp1,0,false;rng=rng)
         valPreds[step] = Flux.data(pred[1])
     end
 
     testPreds=zeros(Float64,num_test)
-    @showprogress 0.1 "Test Step: " for step in 1:testSteps
+    @showprogress 0.1 "Test Step: " for step in 1:num_test
         s_tp1= step!(env)
         pred = predict!(agent, s_tp1,0,false;rng=rng)
         testPreds[step] = Flux.data(pred[1])
     end
 
     results = Dict("GroundTruth"=>gt, "Predictions"=>predictions, "ValidationPredictions"=>valPreds,"TestPredictions"=>testPreds)
-    if !parsed["working"]
-        JLD2.@save savefile results
-    else
-        return results
-    end
+    JLD2.@save savefile results
+    return results
 end
 
 Base.@ccallable function julia_main(ARGS::Vector{String})::Cint

@@ -44,6 +44,7 @@ include("RNN.jl")
 export RTD, RTD_jacobian, TDLambda, TD, update!
 include("Loss.jl")
 include("Update.jl")
+include("TimeseriesUpdates.jl")
 
 export OnlineJointTD, OnlineTD_RNN, train_step!
 include("RNN_updates.jl")
