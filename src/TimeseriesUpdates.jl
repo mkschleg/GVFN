@@ -41,7 +41,7 @@ function update!(gvfn, opt, lu::BatchTD, h_init, states, env_state_tp1, action_t
     for t in 1:(length(preds)-1)
         cumulants, discounts, π_prob = get(gvfn.cell, action_t, env_state_tp1, Flux.data(preds[t+1]))
         ρ = π_prob ./ b_prob
-        δ_all += 1/t * (0.5.*mean(tderror(preds[t], Float32.(cumulants), Float32.(discounts), Flux.data(preds[t+1])).^2)-δ_all)
+        δ_all += 1/t * (mean(0.5*tderror(preds[t], Float32.(cumulants), Float32.(discounts), Flux.data(preds[t+1])).^2)-δ_all)
     end
 
     grads = Tracker.gradient(()->δ_all, prms)
@@ -53,10 +53,10 @@ end
 
 function update!(model::Flux.Chain, horde::AbstractHorde, opt, lu::BatchTD, state_seq, targets, action_t=nothing, b_prob=1.0; prms=nothing)
 
-    v = vcat(model.(state_seq)...)
-    δ = (1//2)*Flux.mse(v, targets)
-
     prms = params(model)
+
+    v = vcat(model.(state_seq)...)
+    δ = mean(0.5*(v.-targets).^2)
     grads = Tracker.gradient(()->δ, prms)
 
     for p in prms

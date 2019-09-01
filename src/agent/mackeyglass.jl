@@ -78,7 +78,7 @@ end
 function step!(agent::MackeyGlassAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
 
     push!(agent.state_list, env_s_tp1)
-    if DataStructures.isfull(agent.state_list)
+    if agent.step % agent.batchsize == 0
         update!(agent.gvfn, agent.gvfn_opt, agent.lu, agent.hidden_state_init, agent.state_list, env_s_tp1)
     end
 

@@ -3,7 +3,8 @@ using Revise
 using Reproduce
 using FileIO
 using JLD2
-using Plots
+using Statistics
+using Plots; pyplot()
 
 includet("experiment/mackeyglass.jl")
 
@@ -21,11 +22,11 @@ getArgs() = [
     "--gamma_high", "0.95",
     "--gamma_low", "0.2",
     "--num_gvfs", "128",
-    "--seed", "4",
+    "--seed", "1",
     "--alg", "BatchTD",
-    "--steps", "6000",
-    "--valSteps", "2000",
-    "--testSteps", "2000",
+    "--steps", "600000",
+    "--valSteps", "200000",
+    "--testSteps", "200000",
     "--exp_loc", "mackeyglass_gvfn"
 ]
 
@@ -44,5 +45,31 @@ end
 
 function getData()
     results = getResults()
-    return results["GroundTruth"], vcat(results["Predictions"], results["ValidationPredictions"], results["TestPredictions"])
+    return results["GroundTruth"], results["Predictions"]
+end
+
+function plotData()
+    g,p = getData()
+    plot(p,  label="Predictions")
+    plot!(g, label="Ground Truth")
+end
+
+function NRMSE()
+    g,p = getData()
+    p = p[1:length(g)]
+
+    values = Float64[]
+    n=10000
+    for i=n+1:10:length(p)
+        ĝ = g[i-n:i]
+        P̂ = p[i-n:i]
+        push!(values, sqrt(mean((ĝ.-P̂).^2) / mean((ĝ.-mean(ĝ)).^2)))
+    end
+
+    return values
+end
+
+function plotNRMSE()
+    values = NRMSE()
+    plot(values, ylim=[0,1],yticks=[0.1i for i=0:10], grid=false, label="NRMSE")
 end
