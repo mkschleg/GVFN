@@ -1,6 +1,12 @@
 
 
 
+
+
+env_settings!(as::Reproduce.ArgParseSettings, env_type::Type{<:JuliaRL.AbstractEnvironment}) =
+    throw("Set settings function for $(typeof(env_type))")
+
+
 export CompassWorld, get_num_features
 include("env/CompassWorld.jl")
 

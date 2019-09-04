@@ -2,8 +2,10 @@
 __precompile__(true)
 
 module GVFN
-using Flux
+import Flux
 using Reexport
+
+import Reproduce
 
 @reexport using JuliaRL
 
@@ -35,9 +37,10 @@ export
 
 include("GVF.jl")
 
-export GVFNetwork, GVFActionNetwork, reset!, get, RNNActionLayer
+export GVFNetwork, GVFActionNetwork, reset!, get, RNNActionLayer, ForecastNetwork
 include("GVFNetwork.jl")
 include("RNN.jl")
+include("ForecastNetwork.jl")
 
 export RTD, RTD_jacobian, TDLambda, TD, update!
 include("Loss.jl")
@@ -52,6 +55,7 @@ include("ActingPolicy.jl")
 include("Environments.jl")
 
 export jacobian, glorot_uniform, glorot_normal, StopGradient
+export FluxUtils, CycleWorldUtils, RingWorldUtils, CompassWorldUtils
 include("util.jl")
 
 include("Agent.jl")
