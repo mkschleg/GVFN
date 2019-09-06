@@ -41,8 +41,9 @@ function update!(gvfn, opt, lu::BatchTD, h_init, states, env_state_tp1, action_t
     for t in 1:(length(preds)-1)
         cumulants, discounts, π_prob = get(gvfn.cell, action_t, env_state_tp1, Flux.data(preds[t+1]))
         ρ = π_prob ./ b_prob
-        δ_all += 1/t * (mean(0.5*tderror(preds[t], Float32.(cumulants), Float32.(discounts), Flux.data(preds[t+1])).^2)-δ_all)
+        δ_all += mean(0.5*tderror(preds[t], Float32.(cumulants), Float32.(discounts), Flux.data(preds[t+1])).^2)
     end
+    δ_all /= length(preds)-1
 
     grads = Tracker.gradient(()->δ_all, prms)
     for weights in prms

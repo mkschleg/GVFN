@@ -45,11 +45,11 @@ function MackeyGlassAgent(parsed; rng=Random.GLOBAL_RNG)
     model_opt = model_opt_func(parsed["model_stepsize"])
 
     act = FluxUtils.get_activation(parsed["act"])
-
-    gvfn = GVFNetwork(num_gvfs, 1, horde; init=(dims...)->glorot_uniform(rng, dims...), σ_int=act)
+    init_func = (dims...)->glorot_uniform(rng, dims...)
+    gvfn = GVFNetwork(num_gvfs, 1, horde; init=init_func, σ_int=act)
     model = Flux.Chain(
-        Flux.Dense(num_gvfs,num_gvfs,relu),
-        Flux.Dense(num_gvfs, 1)
+        Flux.Dense(num_gvfs,num_gvfs,relu; initW=init_func),
+        Flux.Dense(num_gvfs, 1; initW=init_func);
     )
     out_horde = Horde([GVF(FeatureCumulant(1),ConstantDiscount(0.0), NullPolicy())])
 

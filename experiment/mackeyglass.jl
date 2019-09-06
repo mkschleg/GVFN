@@ -143,20 +143,28 @@ function main_experiment(args::Vector{String})
     end
 
     valPreds=zeros(Float64,num_val)
+    vgt = Float64[]
     @showprogress 0.1 "Validation Step: " for step in 1:num_val
         s_tp1= step!(env)
+        if step>horizon
+            push!(vgt,s_tp1[1])
+        end
         pred = predict!(agent, s_tp1,0,false;rng=rng)
         valPreds[step] = Flux.data(pred[1])
     end
 
     testPreds=zeros(Float64,num_test)
+    tgt = Float64[]
     @showprogress 0.1 "Test Step: " for step in 1:num_test
         s_tp1= step!(env)
+        if step>horizon
+            push!(tgt,s_tp1[1])
+        end
         pred = predict!(agent, s_tp1,0,false;rng=rng)
         testPreds[step] = Flux.data(pred[1])
     end
 
-    results = Dict("GroundTruth"=>gt, "Predictions"=>predictions, "ValidationPredictions"=>valPreds,"TestPredictions"=>testPreds)
+    results = Dict("GroundTruth"=>gt, "Predictions"=>predictions, "ValidationPredictions"=>valPreds,"TestPredictions"=>testPreds, "TestGroundTruth"=>tgt,"ValidationGroundTruth"=>vgt)
     JLD2.@save savefile results
     return results
 end
