@@ -58,6 +58,8 @@ function update!(model::Flux.Chain, horde::AbstractHorde, opt, lu::BatchTD, stat
 
     v = vcat(model.(state_seq)...)
     δ = mean(0.5*(v.-targets).^2)
+
+    # TODO: where'd the gradient clipping go?
     grads = Tracker.gradient(()->δ, prms)
 
     for p in prms

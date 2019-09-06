@@ -6,7 +6,7 @@ using ..GVFN, Reproduce
 function LinSpacing(lo,hi,N)
     Γ = collect(LinRange(lo,hi,N))
     return Horde(
-        map(γ->GVF(ScaledCumulant(1-γ, FeatureCumulant(1)), ConstantDiscount(γ),NullPolicy()), Γ)
+        map(γ->GVF(NormalizedCumulant(1-γ, FeatureCumulant(1)), ConstantDiscount(γ),NullPolicy()), Γ)
     )
 end
 

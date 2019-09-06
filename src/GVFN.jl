@@ -33,7 +33,8 @@ export
     StateTerminationDiscount,
     FeatureCumulant,
     PredictionCumulant,
-    ScaledCumulant
+    ScaledCumulant,
+    NormalizedCumulant
 
 include("GVF.jl")
 
