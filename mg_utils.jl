@@ -55,21 +55,36 @@ function plotData()
 end
 
 function NRMSE()
-    g,p = getData()
-    p = p[1:length(g)]
+    ic = ItemCollection("mackeyglass_gvfn")
+    _,hashes,_ = search(ic, Dict())
+    all_values = Vector{Float64}[]
 
-    values = Float64[]
-    n=10000
-    for i=n+1:10:length(p)
-        ĝ = g[i-n:i]
-        P̂ = p[i-n:i]
-        push!(values, sqrt(mean((ĝ.-P̂).^2) / mean((ĝ.-mean(ĝ)).^2)))
+    for idx = 1:length(hashes)
+        h = hashes[idx]
+        results = load(joinpath(h,"results.jld2"),"results")
+        g,p = results["GroundTruth"], results["Predictions"]
+
+        p = p[1:length(g)]
+
+        values = Float64[]
+        n=10000
+        for i=n+1:10:length(p)
+            ĝ = g[i-n:i]
+            P̂ = p[i-n:i]
+            push!(values, sqrt(mean((ĝ.-P̂).^2) / mean((ĝ.-mean(ĝ)).^2)))
+        end
+        push!(all_values, values)
     end
-
-    return values
+    vals = zeros(length(all_values),length(all_values[1]))
+    for i=1:length(all_values)
+        vals[i,:] .= all_values[i]
+    end
+    return vals
 end
 
 function plotNRMSE()
     values = NRMSE()
-    plot(values, ylim=[0,1],yticks=[0.1i for i=0:10], grid=false, label="NRMSE")
+    av = mean(values, dims=1)
+    σ = std(values, dims=1, corrected=true) / sqrt(size(values,1))
+    plot(av, yerr=σ, ylim=[0,1],yticks=[0.1i for i=0:10], grid=false, label="NRMSE")
 end

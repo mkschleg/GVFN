@@ -2,6 +2,7 @@
 
 using Flux
 using Flux.Tracker
+using LinearAlgebra
 import Reproduce: ArgParseSettings, @add_arg_table
 
 glorot_uniform(rng::Random.AbstractRNG, dims...) = (rand(rng, Float32, dims...) .- 0.5f0) .* sqrt(24.0f0/sum(dims))
@@ -41,6 +42,16 @@ end
 (layer::StopGradient)(x) = Flux.data(layer.cell(x))
 
 reset!(layer::StopGradient, hidden_state_init) = reset!(layer.cell, hidden_state_init)
+
+function get_clip_coeff(grads,prms; max_norm)
+    total_norm=0.0
+    for p in prms
+        total_norm += norm(vcat(Flux.data(grads[p])...))^2
+    end
+    total_norm = sqrt(total_norm)
+    clip_coef = max_norm/(total_norm+1e-6)
+    return clip_coef < 1 ? clip_coef : 1.0
+end
 
 function exp_settings!(as::ArgParseSettings)
     @add_arg_table as begin
