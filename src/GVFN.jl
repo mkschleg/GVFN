@@ -55,7 +55,7 @@ include("ActingPolicy.jl")
 
 include("Environments.jl")
 
-export jacobian, glorot_uniform, glorot_normal, StopGradient
+export jacobian, glorot_uniform, glorot_normal, StopGradient, get_clip_coeff
 include("util.jl")
 
 include("Agent.jl")

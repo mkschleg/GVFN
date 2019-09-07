@@ -40,7 +40,7 @@ function update!(gvfn, opt, lu::BatchTD, h_init, states, env_state_tp1, action_t
     δ_all = param(0.0)
     for t in 1:(length(preds)-1)
         cumulants, discounts, π_prob = get(gvfn.cell, action_t, env_state_tp1, Flux.data(preds[t+1]))
-        ρ = π_prob ./ b_prob
+
         δ_all += mean(0.5*tderror(preds[t], Float32.(cumulants), Float32.(discounts), Flux.data(preds[t+1])).^2)
     end
     δ_all /= length(preds)-1
@@ -59,11 +59,11 @@ function update!(model::Flux.Chain, horde::AbstractHorde, opt, lu::BatchTD, stat
     v = vcat(model.(state_seq)...)
     δ = mean(0.5*(v.-targets).^2)
 
-    # TODO: where'd the gradient clipping go?
     grads = Tracker.gradient(()->δ, prms)
 
+    c = get_clip_coeff(grads,prms; max_norm = 0.25)
     for p in prms
-        update!(opt, p, grads[p])
+        update!(opt, p, c.*grads[p])
     end
 end
 
