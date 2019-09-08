@@ -44,6 +44,10 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         default=200000
         "--working"
         action=:store_true
+        "--agent"
+        help="which agent to use"
+        arg_type=String
+        default="GVFN"
     end
 
 
@@ -88,6 +92,26 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         "--model_stepsize"
         arg_type=Float64
         default=0.001
+
+        # RNN
+        "--rnn_opt"
+        help="Optimizer"
+        default="Adam"
+
+        "--rnn_tau"
+        help="BPTT truncation length"
+        arg_type=Int
+        default=1
+
+        "--rnn_lr"
+        help="learning rate"
+        arg_type=Float64
+        default=0.0001
+
+        "--rnn_nhidden"
+        help="number of hidden units"
+        arg_type=Int
+        default=64
     end
 
     return as
@@ -127,7 +151,13 @@ function main_experiment(args::Vector{String})
 
     s_t = start!(env)
 
-    agent = MackeyGlassAgent(parsed; rng=rng)
+    Agent_t = parsed["agent"]
+    if Agent_t == "GVFN"
+        agent = MackeyGlassAgent(parsed; rng=rng)
+    elseif Agent_t == "RNN"
+        agent = MackeyGlassRNNAgent(parsed;rng=rng)
+    end
+
     start!(agent, s_t; rng=rng)
 
     @showprogress 0.1 "Step: " for step in 1:num_steps

@@ -46,11 +46,11 @@ reset!(layer::StopGradient, hidden_state_init) = reset!(layer.cell, hidden_state
 function get_clip_coeff(grads,prms; max_norm)
     total_norm=0.0
     for p in prms
-        total_norm += norm(vcat(Flux.data(grads[p])...))^2
+        total_norm += norm(Flux.data(grads[p]))^2
     end
     total_norm = sqrt(total_norm)
     clip_coef = max_norm/(total_norm+1e-6)
-    return clip_coef < 1 ? clip_coef : 1.0
+    return clip_coef < 1.0 ? clip_coef : 1.0
 end
 
 function exp_settings!(as::ArgParseSettings)

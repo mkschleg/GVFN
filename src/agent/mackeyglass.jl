@@ -13,7 +13,7 @@ mutable struct MackeyGlassAgent{GVFNOpt,ModelOpt, T, H, Φ, M, G} <: JuliaRL.Abs
     gvfn::Flux.Recur{T}
     state_list::DataStructures.CircularBuffer{Φ}
     pbuff::Vector{Φ}
-    targetbuff::Vector{Float32}
+    targetbuff::Vector{Float64}
     hidden_state_init::H
     s_t::Φ
     model::M
@@ -22,7 +22,7 @@ mutable struct MackeyGlassAgent{GVFNOpt,ModelOpt, T, H, Φ, M, G} <: JuliaRL.Abs
     horizon::Int
     step::Int
     batchsize::Int
-    ϕbuff::DataStructures.CircularBuffer{Vector{Float32}}
+    ϕbuff::DataStructures.CircularBuffer{Vector{Float64}}
 end
 
 
@@ -53,16 +53,16 @@ function MackeyGlassAgent(parsed; rng=Random.GLOBAL_RNG)
     )
     out_horde = Horde([GVF(FeatureCumulant(1),ConstantDiscount(0.0), NullPolicy())])
 
-    state_list = DataStructures.CircularBuffer{Array{Float32, 1}}(batchsize)
-    hidden_state_init = zeros(Float32, num_gvfs)
+    state_list = DataStructures.CircularBuffer{Array{Float64, 1}}(batchsize+1)
+    hidden_state_init = zeros(Float64, num_gvfs)
 
-    targetbuff = Float32[]
-    pbuff = Array{Float32,1}[]
+    targetbuff = Float64[]
+    pbuff = Array{Float64,1}[]
 
     horizon = Int(parsed["horizon"])
-    ϕbuff = DataStructures.CircularBuffer{Vector{Float32}}(horizon)
+    ϕbuff = DataStructures.CircularBuffer{Vector{Float64}}(horizon)
 
-    return MackeyGlassAgent(lu, gvfn_opt, model_opt, gvfn, state_list, pbuff, targetbuff, hidden_state_init, zeros(Float32, 1), model, out_horde, horizon, 0, batchsize,ϕbuff)
+    return MackeyGlassAgent(lu, gvfn_opt, model_opt, gvfn, state_list, pbuff, targetbuff, hidden_state_init, zeros(Float64, 1), model, out_horde, horizon, 0, batchsize,ϕbuff)
 end
 
 function start!(agent::MackeyGlassAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
@@ -85,26 +85,26 @@ function step!(agent::MackeyGlassAgent, env_s_tp1, r, terminal; rng=Random.GLOBA
     reset!(agent.gvfn, agent.hidden_state_init)
     preds = agent.gvfn.(agent.state_list)
 
-    push!(agent.ϕbuff, Flux.data(preds[end-1]))
+    push!(agent.ϕbuff, preds[end-1].data)
     if agent.step>=agent.horizon
         push!(agent.pbuff, popfirst!(agent.ϕbuff))
         push!(agent.targetbuff, env_s_tp1[1])
         if length(agent.targetbuff) == agent.batchsize
             update!(agent.model, agent.out_horde, agent.model_opt, agent.lu, agent.pbuff, agent.targetbuff)
 
-            agent.targetbuff = Float32[]
-            agent.pbuff = Vector{Float32}[]
+            agent.targetbuff = Float64[]
+            agent.pbuff = Vector{Float64}[]
         end
     end
 
     out_preds = agent.model(preds[end])
 
     agent.s_t .= env_s_tp1
-    agent.hidden_state_init .= Flux.data(preds[1])
+    agent.hidden_state_init .= preds[1].data
 
     agent.step+=1
 
-    return Flux.data.(out_preds)
+    return out_preds.data
 end
 
 function predict!(agent::MackeyGlassAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG,kwargs...)
@@ -117,9 +117,9 @@ function predict!(agent::MackeyGlassAgent, env_s_tp1, r, terminal; rng=Random.GL
     out_preds = agent.model(preds[end])
 
     agent.s_t .= env_s_tp1
-    agent.hidden_state_init .= Flux.data(preds[1])
+    agent.hidden_state_init .= preds[1].data
 
-    return Flux.data.(out_preds)
+    return out_preds.data
 
 end
 
@@ -128,7 +128,6 @@ mutable struct MackeyGlassRNNAgent{O, T, F, H, Φ, M, G} <: JuliaRL.AbstractAgen
     opt::O
     rnn::Flux.Recur{T}
     out_model::M
-    build_features::F
     state_list::DataStructures.CircularBuffer{Φ}
     hidden_state_init::H
     s_t::Φ
@@ -143,17 +142,17 @@ function MackeyGlassRNNAgent(parsed; rng=Random.GLOBAL_RNG)
     horde = TimeSeriesUtils.get_horde(parsed)
     num_gvfs = length(horde)
 
-    fc = TimeSeriesUtils.ActionTileFeatureCreator()
+    τ=parsed["rnn_tau"]
 
-    τ=parsed["truncation"]
-    opt = FluxUtils.get_optimizer(parsed)
-    rnn = FluxUtils.construct_rnn(TimeSeriesUtils.feature_size(fc), parsed; init=(dims...)->glorot_uniform(rng, dims...))
-    out_model = Flux.Dense(parsed["numhidden"], length(horde); initW=(dims...)->glorot_uniform(rng, dims...))
+    opt = getproperty(Flux, parsed["rnn_opt"])(parsed["rnn_lr"])
 
-    state_list =  DataStructures.CircularBuffer{Array{Float32, 1}}(τ+1)
+    rnn = FluxUtils.construct_rnn(1, parsed; init=(dims...)->glorot_uniform(rng, dims...))
+    out_model = Flux.Dense(parsed["rnn_nhidden"], length(horde); initW=(dims...)->glorot_uniform(rng, dims...))
+
+    state_list =  DataStructures.CircularBuffer{Array{Float64, 1}}(τ+1)
     hidden_state_init = GVFN.get_initial_hidden_state(rnn)
 
-    MackeyGlassRNNAgent(TD(), opt, rnn, out_model, fc, state_list, hidden_state_init, zeros(Float32, 1), 1, 0.0, "", horde)
+    MackeyGlassRNNAgent(BatchTD(), opt, rnn, out_model, state_list, hidden_state_init, zeros(Float64, 1), 1, 0.0, "", horde)
 
 end
 

@@ -105,7 +105,7 @@ function main()
         "gamma_low"=>γlo,
         "num_gvfs"=>num_gvfs,
 
-        "seed"=>collect(1:5)
+        "seed"=>collect(1:10)
     ])
     arg_list = collect(keys(arg_dict))
 
@@ -113,7 +113,8 @@ function main()
                    "--steps", string(steps),
                    "--valSteps", string(valSteps),
                    "--testSteps", string(testSteps),
-                   "--exp_loc", save_loc]
+                   "--exp_loc", save_loc,
+                   "--agent", "GVFN"]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments_rtd)
 
     println(collect(args_iterator)[num_workers])
