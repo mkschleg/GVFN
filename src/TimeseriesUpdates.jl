@@ -32,7 +32,7 @@ end
 
 # GVFN
 function update!(gvfn, opt, lu::BatchTD, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: AbstractGVFLayer}
-    prms = Params([gvfn.cell.Wx, gvfn.cell.Wh])
+    prms = Params([gvfn.cell.Wx, gvfn.cell.Wh, gvfn.cell.b])
 
     reset!(gvfn, h_init)
     preds = gvfn.(states)
