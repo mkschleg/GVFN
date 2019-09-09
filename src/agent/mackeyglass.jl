@@ -97,7 +97,7 @@ function step!(agent::MackeyGlassAgent, env_s_tp1, r, terminal; rng=Random.GLOBA
         end
     end
 
-    out_preds = agent.model(preds[end])
+    out_preds = agent.model(preds[end].data)
 
     agent.s_t .= env_s_tp1
     agent.hidden_state_init .= preds[1].data

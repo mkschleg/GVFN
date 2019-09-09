@@ -27,21 +27,20 @@ const learning_update = "BatchTD"
 
 #------ Model ----------#
 
-const batchsize = [32]
+const batchsize = [16,32]
 
 # Parameters for the SGD Algorithm
 const model_opt = ["ADAM"]
-const model_stepsize = [0.001]
+const model_stepsize = [0.1^i for i=1:5]
 
 #------ GVFN ------#
-const gvfn_stepsize = [3e-5]
+const gvfn_stepsize = [0.1^i for i=1:5]
 const γlo = [0.2]
 const γhi = [0.95]
 const num_gvfs = [128]
-const gvfn_opt = ["Descent"]
+const gvfn_opt = ["Descent","ADAM"]
 
 function make_arguments_rtd(args::Dict)
-    horizon=args["horizon"]
     batchsize=args["batchsize"]
 
     model_stepsize=args["model_stepsize"]
@@ -93,7 +92,6 @@ function main()
     arg_list = Array{String, 1}()
 
     arg_dict = Dict([
-        "horizon"=>12,
         "batchsize"=>batchsize,
 
         "model_stepsize"=>model_stepsize,
@@ -114,7 +112,8 @@ function main()
                    "--valSteps", string(valSteps),
                    "--testSteps", string(testSteps),
                    "--exp_loc", save_loc,
-                   "--agent", "GVFN"]
+                   "--agent", "GVFN",
+                   "--horizon", "12"]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments_rtd)
 
     println(collect(args_iterator)[num_workers])
