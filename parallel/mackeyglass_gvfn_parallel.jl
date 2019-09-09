@@ -55,7 +55,6 @@ function make_arguments_rtd(args::Dict)
     seed = args["seed"]
 
     new_args=[
-        "--horizon",horizon,
         "--batchsize",batchsize,
 
         "--model_stepsize",model_stepsize,
