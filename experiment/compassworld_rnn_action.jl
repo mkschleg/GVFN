@@ -47,6 +47,10 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
 
     #Compass world settings
     @add_arg_table as begin
+        "--policy"
+        help="Acting policy of Agent"
+        arg_type=String
+        default="acting"
         "--size"
         help="The size of the compass world chain"
         arg_type=Int64
@@ -168,7 +172,8 @@ function main_experiment(args::Vector{String})
 
     fs = JuliaRL.FeatureCreators.feature_size(fc)
 
-    ap = cwu.ActingPolicy()
+    # ap = cwu.ActingPolicy()
+    ap = cwu.get_behavior_policy(parsed["policy"])
     
     # agent = RNNAgent(parsed; rng=rng)
     agent = GVFN.RNNActionAgent(out_horde, fc, fs,
@@ -177,6 +182,9 @@ function main_experiment(args::Vector{String})
                                 init_func=(dims...)->glorot_uniform(rng, dims...))
     action = start!(agent, s_t; rng=rng)
 
+    prg_bar = ProgressMeter.Progress(num_steps, "Step: ")
+    progress = parsed["progress"]
+    
     for step in 1:num_steps
     # for step in 1:num_steps
         if step%100000 == 0
@@ -195,6 +203,10 @@ function main_experiment(args::Vector{String})
         out_pred_strg[step, :] .= Flux.data.(out_preds)
         out_err_strg[step, :] .= out_pred_strg[step, :] .- oracle(env, "forward")
         # println(out_pred_strg[step, :])
+
+        if progress
+           next!(prg_bar)
+        end
     end
 
     results = Dict(["rmse"=>sqrt.(mean(out_err_strg.^2; dims=2))])

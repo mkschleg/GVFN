@@ -1,4 +1,6 @@
 #!/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/julia/1.1.0/bin/julia
+#SBATCH --mail-user=mkschleg@ualberta.ca
+#SBATCH --mail-type=ALL
 #SBATCH -o comp_gvfn_action_rtd.out # Standard output
 #SBATCH -e comp_gvfn_action_rtd.err # Standard error
 #SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
@@ -15,7 +17,7 @@ Pkg.activate(".")
 
 using Reproduce
 
-const save_loc = "compassworld_gvfn_action_sgd_gammas"
+const save_loc = "compassworld_gvfn_action_sgd_policies_final"
 const exp_file = "experiment/compassworld_action.jl"
 const exp_module_name = :CompassWorldActionExperiment
 const exp_func_name = :main_experiment
@@ -24,13 +26,14 @@ const exp_func_name = :main_experiment
 
 const learning_update = "RTD"
 # const lambdas = 0.1:0.2:0.9
-const truncations = [1, 4, 8, 16, 24, 32]
+const truncations = [1, 2, 3, 4, 5, 6, 7, 8, 16, 24, 32, 64]
 
 #------ Optimizers ----------#
 
 # Parameters for the SGD Algorithm
 const optimizer = "Descent"
-const alphas = clamp.(0.1*1.5.^(-6:6), 0.0, 1.0)
+# const alphas = clamp.(0.1*1.5.^(-6:6), 0.0, 1.0)
+const alphas = [0.0001, 0.0002, 0.0003, 0.0004, 0.0005, 0.0006, 0.0007, 0.0008, 0.0009, 0.001, 0.0025, 0.005, 0.0075, 0.01]
 # const alphas = 0.1*1.5.^(-6:6)
 
 function make_arguments_tdlambda(args::Dict)
@@ -40,7 +43,15 @@ function make_arguments_tdlambda(args::Dict)
     seed = args["seed"]
     feature = args["feature"]
     act = args["act"]
-    new_args=["--horde", horde, "--act", act, "--truncation", truncation, "--opt", optimizer, "--optparams", alpha, "--feature", feature, "--seed", seed]
+    policy = args["policy"]
+    new_args=["--horde", horde,
+              "--act", act,
+              "--truncation", truncation,
+              "--opt", optimizer,
+              "--optparams", alpha,
+              "--feature", feature,
+              "--policy", policy,
+              "--seed", seed]
     return new_args
 end
 
@@ -58,7 +69,7 @@ function main()
         action=:store_true
         "--numsteps"
         arg_type=Int64
-        default=1000000
+        default=5000000
     end
     parsed = parse_args(as)
     num_workers = parsed["numworkers"]
@@ -68,14 +79,16 @@ function main()
 
 
     arg_dict = Dict([
-        "horde"=>["aj_gammas", "aj_gammas_term", "aj_gammas_scaled"],
+        "horde"=>["aj_gammas"],
+        # "horde"=>["rafols", "aj_gammas_term", "aj_gammas"],
         "alpha"=>alphas,
         "truncation"=>truncations,
         "feature"=>["standard"],
+        "policy"=>["random", "forward"],
         "seed"=>collect(1:5),
-        "act"=>["sigmoid", "relu"]
+        "act"=>["sigmoid"]
     ])
-    arg_list = ["feature", "act", "horde", "alpha", "truncation", "seed"]
+    arg_list = ["policy", "feature", "act", "horde", "alpha", "truncation", "seed"]
     
     static_args = ["--alg", learning_update, "--steps", string(parsed["numsteps"]), "--exp_loc", save_loc]
     args_iterator = ArgIterator(arg_dict, static_args;

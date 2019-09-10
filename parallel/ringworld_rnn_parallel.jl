@@ -1,6 +1,8 @@
 #!/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/julia/1.1.0/bin/julia
-#SBATCH -o cycle_rnn.out # Standard output
-#SBATCH -e cycle_rnn.err # Standard error
+#SBATCH --mail-user=mkschleg@ualberta.ca
+#SBATCH --mail-type=ALL
+#SBATCH -o ring_rnn.out # Standard output
+#SBATCH -e ring_rnn.err # Standard error
 #SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
 #SBATCH --time=12:00:00 # Running time of 12 hours
 #SBATCH --ntasks=128
@@ -18,7 +20,7 @@ const exp_func_name = :main_experiment
 const optimizer = "Descent"
 const alphas = clamp.(0.1*1.5.^(-6:6), 0.0, 1.0)
 # const truncations = [1, 2, 4, 8, 12, 16]
-const truncations = [24, 32]
+const truncations = [1, 2, 3, 4, 6, 8, 12, 16, 32, 64]
 
 function make_arguments(args::Dict)
     alpha = args["alpha"]

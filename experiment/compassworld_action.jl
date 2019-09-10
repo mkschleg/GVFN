@@ -53,6 +53,10 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
 
     #Compass World
     @add_arg_table as begin
+        "--policy"
+        help="Acting policy of Agent"
+        arg_type=String
+        default="acting"
         "--size"
         help="The size of the compass world chain"
         arg_type=Int64
@@ -185,7 +189,7 @@ function main_experiment(args::Vector{String})
 
     fs = JuliaRL.FeatureCreators.feature_size(fc)
 
-    ap = cwu.ActingPolicy()
+    ap = cwu.get_behavior_policy(parsed["policy"])
     
     agent = GVFN.GVFNActionAgent(horde, out_horde,
                                  fc, fs,
