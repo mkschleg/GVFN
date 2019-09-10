@@ -27,6 +27,18 @@ mutable struct CycleWorld <: AbstractEnvironment
             partially_observable)
 end
 
+function env_settings!(
+    as::Reproduce.ArgParseSettings,
+    env_type::Type{CycleWorld})
+    Reproduce.@add_arg_table as begin
+        "--chain"
+        help="The length of the cycle world chain"
+        arg_type=Int64
+        default=6
+    end
+end
+
+
 function JuliaRL.reset!(env::CycleWorld; rng = Random.GLOBAL_RNG, kwargs...)
     env.agent_state = 0
 end

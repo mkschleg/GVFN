@@ -1,7 +1,7 @@
 
 using Statistics
 using LinearAlgebra: Diagonal
-import Flux.Tracker.update!
+# import Flux.Tracker.update!
 
 using Flux.Optimise: apply!
 

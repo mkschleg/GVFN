@@ -1,14 +1,13 @@
 __precompile__(true)
 
-module RingWorldRNNExperiment
+module CycleWorldForecastExperiment
 
 import Flux
 import Flux.Tracker
 import JLD2
 import LinearAlgebra.Diagonal
 
-# using GVFN: CycleWorld, step!, start!
-using GVFN: RingWorld, step!, start!
+using GVFN: CycleWorld, step!, start!
 using GVFN
 using Statistics
 using Random
@@ -17,21 +16,25 @@ using Reproduce
 using Random
 using DataStructures: CircularBuffer
 
-RWU = GVFN.RingWorldUtils
-FLU = GVFN.FluxUtils
+
+const CWU = GVFN.CycleWorldUtils
+const FLU = GVFN.FluxUtils
+
 
 function arg_parse(as::ArgParseSettings = ArgParseSettings(exc_handler=Reproduce.ArgParse.debug_handler))
-
 
     #Experiment
 
     GVFN.exp_settings!(as)
-    RWU.env_settings!(as)
-    FLU.opt_settings!(as)
+    CWU.env_settings!(as)
+    GVFN.agent_settings!(as, GVFN.ForecastAgent)
 
-    # shared settings
-    FLU.rnn_settings!(as)
-    
+    @add_arg_table as begin
+        "--klength"
+        help="The length of k used"
+        arg_type=Int64
+        default=1
+    end
     return as
 end
 
@@ -39,6 +42,7 @@ function main_experiment(args::Vector{String})
 
     as = arg_parse()
     parsed = parse_args(args, as)
+
 
     savepath = ""
     savefile = ""
@@ -55,42 +59,46 @@ function main_experiment(args::Vector{String})
     seed = parsed["seed"]
     verbose = parsed["verbose"]
     progress = parsed["progress"]
-    # gamma = parsed["gamma"]
-    # gamma = 0.0
     rng = Random.MersenneTwister(seed)
 
-    env = RingWorld(parsed["size"])
+    env = CycleWorld(parsed["chain"])
 
-    out_pred_strg = zeros(num_steps, 2)
-    out_err_strg = zeros(num_steps, 2)
+    out_pred_strg = zeros(num_steps)
+    out_err_strg = zeros(num_steps)
 
     _, s_t = start!(env)
 
-    out_horde = RWU.onestep()
-    fc = RWU.StandardFeatureCreator()
-    fs = JuliaRL.FeatureCreators.feature_size(fc)
-    ap = GVFN.RandomActingPolicy([0.5, 0.5])
+    forecast_obj = collect(1:parsed["klength"])
+    forecast_obj_idx = fill(2, length(forecast_obj))
     
-    agent = GVFN.RNNActionAgent(out_horde,
-                                fc, fs, 2, ap, parsed;
-                                rng=rng,
-                                init_func=(dims...)->glorot_uniform(rng, dims...))
-    action = start!(agent, s_t; rng=rng)
+    out_horde = Horde([GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())])
+    
+    fc = (state, action)->CWU.build_features_cycleworld(state)
+    fs = 3
+    ap = GVFN.RandomActingPolicy([1.0])
+    
+    agent = GVFN.ForecastAgent(forecast_obj, forecast_obj_idx,
+                               out_horde,
+                               fc, fs, ap, parsed;
+                               rng=rng,
+                               init_func=(dims...)->glorot_uniform(rng, dims...))
+    start!(agent, s_t; rng=rng)
 
     prg_bar = ProgressMeter.Progress(num_steps, "Step: ")
 
     for step in 1:num_steps
-
-        _, s_tp1, _, _ = step!(env, action)
+ 
+        _, s_tp1, _, _ = step!(env, 1)
         out_preds, action = step!(agent, s_tp1, 0, false; rng=rng)
 
-        out_pred_strg[step, :] .= Flux.data(out_preds)
-        out_err_strg[step, :] = out_pred_strg[step, :] .- RWU.oracle(env, "onestep")
+        out_pred_strg[step] = Flux.data(out_preds)[1]
+        out_err_strg[step] = out_pred_strg[step][1] - CWU.oracle(env, "onestep", 0.0)[1]
 
         if verbose
-            println(step)
+            println("step: $(step)")
             println(env)
             println(agent)
+            println(out_preds)
         end
 
         if progress

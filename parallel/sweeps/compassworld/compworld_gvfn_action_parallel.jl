@@ -28,6 +28,7 @@ const learning_update = "RTD"
 # const lambdas = 0.1:0.2:0.9
 const truncations = [1, 2, 3, 4, 5, 6, 7, 8, 16, 24, 32, 64]
 
+
 #------ Optimizers ----------#
 
 # Parameters for the SGD Algorithm

@@ -53,7 +53,8 @@ function main()
 
     arg_dict = Dict([
         #"horde"=>["chain", "gamma_chain", "gammas_aj_term"],
-	"horde"=>["half_chain", "gamma_chain"],
+	# "horde"=>["half_chain", "gamma_chain"],
+        "horde"=>["full_chain"],
         "alpha"=>alphas,
         "truncation"=>truncations,
         "activation"=>["relu", "sigmoid"],
