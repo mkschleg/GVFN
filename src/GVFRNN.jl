@@ -6,13 +6,12 @@ mutable struct GVFRNNCell{F, A, V, H<:AbstractHorde}
     Wh_gvf::A
     b_gvfn::V
     h_gvfn::V
+    horde::H
     
     Wx_rnn::A
     Wh_rnn::A
     b_rnn::V
-    
     h_rnn::V
-    horde::H
 end
 
 
@@ -22,9 +21,9 @@ function (m::GVFRNNCell)(h, x)
 end
 
 
-Flux.hidden(m::GVFRLayer) = m.h
-Flux.@treelike 
-GVFNetwork(args...; kwargs...) = Flux.Recur(GVFRLayer(args...; kwargs...))
+Flux.hidden(m::GVFRNNLayer) = m.h
+Flux.@treelike GVFRNNCell
+GVFNetwork(args...; kwargs...) = Flux.Recur(GVFRNNLayer(args...; kwargs...))
 
 
 

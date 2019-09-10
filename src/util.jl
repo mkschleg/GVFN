@@ -33,6 +33,13 @@ function jacobian!(J::IdDict, δ::TrackedArray, pms::Params)
     end
 end
 
+function hessian(δ, pms)
+
+    
+
+    
+end
+
 mutable struct StopGradient{T}
     cell::T
     # StopGradient{T}(layer::T) where {T} = new{T}(layer)
@@ -56,6 +63,8 @@ function exp_settings!(as::ArgParseSettings)
         help="number of steps"
         arg_type=Int64
         default=100
+        "--sweep"
+        action=:store_true
         "--prev_action_or_not"
         action=:store_true
         "--verbose"
@@ -66,6 +75,20 @@ function exp_settings!(as::ArgParseSettings)
         action=:store_true
     end
 end
+
+
+# Activations
+sigmoid(x) = Flux.σ(x)
+
+function sigmoid′(x)
+    s = sigmoid(x)
+    s*(1-s)
+end
+function sigmoid′′(x)
+    s = sigmoid(x)
+    s*(1-s)*(1-2*s)
+end
+
 
 
 # Should we export the namespaces? I think not...

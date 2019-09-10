@@ -276,33 +276,7 @@ end
 #     return preds, out_preds
 # end
 
-mutable struct RTDC <: LearningUpdate
-    # α::Float64
-    β::Float64
-    h::IdDict
-    RTD(α) = new(α)
-end
 
-function update!(gvfn::Flux.Recur{T}, lu::RTDC, h_init, states, env_state_tp1) where {T <: AbstractGVFLayer}
-
-    # α = lu.α
-
-    reset!(gvfn, h_init)
-    preds = gvfn.(states)
-    preds_t = preds[end-1]
-    preds_tilde = Flux.data(preds[end])
-
-    cumulants, discounts, ρ = get(gvfn.cell, preds_tilde, env_state_tp1)
-    targets = cumulants .+ discounts.*preds_tilde
-    δ = targets .- preds_t
-
-    prms = params(gvfn)
-    # println(prms)
-    grads = Tracker.gradient(() ->mean(δ.^2), prms)
-    for weights in prms
-        Flux.Tracker.update!(weights, -α.*grads[weights])
-    end
-end
 
 mutable struct RTD_jacobian <: LearningUpdate
     # α::Float64

@@ -3,7 +3,7 @@
 #SBATCH -e comp_gvfn_action_rtd.err # Standard error
 #SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
 #SBATCH --time=24:00:00 # Running time of 12 hours
-#SBATCH --ntasks=64
+#SBATCH --ntasks=128
 #SBATCH --account=rrg-whitem
 
 using Pkg
@@ -15,7 +15,7 @@ Pkg.activate(".")
 
 using Reproduce
 
-const save_loc = "compassworld_gvfn_action_sgd_policies"
+const save_loc = "compassworld_gvfn_action_sgd_onestep"
 const exp_file = "experiment/compassworld_action.jl"
 const exp_module_name = :CompassWorldActionExperiment
 const exp_func_name = :main_experiment
