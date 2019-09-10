@@ -4,7 +4,7 @@
 #SBATCH -o comp_rnn_final.out # Standard output
 #SBATCH -e comp_rnn_final.err # Standard error
 #SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
-#SBATCH --time=24:00:00 # Running time of 12 hours
+#SBATCH --time=08:00:00 # Running time of 12 hours
 #SBATCH --ntasks=40
 #SBATCH --account=rrg-whitem
 
@@ -56,7 +56,7 @@ function main()
         ["--act", "sigmoid","--horde", "rafols", "--truncation", "24", "--opt", "Descent", "--optparams", "0.0444444", "--feature", "standard"],
         ["--act", "sigmoid","--horde", "rafols", "--truncation", "32", "--opt", "Descent", "--optparams", "0.0666667", "--feature", "standard"]
     ]
-    runs_iter = 6:(6+10)
+    runs_iter = 6:(6+20)
 
     static_args = ["--alg", learning_update, "--steps", string(parsed["numsteps"]), "--exp_loc", save_loc]
     args_iterator = ArgLooper(arg_list, static_args, runs_iter, "--seed")

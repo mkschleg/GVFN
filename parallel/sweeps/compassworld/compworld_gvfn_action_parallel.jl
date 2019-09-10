@@ -1,4 +1,6 @@
 #!/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/julia/1.1.0/bin/julia
+#SBATCH --mail-user=mkschleg@ualberta.ca
+#SBATCH --mail-type=ALL
 #SBATCH -o comp_gvfn_action_rtd.out # Standard output
 #SBATCH -e comp_gvfn_action_rtd.err # Standard error
 #SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
@@ -23,17 +25,10 @@ const exp_func_name = :main_experiment
 #------ Learning Updates -------#
 
 const learning_update = "RTD"
-# const lambdas = 0.1:0.2:0.9
-const truncations = [1, 8, 16, 24, 32]
-
-
-#------ Optimizers ----------#
-
-# Parameters for the SGD Algorithm
 const optimizer = "Descent"
-# const alphas = clamp.(0.1*1.5.^(-6:6), 0.0, 1.0)
-const alphas = [0.0001, 0.0005, 0.001, 0.005, 0.01]
-# const alphas = 0.1*1.5.^(-6:6)
+# const lambdas = 0.1:0.2:0.9
+const truncations = [1, 2, 3, 4, 5, 6, 7, 8, 16]
+const alphas = [0.0001, 0.0002, 0.0003, 0.0004, 0.0005, 0.0006, 0.0007, 0.0008, 0.0009, 0.001, 0.0025, 0.005, 0.0075, 0.01]
 
 function make_arguments_tdlambda(args::Dict)
     horde = args["horde"]
@@ -78,7 +73,8 @@ function main()
 
 
     arg_dict = Dict([
-        "horde"=>["rafols", "aj_gammas_term", "aj_gammas"],
+        "horde"=>["aj_gammas"],
+        # "horde"=>["rafols", "aj_gammas_term", "aj_gammas"],
         "alpha"=>alphas,
         "truncation"=>truncations,
         "feature"=>["standard"],
@@ -88,7 +84,7 @@ function main()
     ])
     arg_list = ["policy", "feature", "act", "horde", "alpha", "truncation", "seed"]
     
-    static_args = ["--alg", learning_update, "--steps", string(parsed["numsteps"]), "--exp_loc", save_loc]
+    static_args = ["--alg", learning_update, "--steps", string(parsed["numsteps"]), "--exp_loc", save_loc, "--outhorde", "onestep", "--sweep"]
     args_iterator = ArgIterator(arg_dict, static_args;
                                 arg_list=arg_list, make_args=make_arguments_tdlambda)
 

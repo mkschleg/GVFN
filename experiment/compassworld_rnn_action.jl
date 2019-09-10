@@ -87,6 +87,7 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         default="RNNCell"
         "--numhidden"
         help="Number of hidden units in cell"
+        arg_type=Int64
         "--feature"
         help="The feature creator to use"
         arg_type=String

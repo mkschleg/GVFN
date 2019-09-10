@@ -1,10 +1,10 @@
 #!/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/julia/1.1.0/bin/julia
 #SBATCH --mail-user=mkschleg@ualberta.ca
 #SBATCH --mail-type=ALL
-#SBATCH -o comp_rnn.out # Standard output
-#SBATCH -e comp_rnn.err # Standard error
+#SBATCH -o comp_rnn_at.out # Standard output
+#SBATCH -e comp_rnn_at.err # Standard error
 #SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
-#SBATCH --time=12:00:00 # Running time of 12 hours
+#SBATCH --time=24:00:00 # Running time of 12 hours
 #SBATCH --ntasks=64
 #SBATCH --account=rrg-whitem
 

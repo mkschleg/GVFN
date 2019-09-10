@@ -1,8 +1,8 @@
 #!/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/julia/1.1.0/bin/julia
-#SBATCH -o cycle_gvfn_lin.out # Standard output
-#SBATCH -e cycle_gvfn_lin.err # Standard error
+#SBATCH -o ring_gvfn_act.out # Standard output
+#SBATCH -e ring_gvfn_act.err # Standard error
 #SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
-#SBATCH --time=12:00:00 # Running time of 12 hours
+#SBATCH --time=24:00:00 # Running time of 12 hours
 #SBATCH --ntasks=64
 #SBATCH --account=rrg-whitem
 
@@ -46,7 +46,7 @@ function main()
         action=:store_true
         "--numsteps"
         arg_type=Int64
-        default=300000
+        default=500000
     end
     parsed = parse_args(as)
     num_workers = parsed["numworkers"]
