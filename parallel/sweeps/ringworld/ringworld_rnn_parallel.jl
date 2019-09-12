@@ -1,6 +1,8 @@
 #!/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/julia/1.1.0/bin/julia
-#SBATCH -o cycle_rnn.out # Standard output
-#SBATCH -e cycle_rnn.err # Standard error
+#SBATCH --mail-user=mkschleg@ualberta.ca
+#SBATCH --mail-type=ALL
+#SBATCH -o ring_rnn.out # Standard output
+#SBATCH -e ring_rnn.err # Standard error
 #SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
 #SBATCH --time=12:00:00 # Running time of 12 hours
 #SBATCH --ntasks=128
@@ -11,13 +13,14 @@ Pkg.activate(".")
 
 using Reproduce
 
-const save_loc = "ringworld_rnn_action_sweep_sgd"
-const exp_file = "experiment/ringworld_action_rnn.jl"
-const exp_module_name = :RingWorldRNNExperiment
+const save_loc = "ringworld_rnn_sweep_sgd"
+const exp_file = "experiment/ringworld_rnn.jl"
+const exp_module_name = :RingWorldRNNSansActionExperiment
 const exp_func_name = :main_experiment
 const optimizer = "Descent"
 const alphas = clamp.(0.1*1.5.^(-6:6), 0.0, 1.0)
-const truncations = [1, 2, 4, 8, 12, 16]
+# const truncations = [1, 2, 4, 8, 12, 16]
+const truncations = [1, 2, 3, 4, 6, 8, 12, 16, 32, 64]
 
 function make_arguments(args::Dict)
     alpha = args["alpha"]
@@ -43,7 +46,7 @@ function main()
         action=:store_true
         "--numsteps"
         arg_type=Int64
-        default=750000
+        default=300000
     end
     parsed = parse_args(as)
     num_workers = parsed["numworkers"]
@@ -51,12 +54,13 @@ function main()
     arg_dict = Dict([
         "alpha"=>alphas,
         "truncation"=>truncations,
-        "cell"=>["RNN"],
+        # "cell"=>["RNN", "LSTM", "GRU"],
+        "cell"=>["RNN", "LSTM", "GRU"],
         "seed"=>collect(1:5)
     ])
     arg_list = ["cell", "alpha", "truncation", "seed"]
 
-    static_args = ["--steps", string(parsed["numsteps"]), "--numhidden", "7", "--exp_loc", save_loc]
+    static_args = ["--steps", string(parsed["numsteps"]), "--numhidden", "14", "--exp_loc", save_loc]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments)
 
     if parsed["numjobs"]

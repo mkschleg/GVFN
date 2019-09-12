@@ -1,9 +1,9 @@
 #!/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/julia/1.1.0/bin/julia
-#SBATCH -o cycle_rnn.out # Standard output
-#SBATCH -e cycle_rnn.err # Standard error
+#SBATCH -o cycle_gvfn_lin.out # Standard output
+#SBATCH -e cycle_gvfn_lin.err # Standard error
 #SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
 #SBATCH --time=12:00:00 # Running time of 12 hours
-#SBATCH --ntasks=128
+#SBATCH --ntasks=64
 #SBATCH --account=rrg-whitem
 
 using Pkg
@@ -11,23 +11,24 @@ Pkg.activate(".")
 
 using Reproduce
 
-const save_loc = "ringworld_rnn_at_sweep_sgd"
-const exp_file = "experiment/ringworld_rnn_aux_task.jl"
-const exp_module_name = :RingWorldRNNATSansActionExperiment
+const save_loc = "ringworld_gvfn_sweep_tdlambda"
+const exp_file = "experiment/ringworld_action.jl"
+const exp_module_name = :RingWorldExperiment
 const exp_func_name = :main_experiment
 const optimizer = "Descent"
 const alphas = clamp.(0.1*1.5.^(-6:6), 0.0, 1.0)
-const truncations = [1, 2, 4, 8, 12, 16, 24, 32]
 
+
+const learning_update = "TDLambda"
+const lambdas = [0.0, 0.2, 0.4, 0.6, 0.8, 0.9]
 
 function make_arguments(args::Dict)
+    horde = args["horde"]
     alpha = args["alpha"]
-    cell = args["cell"]
-    truncation = args["truncation"]
+    lambda = args["lambda"]
+    act = args["activation"]
     seed = args["seed"]
-    aux_horde = args["auxhorde"]
-    # save_file = "$(save_loc)/$(horde)/$(cell)/$(optimizer)_alpha_$(alpha)_truncation_$(truncation)/run_$(seed).jld2"
-    new_args=["--truncation", truncation, "--opt", optimizer, "--optparams", alpha, "--cell", cell, "--auxhorde", aux_horde, "--seed", seed]
+    new_args=["--horde", horde, "--params", lambda, "--act", act, "--opt", optimizer, "--optparams", alpha, "--seed", seed]
     return new_args
 end
 
@@ -37,7 +38,7 @@ function main()
     @add_arg_table as begin
         "numworkers"
         arg_type=Int64
-        default=1
+        default=2
         "--jobloc"
         arg_type=String
         default=joinpath(save_loc, "jobs")
@@ -51,16 +52,16 @@ function main()
     num_workers = parsed["numworkers"]
 
     arg_dict = Dict([
+        #"horde"=>["chain", "gamma_chain", "gammas_aj_term"],
+	"horde"=>["half_chain", "gamma_chain"],
         "alpha"=>alphas,
-        "truncation"=>truncations,
-        "auxhorde"=>["chain", "gamma_chain"],
-        # "cell"=>["RNN", "LSTM", "GRU"],
-        "cell"=>["GRU"],
+        "lambda"=>lambdas,
+        "activation"=>["relu", "sigmoid"],
         "seed"=>collect(1:5)
     ])
-    arg_list = ["cell", "auxhorde", "alpha", "truncation", "seed"]
+    arg_list = ["activation", "horde", "alpha", "lambda", "seed"]
 
-    static_args = ["--steps", string(parsed["numsteps"]), "--numhidden", "14", "--exp_loc", save_loc]
+    static_args = ["--steps", string(parsed["numsteps"]), "--alg", learning_update, "--exp_loc", save_loc]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments)
 
     if parsed["numjobs"]

@@ -1,9 +1,9 @@
 #!/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/julia/1.1.0/bin/julia
-#SBATCH -o cycle_rnn.out # Standard output
-#SBATCH -e cycle_rnn.err # Standard error
+#SBATCH -o ring_gvfn_act.out # Standard output
+#SBATCH -e ring_gvfn_act.err # Standard error
 #SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
-#SBATCH --time=12:00:00 # Running time of 12 hours
-#SBATCH --ntasks=128
+#SBATCH --time=24:00:00 # Running time of 12 hours
+#SBATCH --ntasks=64
 #SBATCH --account=rrg-whitem
 
 using Pkg
@@ -11,22 +11,24 @@ Pkg.activate(".")
 
 using Reproduce
 
-const save_loc = "ringworld_rnn_sweep_sgd"
-const exp_file = "experiment/ringworld_rnn.jl"
-const exp_module_name = :RingWorldRNNSansActionExperiment
+const save_loc = "ringworld_gvfn_sweep_sgd"
+const exp_file = "experiment/ringworld_action.jl"
+const exp_module_name = :RingWorldExperiment
 const exp_func_name = :main_experiment
 const optimizer = "Descent"
-const alphas = clamp.(0.1*1.5.^(-6:6), 0.0, 1.0)
-# const truncations = [1, 2, 4, 8, 12, 16]
-const truncations = [24, 32]
+const alphas = clamp.(0.1*1.5.^(-6:1), 0.0, 1.0)
+
+
+const learning_update = "RTD"
+const truncations = [1, 2, 4, 8, 12, 16]
 
 function make_arguments(args::Dict)
+    horde = args["horde"]
     alpha = args["alpha"]
-    cell = args["cell"]
-    truncation = args["truncation"]
+    trunc = args["truncation"]
+    act = args["activation"]
     seed = args["seed"]
-    # save_file = "$(save_loc)/$(horde)/$(cell)/$(optimizer)_alpha_$(alpha)_truncation_$(truncation)/run_$(seed).jld2"
-    new_args=["--truncation", truncation, "--opt", optimizer, "--optparams", alpha, "--cell", cell, "--seed", seed]
+    new_args=["--horde", horde, "--truncation", trunc, "--act", act, "--opt", optimizer, "--optparams", alpha, "--seed", seed]
     return new_args
 end
 
@@ -36,7 +38,7 @@ function main()
     @add_arg_table as begin
         "numworkers"
         arg_type=Int64
-        default=1
+        default=2
         "--jobloc"
         arg_type=String
         default=joinpath(save_loc, "jobs")
@@ -44,21 +46,23 @@ function main()
         action=:store_true
         "--numsteps"
         arg_type=Int64
-        default=300000
+        default=500000
     end
     parsed = parse_args(as)
     num_workers = parsed["numworkers"]
 
     arg_dict = Dict([
+        #"horde"=>["chain", "gamma_chain", "gammas_aj_term"],
+	# "horde"=>["half_chain", "gamma_chain"],
+        "horde"=>["full_chain"],
         "alpha"=>alphas,
         "truncation"=>truncations,
-        # "cell"=>["RNN", "LSTM", "GRU"],
-        "cell"=>["RNN", "LSTM", "GRU"],
+        "activation"=>["relu", "sigmoid"],
         "seed"=>collect(1:5)
     ])
-    arg_list = ["cell", "alpha", "truncation", "seed"]
+    arg_list = ["activation", "horde", "alpha", "truncation", "seed"]
 
-    static_args = ["--steps", string(parsed["numsteps"]), "--numhidden", "14", "--exp_loc", save_loc]
+    static_args = ["--steps", string(parsed["numsteps"]), "--alg", learning_update, "--exp_loc", save_loc]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments)
 
     if parsed["numjobs"]

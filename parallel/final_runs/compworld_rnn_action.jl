@@ -46,7 +46,7 @@ function main()
         ["--horde", "forward", "--truncation", "24", "--opt", "Descent", "--optparams", "0.3375", "--feature", "standard"],
         ["--horde", "forward", "--truncation", "32", "--opt", "Descent", "--optparams", "0.50625", "--feature", "standard"]
     ]
-    runs_iter = 6:(6+10)
+    runs_iter = 6:(6+20)
 
     static_args = ["--steps", string(parsed["numsteps"]), "--exp_loc", save_loc]
     args_iterator = ArgLooper(arg_list, static_args, runs_iter, "--seed")

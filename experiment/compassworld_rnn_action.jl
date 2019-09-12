@@ -20,6 +20,8 @@ using Flux.Tracker: TrackedArray, TrackedReal, track, @grad
 
 using DataStructures: CircularBuffer
 
+const cwu = GVFN.CompassWorldUtils
+
 function arg_parse(as::ArgParseSettings = ArgParseSettings())
 
     #Experiment
@@ -36,6 +38,8 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         help="number of steps"
         arg_type=Int64
         default=100
+        "--sweep"
+        action=:store_true
         "--verbose"
         action=:store_true
         "--working"
@@ -47,6 +51,10 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
 
     #Compass world settings
     @add_arg_table as begin
+        "--policy"
+        help="Acting policy of Agent"
+        arg_type=String
+        default="acting"
         "--size"
         help="The size of the compass world chain"
         arg_type=Int64
@@ -79,7 +87,7 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         default="RNNCell"
         "--numhidden"
         help="Number of hidden units in cell"
-        default=45
+        arg_type=Int64
         "--feature"
         help="The feature creator to use"
         arg_type=String
@@ -89,41 +97,19 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
     return as
 end
 
-function oracle(env::CompassWorld, horde_str)
-    cwc = GVFN.CompassWorldConst
-    state = env.agent_state
-    ret = Array{Float64,1}()
-    if horde_str == "forward"
-        ret = zeros(5)
-        if state.dir == cwc.NORTH
-            ret[cwc.ORANGE] = 1
-        elseif state.dir == cwc.SOUTH
-            ret[cwc.RED] = 1
-        elseif state.dir == cwc.WEST
-            if state.y == 1
-                ret[cwc.GREEN] = 1
-            else
-                ret[cwc.BLUE] = 1
-            end
-        elseif state.dir == cwc.EAST
-            ret[cwc.YELLOW] = 1
-        else
-            println(state.dir)
-            throw("Bug Found in Oracle:Forward")
-        end
-    elseif horde_str == "rafols"
-        throw("Not Implemented...")
-    else
-        throw("Bug Found in Oracle")
-    end
-
-    return ret
+function results_synopsis(err, ::Val{true})
+    rmse = sqrt.(mean(err.^2; dims=2))
+    Dict([
+        "desc"=>"All operations are on the RMSE",
+        "all"=>mean(rmse),
+        "end"=>mean(rmse[Int64(floor(length(rmse)*0.8)):end]),
+        "lc"=>reshape(rmse, 1000, Int64(length(rmse)/1000))
+    ])
 end
 
+results_synopsis(err, ::Val{false}) = sqrt.(mean(err.^2; dims=2))
 
 function main_experiment(args::Vector{String})
-
-    cwu = GVFN.CompassWorldUtils
 
     #####
     # Setup experiment environment
@@ -168,7 +154,8 @@ function main_experiment(args::Vector{String})
 
     fs = JuliaRL.FeatureCreators.feature_size(fc)
 
-    ap = cwu.ActingPolicy()
+    # ap = cwu.ActingPolicy()
+    ap = cwu.get_behavior_policy(parsed["policy"])
     
     # agent = RNNAgent(parsed; rng=rng)
     agent = GVFN.RNNActionAgent(out_horde, fc, fs,
@@ -177,6 +164,9 @@ function main_experiment(args::Vector{String})
                                 init_func=(dims...)->glorot_uniform(rng, dims...))
     action = start!(agent, s_t; rng=rng)
 
+    prg_bar = ProgressMeter.Progress(num_steps, "Step: ")
+    progress = parsed["progress"]
+    
     for step in 1:num_steps
     # for step in 1:num_steps
         if step%100000 == 0
@@ -193,11 +183,14 @@ function main_experiment(args::Vector{String})
         out_preds, action = step!(agent, s_tp1, 0, false; rng=rng)
 
         out_pred_strg[step, :] .= Flux.data.(out_preds)
-        out_err_strg[step, :] .= out_pred_strg[step, :] .- oracle(env, "forward")
-        # println(out_pred_strg[step, :])
+        out_err_strg[step, :] .= out_pred_strg[step, :] .- cwu.oracle(env, parsed["horde"])
+
+        if progress
+           next!(prg_bar)
+        end
     end
 
-    results = Dict(["rmse"=>sqrt.(mean(out_err_strg.^2; dims=2))])
+    results = results_synopsis(out_err_strg, Val(parsed["sweep"]))
     if !parsed["working"]
         JLD2.@save savefile results
     else

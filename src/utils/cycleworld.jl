@@ -3,7 +3,6 @@ module CycleWorldUtils
 
 using ..GVFN, Reproduce
 
-# export settings!, onestep, chain, gamma_chain, get_horde, oracle
 
 function env_settings!(as::ArgParseSettings)
     @add_arg_table as begin
@@ -13,6 +12,7 @@ function env_settings!(as::ArgParseSettings)
         default=6
     end
 end
+
 
 function horde_settings!(as::ArgParseSettings, prefix::AbstractString="")
     add_arg_table(as,
@@ -25,16 +25,19 @@ function horde_settings!(as::ArgParseSettings, prefix::AbstractString="")
                        :default=>"gamma_chain"))
 end
 
+
 function onestep(chain_length::Integer)
     gvfs = [GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())]
     return Horde(gvfs)
 end
+
 
 function chain(chain_length::Integer, pred_offset::Integer=0)
     gvfs = [[GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())];
             [GVF(PredictionCumulant(i-1 + pred_offset), ConstantDiscount(0.0), NullPolicy()) for i in 2:chain_length]]
     return Horde(gvfs)
 end
+
 
 function gamma_chain(chain_length::Integer, γ::AbstractFloat, pred_offset::Integer=0)
     gvfs = [[GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())];
@@ -43,6 +46,7 @@ function gamma_chain(chain_length::Integer, γ::AbstractFloat, pred_offset::Inte
     return Horde(gvfs)
 end
 
+
 function gamma_chain_scaled(chain_length::Integer, γ::AbstractFloat, pred_offset::Integer=0)
     gvfs = [[GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())];
             [GVF(PredictionCumulant(i-1 + pred_offset), ConstantDiscount(0.0), NullPolicy()) for i in 2:chain_length];
@@ -50,39 +54,47 @@ function gamma_chain_scaled(chain_length::Integer, γ::AbstractFloat, pred_offse
     return Horde(gvfs)
 end
 
+
 function gammas(gms::Array{Float64, 1})
     gvfs = [GVF(FeatureCumulant(1), ConstantDiscount(γ), NullPolicy()) for γ in gms]
     return Horde(gvfs)
 end
+
 
 function gammas_scaled(gms::Array{Float64, 1})
     gvfs = [GVF(ScaledCumulant(1-γ, FeatureCumulant(1)), ConstantDiscount(γ), NullPolicy()) for γ in gms]
     return Horde(gvfs)
 end
 
+
 function gammas_term(gms::Array{Float64, 1})
     gvfs = [GVF(FeatureCumulant(1), StateTerminationDiscount(γ, ((env_state)->env_state[1] == 1)), NullPolicy()) for γ in gms]
     return Horde(gvfs)
 end
+
 
 function gammas_aj()
     gms = 1.0 .- 2.0 .^ collect(-7:-1)
     return gammas(gms)
 end
 
+
 function gammas_aj_term()
     gms = 1.0 .- 2.0 .^ collect(-7:-1)
     return gammas_term(gms)
 end
+
 
 function gammas_aj_scaled()
     gms = 1.0 .- 2.0 .^ collect(-7:-1)
     return gammas_scaled(gms)
 end
 
+
 function single_gamma_scaled(γ::AbstractFloat)
     Horde([GVF(ScaledCumulant(1-γ, FeatureCumulant(1)), ConstantDiscount(γ), NullPolicy())])
 end
+
 
 function get_horde(horde_str::AbstractString, chain_length::Integer, gamma::AbstractFloat, pred_offset::Integer=0)
     horde = nothing
@@ -114,7 +126,12 @@ function get_horde(horde_str::AbstractString, chain_length::Integer, gamma::Abst
     return horde
 end
 
-get_horde(parsed::Dict, prefix="", pred_offset::Integer=0) = get_horde(parsed["$(prefix)horde"], parsed["chain"], parsed["$(prefix)gamma"], pred_offset)
+
+get_horde(parsed::Dict, prefix="", pred_offset::Integer=0) =
+    get_horde(parsed["$(prefix)horde"],
+              parsed["chain"],
+              parsed["$(prefix)gamma"],
+              pred_offset)
 
 function oracle(env::CycleWorld, horde_str, γ=0.9)
     chain_length = env.chain_length

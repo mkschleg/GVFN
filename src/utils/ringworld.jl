@@ -6,7 +6,6 @@ using ..GVFN, Reproduce
 const RWC = GVFN.RingWorldConst
 
 # export settings!, onestep, chain, gamma_chain, get_horde, oracle
-
 function env_settings!(as::ArgParseSettings)
     @add_arg_table as begin
         "--size"
@@ -112,9 +111,11 @@ function gammas_aj_scaled()
 end
 
 function get_horde(horde_str::AbstractString, chain_length::Integer, gamma::AbstractFloat, pred_offset::Integer=0)
-    horde = chain(chain_length, pred_offset)
+    horde = onestep()
     if horde_str == "gamma_chain"
         horde = gamma_chain(chain_length, gamma, pred_offset)
+    elseif horde_str == "full_chain" || horde_str == "chain"
+        horde = chain(chain_length, pred_offset)
     elseif horde_str == "half_chain"
         horde = half_chain(chain_length, pred_offset)
     elseif horde_str == "gamma_half_chain"
@@ -133,6 +134,8 @@ function get_horde(horde_str::AbstractString, chain_length::Integer, gamma::Abst
         horde = gammas_aj_term()
     elseif horde_str == "gammas_aj_scaled"
         horde = gammas_aj_scaled()
+    else
+        throw("Horde Unknown.")
     end
     return horde
 end

@@ -49,6 +49,28 @@ function forward()
     return Horde(gvfs)
 end
 
+function onestep()
+    cwc = GVFN.CompassWorldConst
+    gvfs = [GVF(FeatureCumulant(color),
+                ConstantDiscount(0.0),
+                PersistentPolicy(cwc.FORWARD)) for color in 1:5]
+    return Horde(gvfs)
+end
+
+function gammas(gammas = [collect(0.0:0.05:0.95); [0.975, 0.99]])
+    cwc = GVFN.CompassWorldConst
+    gvfs = Array{GVF, 1}()
+    for color in 1:5
+        new_gvfs = [GVF(
+            FeatureCumulant(color),
+            ConstantDiscount(γ),
+            PersistentPolicy(cwc.FORWARD)) for γ in gammas]
+        append!(gvfs, new_gvfs)
+        # new_gvfs = [GVF(FeatureCumulant(color), StateTerminationDiscount(γ, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD)) for γ in 0.0:0.05:0.95]
+    end
+    return Horde(gvfs)
+end
+
 function gammas_term(gammas = [collect(0.0:0.05:0.95); [0.975, 0.99]])
     cwc = GVFN.CompassWorldConst
     gvfs = Array{GVF, 1}()
@@ -102,12 +124,16 @@ function get_horde(horde_str::AbstractString, pred_offset::Integer=0)
     horde = forward()
     if horde_str == "forward"
         horde = forward()
+    elseif horde_str == "onestep"
+        horde = onestep()
     elseif horde_str == "rafols"
         horde = rafols(pred_offset)
     elseif horde_str == "gammas"
         horde = gammas_term()
     elseif horde_str == "gammas_scaled"
         horde = gammas_scaled()
+    elseif horde_str == "aj_gammas"
+        horde = gammas(1.0 .- 2.0 .^ collect(-7:-1))
     elseif horde_str == "aj_gammas_scaled"
         horde = gammas_scaled(1.0 .- 2.0 .^ collect(-7:-1))
     elseif horde_str == "aj_gammas_term"
@@ -121,6 +147,34 @@ function get_horde(horde_str::AbstractString, pred_offset::Integer=0)
 end
 
 get_horde(parsed::Dict, prefix::AbstractString="", pred_offset::Integer=0) = get_horde(parsed["$(prefix)horde"], pred_offset)
+
+function oracle_onestep(state, world_dims)
+    ret = zeros(5)
+
+    # Forward
+    if state.dir == cwc.NORTH
+        # Orange Check
+        ret[cwc.ORANGE] = (state.y == 1 || state.y == 2)
+    elseif state.dir == cwc.SOUTH
+        # Red Check
+        ret[cwc.RED] = (state.y == world_dims.height || state.y == world_dims.height - 1)
+    elseif state.dir == cwc.WEST
+        if state.y == 1
+            # Green Check
+            ret[cwc.GREEN] = (state.x == 1 || state.x == 2)
+        else
+            # Blue Check
+            ret[cwc.BLUE] = (state.x == 1 || state.x == 2)
+        end
+    elseif state.dir == cwc.EAST
+        # Yellow Check
+        ret[cwc.YELLOW] = (state.x == world_dims.width || state.x == world_dims.width - 1)
+    else
+        throw("OH NO! oracle_onestep $(state.dir)")
+    end
+    # 
+    ret
+end
 
 function oracle_forward(state)
     ret = zeros(5)
@@ -157,6 +211,8 @@ function oracle(env::CompassWorld, horde_str)
     ret = Array{Float64,1}()
     if horde_str == "forward"
         ret = oracle_forward(state)
+    elseif horde_str == "onestep"
+        ret = oracle_onestep(state, env.world_dims)
     elseif horde_str == "rafols"
         oracle_rafols(state)
     elseif horde_str == "gammas"
@@ -211,6 +267,23 @@ function (π::ActingPolicy)(state_t, rng::Random.AbstractRNG=Random.GLOBAL_RNG)
     π.state = s
     return action[1], action[1]
 end
+
+
+function get_behavior_policy(policy_str)
+
+    if policy_str == "rafols"
+        ap = ActingPolicy()
+    elseif policy_str == "forward"
+        ap = GVFN.RandomActingPolicy([1/4, 1/4, 1/2])
+    elseif policy_str == "random"
+        ap = GVFN.RandomActingPolicy([1/3, 1/3, 1/3])
+    else
+        throw("Unknown behavior policy")
+    end
+end
+
+
+
 
 onehot(size, idx) = begin; a=zeros(size);a[idx] = 1.0; return a end;
 build_features(state, action) = [[1.0]; state; 1.0.-state; onehot(3, action); 1.0.-onehot(3,action)]
