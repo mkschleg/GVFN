@@ -45,7 +45,7 @@ function MackeyGlassAgent(parsed; rng=Random.GLOBAL_RNG)
     model_opt = model_opt_func(parsed["model_stepsize"])
 
     act = FluxUtils.get_activation(parsed["act"])
-    init_func = (dims...)->glorot_uniform(rng, dims...)
+    init_func = (dims...)->xavier_uniform(rng, dims...)
     gvfn = GVFNetwork(num_gvfs, 1, horde; init=init_func, σ_int=act)
     model = Flux.Chain(
         Flux.Dense(num_gvfs,num_gvfs,relu; initW=init_func),
@@ -78,7 +78,7 @@ end
 function step!(agent::MackeyGlassAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
 
     push!(agent.state_list, env_s_tp1)
-    if agent.step % agent.batchsize == 0
+    if agent.step % (agent.batchsize+1) == 0
         update!(agent.gvfn, agent.gvfn_opt, agent.lu, agent.hidden_state_init, agent.state_list, env_s_tp1)
     end
 
@@ -100,6 +100,7 @@ function step!(agent::MackeyGlassAgent, env_s_tp1, r, terminal; rng=Random.GLOBA
     out_preds = agent.model(preds[end].data)
 
     agent.s_t .= env_s_tp1
+    #agent.hidden_state_init .= clamp.(preds[1].data, -10,10)
     agent.hidden_state_init .= preds[1].data
 
     agent.step+=1
@@ -114,7 +115,7 @@ function predict!(agent::MackeyGlassAgent, env_s_tp1, r, terminal; rng=Random.GL
     reset!(agent.gvfn, agent.hidden_state_init)
     preds = agent.gvfn.(agent.state_list)
 
-    out_preds = agent.model(preds[end])
+    out_preds = agent.model(preds[end].data)
 
     agent.s_t .= env_s_tp1
     agent.hidden_state_init .= preds[1].data

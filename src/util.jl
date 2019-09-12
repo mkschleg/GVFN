@@ -3,10 +3,17 @@
 using Flux
 using Flux.Tracker
 using LinearAlgebra
+import Distributions: Uniform
 import Reproduce: ArgParseSettings, @add_arg_table
 
 glorot_uniform(rng::Random.AbstractRNG, dims...) = (rand(rng, Float32, dims...) .- 0.5f0) .* sqrt(24.0f0/sum(dims))
 glorot_normal(rng::Random.AbstractRNG, dims...) = randn(rng, Float32, dims...) .* sqrt(2.0f0/sum(dims))
+
+function xavier_uniform(rng::Random.AbstractRNG, dims...)
+    std = √(2.0/sum(dims))
+    a = std * √3.0
+    return rand(rng, Uniform(-a,a), dims...)
+end
 
 function jacobian(δ, pms)
     k  = length(δ)

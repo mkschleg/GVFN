@@ -7,12 +7,13 @@ using Statistics
 using Plots; pyplot()
 
 includet("experiment/mackeyglass.jl")
+saveDir = "mackeyglass_gvfn"
 
 # =============================
 # --- D E B U G   U T I L S ---
 # =============================
 
-getArgs() = [
+getArgs(seed) = [
     "--horizon", "12",
     "--batchsize", "32",
     "--model_stepsize", "0.001",
@@ -22,15 +23,16 @@ getArgs() = [
     "--gamma_high", "0.95",
     "--gamma_low", "0.2",
     "--num_gvfs", "128",
-    "--seed", "1",
+    "--seed", string(seed),
     "--alg", "BatchTD",
     "--steps", "600000",
     "--valSteps", "200000",
     "--testSteps", "200000",
-    "--exp_loc", "mackeyglass_gvfn"
+    "--exp_loc", saveDir
 ]
 
-exp() = exp(getArgs())
+exp() = exp(4)
+exp(seed::Int) = exp(getArgs(seed))
 exp(args) = MackeyGlassExperiment.main_experiment(args)
 
 # ===============
@@ -38,7 +40,7 @@ exp(args) = MackeyGlassExperiment.main_experiment(args)
 # ===============
 
 function getResults()
-    ic = ItemCollection("mackeyglass_gvfn")
+    ic = ItemCollection(saveDir)
     _,hashes,_ = search(ic, Dict())
     return load(joinpath(hashes[1], "results.jld2"), "results")
 end
@@ -54,14 +56,16 @@ function plotData()
     plot!(g, label="Ground Truth")
 end
 
-function NRMSE()
-    ic = ItemCollection("mackeyglass_gvfn")
-    _,hashes,_ = search(ic, Dict())
+function NRMSE(hashes)
     all_values = Vector{Float64}[]
-
     for idx = 1:length(hashes)
         h = hashes[idx]
-        results = load(joinpath(h,"results.jld2"),"results")
+        f = joinpath(h,"results.jld2")
+        if !isfile(f)
+            return [Inf]
+        end
+        results = load(f,"results")
+
         g,p = results["GroundTruth"], results["Predictions"]
 
         p = p[1:length(g)]
@@ -75,6 +79,11 @@ function NRMSE()
         end
         push!(all_values, values)
     end
+
+    if length(all_values)==0
+        return [Inf]
+    end
+
     vals = zeros(length(all_values),length(all_values[1]))
     for i=1:length(all_values)
         vals[i,:] .= all_values[i]
@@ -82,8 +91,32 @@ function NRMSE()
     return vals
 end
 
+function getBestNRMSE()
+    ic = ItemCollection(saveDir)
+    d = diff(ic)
+    delete!(d, "seed")
+    iter = Iterators.product(values(d)...)
+    best = Inf
+    bestData = nothing
+    for arg in iter
+        # length(hashes) == number of seeds
+        _, hashes, _ = search(ic, Dict(Pair.(keys(d), arg)))
+
+        # AUC
+        data = NRMSE(hashes)
+        value = mean(data)
+        if value<best
+            best = value
+            bestData = data
+        end
+    end
+
+    @assert bestData != nothing
+    return bestData
+end
+
 function plotNRMSE()
-    values = NRMSE()
+    values = getBestNRMSE()
     av = mean(values, dims=1)
     σ = std(values, dims=1, corrected=true) / sqrt(size(values,1))
     plot(av, yerr=σ, ylim=[0,1],yticks=[0.1i for i=0:10], grid=false, label="NRMSE")

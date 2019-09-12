@@ -12,7 +12,7 @@ Pkg.activate(".")
 
 using Reproduce
 
-const save_loc = "mackeyglass_gvfn"
+const save_loc = "mg_newSeed"
 const exp_file = joinpath(@__DIR__,"../experiment/mackeyglass.jl")
 const exp_module_name = :MackeyGlassExperiment
 const exp_func_name = :main_experiment
@@ -105,7 +105,7 @@ function main()
         "gamma_low"=>γlo,
         "num_gvfs"=>num_gvfs,
 
-        "seed"=>collect(1:10)
+        "seed"=>collect(1:10).+20437
     ])
     arg_list = collect(keys(arg_dict))
 

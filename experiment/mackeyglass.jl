@@ -169,7 +169,7 @@ function main_experiment(args::Vector{String})
 
         pred = step!(agent, s_tp1, 0, false; rng=rng)
 
-        predictions[step] = Flux.data(pred[1])
+        predictions[step] = pred[1]
     end
 
     valPreds=zeros(Float64,num_val)
