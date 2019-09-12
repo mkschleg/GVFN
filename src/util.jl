@@ -96,5 +96,5 @@ include("utils/compassworld.jl")
 include("utils/cycleworld.jl")
 include("utils/ringworld.jl")
 include("utils/flux.jl")
+include("utils/timeseries.jl")
 include("utils/arg_tables.jl")
-

@@ -7,6 +7,7 @@ agent_settings!(as::Reproduce.ArgParseSettings, agent::Type{<:JuliaRL.AbstractAg
 
 include("agent/cycleworld.jl")
 include("agent/compassworld.jl")
+include("agent/mackeyglass.jl")
 
 
 include("agent/GVFNAgent.jl")
