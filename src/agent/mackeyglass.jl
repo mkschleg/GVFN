@@ -6,18 +6,25 @@ import DataStructures
 
 #import JuliaRL
 
-mutable struct MackeyGlassAgent{GVFNOpt,ModelOpt, T, H, Φ, M, G} <: JuliaRL.AbstractAgent
+mutable struct MackeyGlassAgent{GVFNOpt,ModelOpt, T, H, Φ, M, G1,G2} <: JuliaRL.AbstractAgent
     lu::LearningUpdate
     gvfn_opt::GVFNOpt
     model_opt::ModelOpt
     gvfn::Flux.Recur{T}
-    state_list::DataStructures.CircularBuffer{Φ}
-    pbuff::Vector{Φ}
-    targetbuff::Vector{Float64}
-    hidden_state_init::H
+
+    batch_phi::Vector{Φ}
+    batch_target::Vector{Φ}
+    batch_hidden::Vector{Φ}
+    batch_h::Vector{Φ}
+    batch_obs::Vector{Float64}
+
+    hidden_states::Vector{Φ}
+
+    h::H
     s_t::Φ
     model::M
-    out_horde::Horde{G}
+    horde::Horde{G1}
+    out_horde::Horde{G2}
 
     horizon::Int
     step::Int
@@ -53,74 +60,75 @@ function MackeyGlassAgent(parsed; rng=Random.GLOBAL_RNG)
     )
     out_horde = Horde([GVF(FeatureCumulant(1),ConstantDiscount(0.0), NullPolicy())])
 
-    state_list = DataStructures.CircularBuffer{Array{Float64, 1}}(batchsize+1)
+    # gvfn buffers
+    batch_phi = Vector{Float64}[]
+    batch_target = Vector{Float64}[]
+    batch_hidden = Vector{Float64}[]
+    hidden_states = Vector{Float64}[]
+
     hidden_state_init = zeros(Float64, num_gvfs)
 
-    targetbuff = Float64[]
-    pbuff = Array{Float64,1}[]
+    batch_obs = Float64[]
+    batch_h = Array{Float64,1}[]
 
     horizon = Int(parsed["horizon"])
     ϕbuff = DataStructures.CircularBuffer{Vector{Float64}}(horizon)
 
-    return MackeyGlassAgent(lu, gvfn_opt, model_opt, gvfn, state_list, pbuff, targetbuff, hidden_state_init, zeros(Float64, 1), model, out_horde, horizon, 0, batchsize,ϕbuff)
+    return MackeyGlassAgent(lu, gvfn_opt, model_opt, gvfn, batch_phi, batch_target, batch_hidden, batch_h, batch_obs, hidden_states, hidden_state_init, zeros(Float64, 1), model, horde, out_horde, horizon, 0, batchsize,ϕbuff)
 end
 
 function start!(agent::MackeyGlassAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
 
-    fill!(agent.state_list, zeros(1))
-    push!(agent.state_list, env_s_tp1)
-    agent.hidden_state_init .= zero(agent.hidden_state_init)
-    agent.s_t = copy(env_s_tp1)
+    agent.h .= zero(agent.h)
+    reset!(agent.gvfn, agent.h)
+    agent.h = agent.gvfn(env_s_tp1).data
 
     agent.step+=1
 end
 
 function step!(agent::MackeyGlassAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
+    push!(agent.hidden_states, agent.h)
 
-    push!(agent.state_list, env_s_tp1)
-    if agent.step % (agent.batchsize+1) == 0
-        update!(agent.gvfn, agent.gvfn_opt, agent.lu, agent.hidden_state_init, agent.state_list, env_s_tp1)
-    end
-
-    reset!(agent.gvfn, agent.hidden_state_init)
-    preds = agent.gvfn.(agent.state_list)
-
-    push!(agent.ϕbuff, preds[end-1].data)
     if agent.step>=agent.horizon
-        push!(agent.pbuff, popfirst!(agent.ϕbuff))
-        push!(agent.targetbuff, env_s_tp1[1])
-        if length(agent.targetbuff) == agent.batchsize
-            update!(agent.model, agent.out_horde, agent.model_opt, agent.lu, agent.pbuff, agent.targetbuff)
+        push!(agent.batch_h, popfirst!(agent.hidden_states))
+        push!(agent.batch_obs, env_s_tp1[1])
+        if length(agent.batch_obs) == agent.batchsize
+            update!(agent.model, agent.out_horde, agent.model_opt, agent.lu, agent.batch_h, agent.batch_obs)
 
-            agent.targetbuff = Float64[]
-            agent.pbuff = Vector{Float64}[]
+            agent.batch_obs = Float64[]
+            agent.batch_h = Vector{Float64}[]
         end
     end
 
-    out_preds = agent.model(preds[end].data)
+    reset!(agent.gvfn, agent.h)
+    v_tp1 = agent.gvfn(env_s_tp1).data
+    c, Γ, _ = get(agent.horde, nothing, env_s_tp1, v_tp1)
+    push!(agent.batch_target, c .+ Γ.*v_tp1)
+    push!(agent.batch_phi, env_s_tp1)
+    push!(agent.batch_hidden, copy(agent.h))
+    if length(agent.batch_phi) == agent.batchsize
+        update!(agent.gvfn, agent.gvfn_opt, agent.lu, agent.batch_hidden, agent.batch_phi, agent.batch_target)
+
+        agent.batch_phi = Vector{Float64}[]
+        agent.batch_hidden = Vector{Float64}[]
+        agent.batch_target = Vector{Float64}[]
+    end
 
     agent.s_t .= env_s_tp1
-    #agent.hidden_state_init .= clamp.(preds[1].data, -10,10)
-    agent.hidden_state_init .= preds[1].data
-
+    agent.h .= v_tp1
     agent.step+=1
 
-    return out_preds.data
+    return agent.model(v_tp1).data
 end
 
 function predict!(agent::MackeyGlassAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG,kwargs...)
     # for validation/test; predict, updating hidden states, but don't update models
-    push!(agent.state_list, env_s_tp1)
 
-    reset!(agent.gvfn, agent.hidden_state_init)
-    preds = agent.gvfn.(agent.state_list)
-
-    out_preds = agent.model(preds[end].data)
-
+    reset!(agent.gvfn, agent.h)
+    agent.h .= agent.gvfn.(agent.state_list).data
     agent.s_t .= env_s_tp1
-    agent.hidden_state_init .= preds[1].data
 
-    return out_preds.data
+    return agent.model(agent.h).data
 
 end
 

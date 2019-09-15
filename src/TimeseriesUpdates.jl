@@ -31,20 +31,19 @@ function update!(out_model, rnn::Flux.Recur{T},
 end
 
 # GVFN
-function update!(gvfn, opt, lu::BatchTD, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: AbstractGVFLayer}
+function update!(gvfn, opt, lu::BatchTD, hidden_states, states, targets, action_t=nothing, b_prob=1.0) where {T <: AbstractGVFLayer}
     prms = Params([gvfn.cell.Wx, gvfn.cell.Wh, gvfn.cell.b])
+    N = length(hidden_states)
 
-    reset!(gvfn, h_init)
-    preds = gvfn.(states)
-
-    δ_all = param(0.0)
-    for t in 1:(length(preds)-1)
-        cumulants, discounts, π_prob = get(gvfn.cell, action_t, env_state_tp1, preds[t+1].data)
-        δ_all += mean(0.5*tderror(preds[t], Float64.(cumulants), Float64.(discounts), preds[t+1].data).^2)
+    δ = param(0.0)
+    for t=1:N
+        reset!(gvfn, hidden_states[t])
+        v = gvfn(states[t])
+        δ += mean(0.5*(v.-targets[t]).^2)
     end
-    δ_all /= length(preds)-1
+    δ /= N
 
-    grads = Tracker.gradient(()->δ_all, prms)
+    grads = Tracker.gradient(()->δ, prms)
     for weights in prms
         Flux.Tracker.update!(opt, weights, grads[weights])
     end
