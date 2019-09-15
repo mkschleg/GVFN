@@ -52,7 +52,7 @@ function update!(gvfn::JankyGVFLayer, opt, lu::BatchTD, hidden_states, states, t
     δ = param(0.0)
     for t=1:N
         v = gvfn(states[t], hidden_states[t])
-        δ .+= mean(0.5*(v.-targets[t]).^2)
+        δ += mean(0.5*(v.-targets[t]).^2)
     end
     δ/=N
 
