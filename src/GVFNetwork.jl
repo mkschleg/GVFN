@@ -9,7 +9,6 @@ mutable struct GVFRLayer{F, A, V, T<:AbstractGVF} <: AbstractGVFLayer
     σ::F
     Wx::A
     Wh::A
-    b::V
     h::V
     horde::Horde{T}
 end
@@ -19,7 +18,6 @@ GVFRLayer(num_gvfs, num_ext_features, horde; init=Flux.glorot_uniform, σ_int=σ
         σ_int,
         param(init(num_gvfs, num_ext_features)),
         param(init(num_gvfs, num_gvfs)),
-        param(Flux.zeros(num_gvfs)),
         # cumulants,
         # discounts,
         param(Flux.zeros(num_gvfs)),
@@ -29,7 +27,7 @@ GVFRLayer(num_gvfs, num_ext_features, horde; init=Flux.glorot_uniform, σ_int=σ
 get_question_parameters = get
 
 function (m::GVFRLayer)(h, x)
-    new_h = m.σ.(m.Wx*x + m.Wh*h .+ m.b)
+    new_h = m.σ.(m.Wx*x + m.Wh*h)
     return new_h, new_h
 end
 
