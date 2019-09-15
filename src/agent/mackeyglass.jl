@@ -6,11 +6,11 @@ import DataStructures
 
 #import JuliaRL
 
-mutable struct MackeyGlassAgent{GVFNOpt,ModelOpt, T, H, Φ, M, G1,G2} <: JuliaRL.AbstractAgent
+mutable struct MackeyGlassAgent{GVFNOpt,ModelOpt, J, H, Φ, M, G1,G2} <: JuliaRL.AbstractAgent
     lu::LearningUpdate
     gvfn_opt::GVFNOpt
     model_opt::ModelOpt
-    gvfn::Flux.Recur{T}
+    gvfn::J
 
     batch_phi::Vector{Φ}
     batch_target::Vector{Φ}
@@ -29,7 +29,6 @@ mutable struct MackeyGlassAgent{GVFNOpt,ModelOpt, T, H, Φ, M, G1,G2} <: JuliaRL
     horizon::Int
     step::Int
     batchsize::Int
-    ϕbuff::DataStructures.CircularBuffer{Vector{Float64}}
 end
 
 
@@ -51,9 +50,8 @@ function MackeyGlassAgent(parsed; rng=Random.GLOBAL_RNG)
     model_opt_func = getproperty(Flux, Symbol(model_opt_string))
     model_opt = model_opt_func(parsed["model_stepsize"])
 
-    act = FluxUtils.get_activation(parsed["act"])
     init_func = (dims...)->xavier_uniform(rng, dims...)
-    gvfn = GVFNetwork(num_gvfs, 1, horde; init=init_func, σ_int=act)
+    gvfn = JankyGVFLayer(1, num_gvfs; init=init_func)
     model = Flux.Chain(
         Flux.Dense(num_gvfs,num_gvfs,relu; initW=init_func),
         Flux.Dense(num_gvfs, 1; initW=init_func);
@@ -72,22 +70,21 @@ function MackeyGlassAgent(parsed; rng=Random.GLOBAL_RNG)
     batch_h = Array{Float64,1}[]
 
     horizon = Int(parsed["horizon"])
-    ϕbuff = DataStructures.CircularBuffer{Vector{Float64}}(horizon)
 
-    return MackeyGlassAgent(lu, gvfn_opt, model_opt, gvfn, batch_phi, batch_target, batch_hidden, batch_h, batch_obs, hidden_states, hidden_state_init, zeros(Float64, 1), model, horde, out_horde, horizon, 0, batchsize,ϕbuff)
+    return MackeyGlassAgent(lu, gvfn_opt, model_opt, gvfn, batch_phi, batch_target, batch_hidden, batch_h, batch_obs, hidden_states, hidden_state_init, zeros(Float64, 1), model, horde, out_horde, horizon, 0, batchsize)
 end
 
 function start!(agent::MackeyGlassAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
 
     agent.h .= zero(agent.h)
-    reset!(agent.gvfn, agent.h)
-    agent.h = agent.gvfn(env_s_tp1).data
+    agent.h .= agent.gvfn(env_s_tp1, agent.h).data
+    agent.s_t .= env_s_tp1
 
     agent.step+=1
 end
 
 function step!(agent::MackeyGlassAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
-    push!(agent.hidden_states, agent.h)
+    push!(agent.hidden_states, copy(agent.h))
 
     if agent.step>=agent.horizon
         push!(agent.batch_h, popfirst!(agent.hidden_states))
@@ -100,11 +97,11 @@ function step!(agent::MackeyGlassAgent, env_s_tp1, r, terminal; rng=Random.GLOBA
         end
     end
 
-    reset!(agent.gvfn, agent.h)
-    v_tp1 = agent.gvfn(env_s_tp1).data
+    # don't judge me
+    v_tp1 = agent.gvfn(env_s_tp1,agent.h).data
     c, Γ, _ = get(agent.horde, nothing, env_s_tp1, v_tp1)
     push!(agent.batch_target, c .+ Γ.*v_tp1)
-    push!(agent.batch_phi, env_s_tp1)
+    push!(agent.batch_phi, copy(agent.s_t))
     push!(agent.batch_hidden, copy(agent.h))
     if length(agent.batch_phi) == agent.batchsize
         update!(agent.gvfn, agent.gvfn_opt, agent.lu, agent.batch_hidden, agent.batch_phi, agent.batch_target)
@@ -124,10 +121,7 @@ end
 function predict!(agent::MackeyGlassAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG,kwargs...)
     # for validation/test; predict, updating hidden states, but don't update models
 
-    reset!(agent.gvfn, agent.h)
-    agent.h .= agent.gvfn.(agent.state_list).data
-    agent.s_t .= env_s_tp1
-
+    agent.h .= agent.gvfn(env_s_tp1, agent.h).data
     return agent.model(agent.h).data
 
 end

@@ -2,6 +2,19 @@
   QUARANTINED TIMESERIES CODE. ONLY USE IN TIME SERIES EXPERIMENTS.
 =#
 
+mutable struct JankyGVFLayer{A,V}
+    W::A
+    H::A
+    b::V
+end
+
+
+JankyGVFLayer(in::Integer, out::Integer; init=(dims...)->zeros(Float32, dims...)) =
+    JankyGVFLayer(Flux.param(init(out, in)), Flux.param(init(out,out)), Flux.param(zeros(out)))
+
+(layer::JankyGVFLayer)(x,h) = layer.W*x .+ layer.H*h .+ layer.b
+
+
 struct BatchTD <: LearningUpdate
 end
 
@@ -31,17 +44,17 @@ function update!(out_model, rnn::Flux.Recur{T},
 end
 
 # GVFN
-function update!(gvfn, opt, lu::BatchTD, hidden_states, states, targets, action_t=nothing, b_prob=1.0) where {T <: AbstractGVFLayer}
-    prms = Params([gvfn.cell.Wx, gvfn.cell.Wh, gvfn.cell.b])
+
+function update!(gvfn::JankyGVFLayer, opt, lu::BatchTD, hidden_states, states, targets, action_t=nothing, b_prob=1.0) where {T <: AbstractGVFLayer}
+    prms = Params([gvfn.W, gvfn.H, gvfn.b])
     N = length(hidden_states)
 
     δ = param(0.0)
     for t=1:N
-        reset!(gvfn, hidden_states[t])
-        v = gvfn(states[t])
-        δ += mean(0.5*(v.-targets[t]).^2)
+        v = gvfn(states[t], hidden_states[t])
+        δ .+= mean(0.5*(v.-targets[t]).^2)
     end
-    δ /= N
+    δ/=N
 
     grads = Tracker.gradient(()->δ, prms)
     for weights in prms
