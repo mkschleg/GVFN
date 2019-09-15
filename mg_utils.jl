@@ -7,7 +7,7 @@ using Statistics
 using Plots; pyplot()
 
 includet("experiment/mackeyglass.jl")
-saveDir = "mackeyglass_gvfn"
+saveDir = "mackeyglass_bestGVFN"
 
 # =============================
 # --- D E B U G   U T I L S ---
@@ -18,7 +18,7 @@ getArgs(seed) = [
     "--batchsize", "32",
     "--model_stepsize", "0.001",
     "--model_opt", "ADAM",
-    "--gvfn_stepsize", "3.0e-5",
+    "--gvfn_stepsize", "3.0e-3",
     "--gvfn_opt", "Descent",
     "--gamma_high", "0.95",
     "--gamma_low", "0.2",
@@ -119,5 +119,12 @@ function plotNRMSE()
     values = getBestNRMSE()
     av = mean(values, dims=1)
     σ = std(values, dims=1, corrected=true) / sqrt(size(values,1))
-    plot(av, yerr=σ, ylim=[0,1],yticks=[0.1i for i=0:10], grid=false, label="NRMSE")
+    plot(av', ribbon=σ', ylim=[0,1],yticks=[0.1i for i=0:10], grid=false, label="NRMSE")
+end
+
+function plotData(b::Dict)
+    p=plot()
+    plot!(b["Predictions"])
+    plot!(b["GroundTruth"])
+    plot(p, ylim=[0,2])
 end

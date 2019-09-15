@@ -50,7 +50,7 @@ function MackeyGlassAgent(parsed; rng=Random.GLOBAL_RNG)
     model_opt_func = getproperty(Flux, Symbol(model_opt_string))
     model_opt = model_opt_func(parsed["model_stepsize"])
 
-    init_func = (dims...)->xavier_uniform(rng, dims...)
+    init_func = (dims...)->glorot_uniform(rng, dims...)
     gvfn = JankyGVFLayer(1, num_gvfs; init=init_func)
     model = Flux.Chain(
         Flux.Dense(num_gvfs,num_gvfs,relu; initW=init_func),

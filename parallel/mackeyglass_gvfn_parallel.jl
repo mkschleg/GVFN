@@ -12,7 +12,7 @@ Pkg.activate(".")
 
 using Reproduce
 
-const save_loc = "mg_newSeed"
+const save_loc = "mackeyglass_bestGVFN"
 const exp_file = joinpath(@__DIR__,"../experiment/mackeyglass.jl")
 const exp_module_name = :MackeyGlassExperiment
 const exp_func_name = :main_experiment
@@ -34,8 +34,8 @@ const model_opt = ["ADAM"]
 const model_stepsize = [0.001]
 
 #------ GVFN ------#
-const gvfn_stepsize = [3e-5]
-const γlo = [0.2]
+const gvfn_stepsize = [0.0001]
+const γlo = [0.1]
 const γhi = [0.95]
 const num_gvfs = [128]
 const gvfn_opt = ["Descent"]
