@@ -12,7 +12,7 @@ Pkg.activate(".")
 
 using Reproduce
 
-const save_loc = "mackeyglass_bestGVFN"
+const save_loc = "mackeyglass_gvfn"
 const exp_file = joinpath(@__DIR__,"../experiment/mackeyglass.jl")
 const exp_module_name = :MackeyGlassExperiment
 const exp_func_name = :main_experiment
@@ -27,21 +27,20 @@ const learning_update = "BatchTD"
 
 #------ Model ----------#
 
-const batchsize = [32]
+const batchsize = [16,32]
 
 # Parameters for the SGD Algorithm
 const model_opt = ["ADAM"]
-const model_stepsize = [0.001]
+const model_stepsize = [0.1^i for i=1:5]
 
 #------ GVFN ------#
-const gvfn_stepsize = [0.0001]
-const γlo = [0.1]
+const gvfn_stepsize = [0.1^i for i=1:5]
+const γlo = [0.2]
 const γhi = [0.95]
 const num_gvfs = [128]
-const gvfn_opt = ["Descent"]
+const gvfn_opt = ["Descent","ADAM"]
 
 function make_arguments_rtd(args::Dict)
-    horizon=args["horizon"]
     batchsize=args["batchsize"]
 
     model_stepsize=args["model_stepsize"]
@@ -56,7 +55,6 @@ function make_arguments_rtd(args::Dict)
     seed = args["seed"]
 
     new_args=[
-        "--horizon",horizon,
         "--batchsize",batchsize,
 
         "--model_stepsize",model_stepsize,
@@ -93,7 +91,6 @@ function main()
     arg_list = Array{String, 1}()
 
     arg_dict = Dict([
-        "horizon"=>12,
         "batchsize"=>batchsize,
 
         "model_stepsize"=>model_stepsize,
@@ -105,7 +102,7 @@ function main()
         "gamma_low"=>γlo,
         "num_gvfs"=>num_gvfs,
 
-        "seed"=>collect(1:10).+20437
+        "seed"=>collect(1:10)
     ])
     arg_list = collect(keys(arg_dict))
 
@@ -114,7 +111,8 @@ function main()
                    "--valSteps", string(valSteps),
                    "--testSteps", string(testSteps),
                    "--exp_loc", save_loc,
-                   "--agent", "GVFN"]
+                   "--agent", "GVFN",
+                   "--horizon", "12"]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments_rtd)
 
     println(collect(args_iterator)[num_workers])

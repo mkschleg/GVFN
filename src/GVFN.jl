@@ -35,7 +35,8 @@ export
     StateTerminationDiscount,
     FeatureCumulant,
     PredictionCumulant,
-    ScaledCumulant
+    ScaledCumulant,
+    NormalizedCumulant
 
 include("GVF.jl")
 
@@ -47,6 +48,7 @@ include("ForecastNetwork.jl")
 export RTD, RTD_jacobian, TDLambda, TD, update!
 include("Loss.jl")
 include("Update.jl")
+include("TimeseriesUpdates.jl")
 
 export GradientGVFN
 include("RGTD.jl")
@@ -59,7 +61,7 @@ include("ActingPolicy.jl")
 
 include("Environments.jl")
 
-export jacobian, glorot_uniform, glorot_normal, StopGradient
+export jacobian, glorot_uniform, glorot_normal, StopGradient, get_clip_coeff
 export FluxUtils, CycleWorldUtils, RingWorldUtils, CompassWorldUtils
 include("util.jl")
 

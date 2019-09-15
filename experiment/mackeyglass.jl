@@ -44,50 +44,74 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         default=200000
         "--working"
         action=:store_true
+        "--agent"
+        help="which agent to use"
+        arg_type=String
+        default="GVFN"
     end
 
 
-    # GVFN
     @add_arg_table as begin
-        "--max-exponent"
-        help="max discount=1.0-2^(-max-exponent)"
-        arg_type=Int64
-        default=7
         "--horizon"
         help="prediction horizon"
         default=12
         arg_type=Int64
+        "--batchsize"
+        help="batchsize for models"
+        arg_type=Int64
+        default=32
         "--alg"
         help="Algorithm"
-        default="RTD"
-        "--params"
-        help="Parameters"
-        arg_type=Float64
-        default=[]
-        nargs='+'
-        "--truncation", "-t"
-        help="Truncation parameter for bptt"
-        arg_type=Int64
-        default=1
-        "--opt"
+        default="BatchTD"
+
+        # GVFN
+        "--gvfn_opt"
         help="Optimizer"
         default="Descent"
-        "--optparams"
-        help="Parameters"
-        arg_type=Float64
-        default=[]
-        nargs='+'
-        "--horde"
-        help="The horde used for training"
-        default="gamma_chain"
-        "--gamma"
-        help="The gamma value for the gamma_chain horde"
-        arg_type=Float64
-        default=0.9
         "--act"
         help="The activation used for the GVFN"
         arg_type=String
         default="linear"
+        "--gamma_low"
+        arg_type=Float64
+        default=0.2
+        "--gamma_high"
+        arg_type=Float64
+        default=0.9
+        "--num_gvfs"
+        arg_type=Int
+        default=128
+        "--gvfn_stepsize"
+        arg_type=Float64
+        default=3e-5
+
+        # Model
+        "--model_opt"
+        arg_type=String
+        default="ADAM"
+        "--model_stepsize"
+        arg_type=Float64
+        default=0.001
+
+        # RNN
+        "--rnn_opt"
+        help="Optimizer"
+        default="Adam"
+
+        "--rnn_tau"
+        help="BPTT truncation length"
+        arg_type=Int
+        default=1
+
+        "--rnn_lr"
+        help="learning rate"
+        arg_type=Float64
+        default=0.0001
+
+        "--rnn_nhidden"
+        help="number of hidden units"
+        arg_type=Int
+        default=64
     end
 
     return as
@@ -127,7 +151,13 @@ function main_experiment(args::Vector{String})
 
     s_t = start!(env)
 
-    agent = MackeyGlassAgent(parsed; rng=rng)
+    Agent_t = parsed["agent"]
+    if Agent_t == "GVFN"
+        agent = MackeyGlassAgent(parsed; rng=rng)
+    elseif Agent_t == "RNN"
+        agent = MackeyGlassRNNAgent(parsed;rng=rng)
+    end
+
     start!(agent, s_t; rng=rng)
 
     @showprogress 0.1 "Step: " for step in 1:num_steps
@@ -139,29 +169,34 @@ function main_experiment(args::Vector{String})
 
         pred = step!(agent, s_tp1, 0, false; rng=rng)
 
-        predictions[step] = Flux.data(pred[1])
+        predictions[step] = pred[1]
     end
 
     valPreds=zeros(Float64,num_val)
-    @showprogress 0.1 "Validation Step: " for step in 1:valSteps
+    vgt = Float64[]
+    @showprogress 0.1 "Validation Step: " for step in 1:num_val
         s_tp1= step!(env)
+        if step>horizon
+            push!(vgt,s_tp1[1])
+        end
         pred = predict!(agent, s_tp1,0,false;rng=rng)
         valPreds[step] = Flux.data(pred[1])
     end
 
     testPreds=zeros(Float64,num_test)
-    @showprogress 0.1 "Test Step: " for step in 1:testSteps
+    tgt = Float64[]
+    @showprogress 0.1 "Test Step: " for step in 1:num_test
         s_tp1= step!(env)
+        if step>horizon
+            push!(tgt,s_tp1[1])
+        end
         pred = predict!(agent, s_tp1,0,false;rng=rng)
         testPreds[step] = Flux.data(pred[1])
     end
 
-    results = Dict("GroundTruth"=>gt, "Predictions"=>predictions, "ValidationPredictions"=>valPreds,"TestPredictions"=>testPreds)
-    if !parsed["working"]
-        JLD2.@save savefile results
-    else
-        return results
-    end
+    results = Dict("GroundTruth"=>gt, "Predictions"=>predictions, "ValidationPredictions"=>valPreds,"TestPredictions"=>testPreds, "TestGroundTruth"=>tgt,"ValidationGroundTruth"=>vgt)
+    JLD2.@save savefile results
+    return results
 end
 
 Base.@ccallable function julia_main(ARGS::Vector{String})::Cint
