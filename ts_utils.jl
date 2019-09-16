@@ -28,7 +28,7 @@ getArgs(seed) = [
     "--steps", "600000",
     "--valSteps", "200000",
     "--testSteps", "200000",
-    "--exp_loc", saveDir
+    "--exp_loc", saveDir,
     "--env", "MackeyGlass"
 ]
 

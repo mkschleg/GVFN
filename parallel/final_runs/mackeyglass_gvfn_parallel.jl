@@ -12,13 +12,17 @@ Pkg.activate(".")
 
 using Reproduce
 
-const save_loc = "mackeyglass_gvfn"
-const exp_file = joinpath(@__DIR__,"../experiment/mackeyglass.jl")
-const exp_module_name = :MackeyGlassExperiment
-const exp_func_name = :main_experiment
+const save_loc = "mackeyglass_bestGVFN"
+const env_t = "MackeyGlass"
+const agent_t = "GVFN"
+const exp_file = joinpath(@__DIR__,"../experiment/timeseries.jl")
+
 const steps = 600000
 const valSteps = 200000
 const testSteps = 200000
+
+const exp_module_name = :TimeSeriesExperiment
+const exp_func_name = :main_experiment
 
 #------ Learning Updates -------#
 
@@ -27,20 +31,21 @@ const learning_update = "BatchTD"
 
 #------ Model ----------#
 
-const batchsize = [16,32]
+const batchsize = [32]
 
 # Parameters for the SGD Algorithm
 const model_opt = ["ADAM"]
-const model_stepsize = [0.1^i for i=1:5]
+const model_stepsize = [0.001]
 
 #------ GVFN ------#
-const gvfn_stepsize = [0.1^i for i=1:5]
-const γlo = [0.2]
+const gvfn_stepsize = [0.0001]
+const γlo = [0.1]
 const γhi = [0.95]
 const num_gvfs = [128]
-const gvfn_opt = ["Descent","ADAM"]
+const gvfn_opt = ["Descent"]
 
 function make_arguments_rtd(args::Dict)
+    horizon=args["horizon"]
     batchsize=args["batchsize"]
 
     model_stepsize=args["model_stepsize"]
@@ -55,6 +60,7 @@ function make_arguments_rtd(args::Dict)
     seed = args["seed"]
 
     new_args=[
+        "--horizon",horizon,
         "--batchsize",batchsize,
 
         "--model_stepsize",model_stepsize,
@@ -91,6 +97,7 @@ function main()
     arg_list = Array{String, 1}()
 
     arg_dict = Dict([
+        "horizon"=>12,
         "batchsize"=>batchsize,
 
         "model_stepsize"=>model_stepsize,
@@ -102,7 +109,7 @@ function main()
         "gamma_low"=>γlo,
         "num_gvfs"=>num_gvfs,
 
-        "seed"=>collect(1:10)
+        "seed"=>collect(1:10).+20437
     ])
     arg_list = collect(keys(arg_dict))
 
@@ -111,8 +118,8 @@ function main()
                    "--valSteps", string(valSteps),
                    "--testSteps", string(testSteps),
                    "--exp_loc", save_loc,
-                   "--agent", "GVFN",
-                   "--horizon", "12"]
+                   "--agent", agent_t,
+                   "--env", env_t]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments_rtd)
 
     println(collect(args_iterator)[num_workers])

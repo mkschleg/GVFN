@@ -1,8 +1,8 @@
 __precompile__(true)
 
-module MackeyGlassExperiment
+module TimeSeriesExperiment
 
-using GVFN: MackeyGlass, MackeyGlassAgent, step!, start!
+using GVFN: MackeyGlass, MSO, TimeSeriesAgent, step!, start!
 using GVFN
 using Flux
 using Flux.Tracker
@@ -26,6 +26,9 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         help="Location of experiment"
         arg_type=String
         default="tmp"
+        "--env"
+        help="Name of the time series dataset to use"
+        arg_type=String
         "--seed"
         help="Seed of rng"
         arg_type=Int64
@@ -146,16 +149,28 @@ function main_experiment(args::Vector{String})
     predictions = zeros(Float64,num_steps)
     gt = Float64[]
 
-    env = MackeyGlass()
+
+    env_t = parsed["env"]
+    if env_t == "MackeyGlass"
+        env = MackeyGlass()
+    elseif env_t == "MSO"
+        env = MSO()
+    # elseif env_t == "ACEA"
+    #     env = ACEA()
+    else
+        raise(DomainError("Environment $(env_t) not implemented!"))
+    end
     num_state_features = get_num_features(env)
 
     s_t = start!(env)
 
     Agent_t = parsed["agent"]
     if Agent_t == "GVFN"
-        agent = MackeyGlassAgent(parsed; rng=rng)
+        agent = TimeSeriesAgent(parsed; rng=rng)
     elseif Agent_t == "RNN"
-        agent = MackeyGlassRNNAgent(parsed;rng=rng)
+        agent = TimeSeriesRNNAgent(parsed;rng=rng)
+    else
+        raise(DomainError("Agent $(Agent_t) not implemented!"))
     end
 
     start!(agent, s_t; rng=rng)

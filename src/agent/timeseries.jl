@@ -1,4 +1,4 @@
-export MackeyGlassAgent, MackeyGlassRNNAgent, predict!
+export TimeSeriesAgent, TimeSeriesRNNAgent, predict!
 
 import Flux
 import Random
@@ -6,7 +6,7 @@ import DataStructures
 
 #import JuliaRL
 
-mutable struct MackeyGlassAgent{GVFNOpt,ModelOpt, J, H, Φ, M, G1,G2} <: JuliaRL.AbstractAgent
+mutable struct TimeSeriesAgent{GVFNOpt,ModelOpt, J, H, Φ, M, G1,G2} <: JuliaRL.AbstractAgent
     lu::LearningUpdate
     gvfn_opt::GVFNOpt
     model_opt::ModelOpt
@@ -32,7 +32,7 @@ mutable struct MackeyGlassAgent{GVFNOpt,ModelOpt, J, H, Φ, M, G1,G2} <: JuliaRL
 end
 
 
-function MackeyGlassAgent(parsed; rng=Random.GLOBAL_RNG)
+function TimeSeriesAgent(parsed; rng=Random.GLOBAL_RNG)
 
     horde = TimeSeriesUtils.get_horde(parsed)
     num_gvfs = length(horde)
@@ -71,10 +71,10 @@ function MackeyGlassAgent(parsed; rng=Random.GLOBAL_RNG)
 
     horizon = Int(parsed["horizon"])
 
-    return MackeyGlassAgent(lu, gvfn_opt, model_opt, gvfn, batch_phi, batch_target, batch_hidden, batch_h, batch_obs, hidden_states, hidden_state_init, zeros(Float64, 1), model, horde, out_horde, horizon, 0, batchsize)
+    return TimeSeriesAgent(lu, gvfn_opt, model_opt, gvfn, batch_phi, batch_target, batch_hidden, batch_h, batch_obs, hidden_states, hidden_state_init, zeros(Float64, 1), model, horde, out_horde, horizon, 0, batchsize)
 end
 
-function start!(agent::MackeyGlassAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
+function start!(agent::TimeSeriesAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
 
     agent.h .= zero(agent.h)
     agent.h .= agent.gvfn(env_s_tp1, agent.h).data
@@ -83,7 +83,7 @@ function start!(agent::MackeyGlassAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwarg
     agent.step+=1
 end
 
-function step!(agent::MackeyGlassAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
+function step!(agent::TimeSeriesAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
     push!(agent.hidden_states, copy(agent.h))
 
     if agent.step>=agent.horizon
@@ -118,7 +118,7 @@ function step!(agent::MackeyGlassAgent, env_s_tp1, r, terminal; rng=Random.GLOBA
     return agent.model(v_tp1).data
 end
 
-function predict!(agent::MackeyGlassAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG,kwargs...)
+function predict!(agent::TimeSeriesAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG,kwargs...)
     # for validation/test; predict, updating hidden states, but don't update models
 
     agent.h .= agent.gvfn(env_s_tp1, agent.h).data
@@ -126,7 +126,7 @@ function predict!(agent::MackeyGlassAgent, env_s_tp1, r, terminal; rng=Random.GL
 
 end
 
-mutable struct MackeyGlassRNNAgent{O, T, F, H, Φ, M, G} <: JuliaRL.AbstractAgent
+mutable struct TimeSeriesRNNAgent{O, T, F, H, Φ, M, G} <: JuliaRL.AbstractAgent
     lu::LearningUpdate
     opt::O
     rnn::Flux.Recur{T}
@@ -140,7 +140,7 @@ mutable struct MackeyGlassRNNAgent{O, T, F, H, Φ, M, G} <: JuliaRL.AbstractAgen
     horde::Horde{G}
 end
 
-function MackeyGlassRNNAgent(parsed; rng=Random.GLOBAL_RNG)
+function TimeSeriesRNNAgent(parsed; rng=Random.GLOBAL_RNG)
 
     horde = TimeSeriesUtils.get_horde(parsed)
     num_gvfs = length(horde)
@@ -155,11 +155,11 @@ function MackeyGlassRNNAgent(parsed; rng=Random.GLOBAL_RNG)
     state_list =  DataStructures.CircularBuffer{Array{Float64, 1}}(τ+1)
     hidden_state_init = GVFN.get_initial_hidden_state(rnn)
 
-    MackeyGlassRNNAgent(BatchTD(), opt, rnn, out_model, state_list, hidden_state_init, zeros(Float64, 1), 1, 0.0, "", horde)
+    TimeSeriesRNNAgent(BatchTD(), opt, rnn, out_model, state_list, hidden_state_init, zeros(Float64, 1), 1, 0.0, "", horde)
 
 end
 
-function JuliaRL.start!(agent::MackeyGlassRNNAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
+function JuliaRL.start!(agent::TimeSeriesRNNAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
 
     agent.action_state, (agent.action, agent.action_prob) = get_action(agent.action_state, agent.s_t, rng)
 
@@ -171,7 +171,7 @@ function JuliaRL.start!(agent::MackeyGlassRNNAgent, env_s_tp1; rng=Random.GLOBAL
 end
 
 
-function step!(agent::MackeyGlassRNNAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
+function step!(agent::TimeSeriesRNNAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
 
     push!(agent.state_list, agent.build_features(env_s_tp1, agent.action))
 
@@ -195,5 +195,5 @@ function step!(agent::MackeyGlassRNNAgent, env_s_tp1, r, terminal; rng=Random.GL
     return Flux.data.(out_preds), agent.action
 end
 
-JuliaRL.get_action(agent::MackeyGlassRNNAgent, state) = agent.action
+JuliaRL.get_action(agent::TimeSeriesRNNAgent, state) = agent.action
 
