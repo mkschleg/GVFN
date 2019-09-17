@@ -50,7 +50,7 @@ function MackeyGlassAgent(parsed; rng=Random.GLOBAL_RNG)
     return MackeyGlassAgent(lu, opt, gvfn, state_list, hidden_state_init, zeros(Float32, 1), model, out_horde, horizon, ϕbuff)
 end
 
-function start!(agent::MackeyGlassAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
+function JuliaRL.start!(agent::MackeyGlassAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
 
     fill!(agent.state_list, zeros(1))
     push!(agent.state_list, env_s_tp1)
@@ -58,7 +58,7 @@ function start!(agent::MackeyGlassAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwarg
     agent.s_t = copy(env_s_tp1)
 end
 
-function step!(agent::MackeyGlassAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
+function JuliaRL.step!(agent::MackeyGlassAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
 
     push!(agent.state_list, env_s_tp1)
 
@@ -148,7 +148,7 @@ function JuliaRL.start!(agent::MackeyGlassRNNAgent, env_s_tp1; rng=Random.GLOBAL
 end
 
 
-function step!(agent::MackeyGlassRNNAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
+function JuliaRL.step!(agent::MackeyGlassRNNAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
 
     push!(agent.state_list, agent.build_features(env_s_tp1, agent.action))
 

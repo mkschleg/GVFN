@@ -38,18 +38,6 @@ Flux.hidden(m::GVFRLayer) = m.h
 Flux.@treelike GVFRLayer
 GVFNetwork(args...; kwargs...) = Flux.Recur(GVFRLayer(args...; kwargs...))
 
-function reset!(m, h_init)
-    Flux.reset!(m)
-    # println("Hidden state: ", m.state, " ", h_init)
-    m.state.data .= Flux.data(h_init)
-end
-
-function reset!(m::Flux.Recur{T}, h_init) where {T<:Flux.LSTMCell}
-    Flux.reset!(m)
-    # println(h_init)
-    m.state[1].data .= Flux.data(h_init[1])
-    m.state[2].data .= Flux.data(h_init[2])
-end
 
 
 mutable struct GVFRActionLayer{F, A, B, V, T<:AbstractGVF} <: AbstractGVFLayer

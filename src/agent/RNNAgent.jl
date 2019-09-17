@@ -80,6 +80,8 @@ function JuliaRL.step!(agent::RNNAgent, env_s_tp1, r, terminal; rng=Random.GLOBA
         push!(agent.state_list, agent.build_features(env_s_tp1, new_action))
     end
 
+
+    
     # RNN update function
     update!(agent.out_model, agent.rnn,
             agent.horde, agent.opt,
@@ -90,6 +92,7 @@ function JuliaRL.step!(agent::RNNAgent, env_s_tp1, r, terminal; rng=Random.GLOBA
 
     Flux.truncate!(agent.rnn)
     reset!(agent.rnn, agent.hidden_state_init)
+
     rnn_out = agent.rnn.(agent.state_list)
     out_preds = agent.out_model(rnn_out[end])
 
