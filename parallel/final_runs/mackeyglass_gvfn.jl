@@ -12,10 +12,10 @@ Pkg.activate(".")
 
 using Reproduce
 
-const save_loc = "mso_bestGVFN"
-const env_t = "MSO"
+const save_loc = "mackeyglass_bestGVFN"
+const env_t = "MackeyGlass"
 const agent_t = "GVFN"
-const exp_file = joinpath(@__DIR__,"../experiment/timeseries.jl")
+const exp_file = joinpath(@__DIR__,"../../experiment/timeseries.jl")
 
 const steps = 600000
 const valSteps = 200000
@@ -35,12 +35,12 @@ const batchsize = [32]
 
 # Parameters for the SGD Algorithm
 const model_opt = ["ADAM"]
-const model_stepsize = [0.0001]
+const model_stepsize = [0.001]
 
 #------ GVFN ------#
-const gvfn_stepsize = [0.0003]
+const gvfn_stepsize = [0.0001]
 const γlo = [0.1]
-const γhi = [0.9]
+const γhi = [0.95]
 const num_gvfs = [128]
 const gvfn_opt = ["Descent"]
 

@@ -1,4 +1,5 @@
 import DataStructures: CircularBuffer
+import HDF5: h5read
 
 abstract type TimeSeriesEnv end
 
@@ -7,30 +8,33 @@ step!(self::TimeSeriesEnv, action) = step!(self::TimeSeriesEnv)
 
 get_num_features(self::TimeSeriesEnv) = 1
 
+# ===========
+# --- MSO ---
+# ===========
+
 mutable struct MSO <: TimeSeriesEnv
-    dataset::Vector{Float64}
-    idx::Int
+    θ::Int
+    Ω::Vector{Float64}
 
     state::Vector{Float64}
-
-    function MSO(max_steps::Int)
-        Ω = [0.2, 0.311, 0.42, 0.51]
-
-        values = map(θ -> sum([sin(θ*ω) for ω in Ω]), 0:max_steps)
-        return new(values, 1, [0.0])
-    end
 end
 
+MSO() = MSO(1, [0.2, 0.311, 0.42, 0.51], [0.0])
+
 function start!(self::MSO)
-    self.idx = 1
+    self.θ = 1
     return step!(self)
 end
 
 function step!(self::MSO)
-    self.state[1] = self.dataset[self.idx]
-    self.idx += 1
+    self.state[1] = sum([sin(self.θ*ω) for ω in self.Ω])
+    self.θ += 1
     return self.state
 end
+
+# =================
+# --- SINE WAVE ---
+# =================
 
 mutable struct SineWave <: TimeSeriesEnv
     dataset::Vector{Float64}
@@ -55,6 +59,10 @@ function step!(self::SineWave)
     return self.state
 end
 
+# ===================
+# --- MACKEYGLASS ---
+# ===================
+
 mutable struct MackeyGlass <: TimeSeriesEnv
     delta::Int
     tau::Int
@@ -63,13 +71,13 @@ mutable struct MackeyGlass <: TimeSeriesEnv
     history::CircularBuffer{Float64}
 
     state::Vector{Float64}
+end
 
-    function MackeyGlass(delta=10, tau=17, series=1.2)
-        history_len = delta*tau
-        history = CircularBuffer{Float64}(history_len)
-        fill!(history, 0.0)
-        return new(delta, tau, series, history_len, history, [0.0])
-    end
+function MackeyGlass(delta=10, tau=17, series=1.2)
+    history_len = delta*tau
+    history = CircularBuffer{Float64}(history_len)
+    fill!(history, 0.0)
+    return MackeyGlass(delta, tau, series, history_len, history, [0.0])
 end
 
 function start!(self::MackeyGlass)
@@ -86,3 +94,36 @@ function step!(self::MackeyGlass)
     self.state[1] = self.series
     return self.state
 end
+
+# ============
+# --- ACEA ---
+# ============
+
+mutable struct ACEA <: TimeSeriesEnv
+    data::Vector{Float64}
+    idx::Int
+
+    state::Vector{Float64}
+
+end
+
+function ACEA()
+    return ACEA(
+        h5read(joinpath(@__DIR__, "../../raw_data/acea.h5"), "data"),
+        1,
+        [0.0]
+    )
+end
+
+function start!(self::ACEA)
+    self.idx = 1
+    return step!(self)
+end
+
+function step!(self::ACEA)
+    obs = self.data[self.idx]
+    self.idx+=1
+    self.state[1] = obs
+    return self.state
+end
+

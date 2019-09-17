@@ -6,11 +6,30 @@ import DataStructures
 
 #import JuliaRL
 
-mutable struct TimeSeriesAgent{GVFNOpt,ModelOpt, J, H, Φ, M, G1,G2} <: JuliaRL.AbstractAgent
+abstract type Normalizer end
+
+struct  Identity <: Normalizer
+end
+(id::Identity)(x) = x
+
+mutable struct Unity{F} <: Normalizer
+    mn::Vector{F}
+    mx::Vector{F}
+end
+
+Unity() = Unity([0.0],[1.0])
+
+function (u::Unity)(x)
+    u.mn, u.mx = min.(x,u.mn), max.(x,u.mx)
+    return (x.-u.mn) ./ (u.mx.-u.mn)
+end
+
+mutable struct TimeSeriesAgent{GVFNOpt,ModelOpt, J, H, Φ, M, G1, G2, N} <: JuliaRL.AbstractAgent
     lu::LearningUpdate
     gvfn_opt::GVFNOpt
     model_opt::ModelOpt
     gvfn::J
+    normalizer::N
 
     batch_phi::Vector{Φ}
     batch_target::Vector{Φ}
@@ -50,6 +69,8 @@ function TimeSeriesAgent(parsed; rng=Random.GLOBAL_RNG)
     model_opt_func = getproperty(Flux, Symbol(model_opt_string))
     model_opt = model_opt_func(parsed["model_stepsize"])
 
+    normalizer = getproperty(GVFN, Symbol(parsed["normalizer"]))()
+
     init_func = (dims...)->glorot_uniform(rng, dims...)
     gvfn = JankyGVFLayer(1, num_gvfs; init=init_func)
     model = Flux.Chain(
@@ -71,14 +92,16 @@ function TimeSeriesAgent(parsed; rng=Random.GLOBAL_RNG)
 
     horizon = Int(parsed["horizon"])
 
-    return TimeSeriesAgent(lu, gvfn_opt, model_opt, gvfn, batch_phi, batch_target, batch_hidden, batch_h, batch_obs, hidden_states, hidden_state_init, zeros(Float64, 1), model, horde, out_horde, horizon, 0, batchsize)
+    return TimeSeriesAgent(lu, gvfn_opt, model_opt, gvfn, normalizer, batch_phi, batch_target, batch_hidden, batch_h, batch_obs, hidden_states, hidden_state_init, zeros(Float64, 1), model, horde, out_horde, horizon, 0, batchsize)
 end
 
 function start!(agent::TimeSeriesAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
 
+    stp1 = agent.normalizer(env_s_tp1)
+
     agent.h .= zero(agent.h)
-    agent.h .= agent.gvfn(env_s_tp1, agent.h).data
-    agent.s_t .= env_s_tp1
+    agent.h .= agent.gvfn(stp1, agent.h).data
+    agent.s_t .= stp1
 
     agent.step+=1
 end
@@ -98,7 +121,8 @@ function step!(agent::TimeSeriesAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL
     end
 
     # don't judge me
-    v_tp1 = agent.gvfn(env_s_tp1,agent.h).data
+    stp1 = agent.normalizer(env_s_tp1)
+    v_tp1 = agent.gvfn(stp1,agent.h).data
     c, Γ, _ = get(agent.horde, nothing, env_s_tp1, v_tp1)
     push!(agent.batch_target, c .+ Γ.*v_tp1)
     push!(agent.batch_phi, copy(agent.s_t))
@@ -111,7 +135,7 @@ function step!(agent::TimeSeriesAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL
         agent.batch_target = Vector{Float64}[]
     end
 
-    agent.s_t .= env_s_tp1
+    agent.s_t .= stp1
     agent.h .= v_tp1
     agent.step+=1
 

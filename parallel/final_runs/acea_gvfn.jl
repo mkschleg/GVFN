@@ -12,14 +12,15 @@ Pkg.activate(".")
 
 using Reproduce
 
-const save_loc = "mackeyglass_bestGVFN"
-const env_t = "MackeyGlass"
+const save_loc = "acea_bestGVFN"
+const env_t = "ACEA"
 const agent_t = "GVFN"
-const exp_file = joinpath(@__DIR__,"../experiment/timeseries.jl")
+const exp_file = joinpath(@__DIR__,"../../experiment/timeseries.jl")
 
-const steps = 600000
-const valSteps = 200000
-const testSteps = 200000
+const steps = 82426
+const valSteps = 27474
+const testSteps = 27474
+const horizon = 144
 
 const exp_module_name = :TimeSeriesExperiment
 const exp_func_name = :main_experiment
@@ -27,7 +28,7 @@ const exp_func_name = :main_experiment
 #------ Learning Updates -------#
 
 const learning_update = "BatchTD"
-
+const normalizer = "Unity"
 
 #------ Model ----------#
 
@@ -35,13 +36,13 @@ const batchsize = [32]
 
 # Parameters for the SGD Algorithm
 const model_opt = ["ADAM"]
-const model_stepsize = [0.001]
+const model_stepsize = [0.0001]
 
 #------ GVFN ------#
-const gvfn_stepsize = [0.0001]
+const gvfn_stepsize = [3e-5]
 const γlo = [0.1]
-const γhi = [0.95]
-const num_gvfs = [128]
+const γhi = [0.97]
+const num_gvfs = [64]
 const gvfn_opt = ["Descent"]
 
 function make_arguments_rtd(args::Dict)
@@ -97,7 +98,7 @@ function main()
     arg_list = Array{String, 1}()
 
     arg_dict = Dict([
-        "horizon"=>12,
+        "horizon"=>horizon,
         "batchsize"=>batchsize,
 
         "model_stepsize"=>model_stepsize,
@@ -119,7 +120,8 @@ function main()
                    "--testSteps", string(testSteps),
                    "--exp_loc", save_loc,
                    "--agent", agent_t,
-                   "--env", env_t]
+                   "--env", env_t,
+                   "--normalizer", normalizer]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments_rtd)
 
     println(collect(args_iterator)[num_workers])

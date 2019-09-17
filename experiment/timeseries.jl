@@ -67,6 +67,11 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         help="Algorithm"
         default="BatchTD"
 
+        "--normalizer"
+        help="input normalizer"
+        arg_type=String
+        default="Identity"
+
         # GVFN
         "--gvfn_opt"
         help="Optimizer"
@@ -155,10 +160,10 @@ function main_experiment(args::Vector{String})
         env = MackeyGlass()
     elseif env_t == "MSO"
         env = MSO()
-    # elseif env_t == "ACEA"
-    #     env = ACEA()
+    elseif env_t == "ACEA"
+        env = ACEA()
     else
-        raise(DomainError("Environment $(env_t) not implemented!"))
+        throw(DomainError("Environment $(env_t) not implemented!"))
     end
     num_state_features = get_num_features(env)
 
@@ -170,7 +175,7 @@ function main_experiment(args::Vector{String})
     elseif Agent_t == "RNN"
         agent = TimeSeriesRNNAgent(parsed;rng=rng)
     else
-        raise(DomainError("Agent $(Agent_t) not implemented!"))
+        throw(DomainError("Agent $(Agent_t) not implemented!"))
     end
 
     start!(agent, s_t; rng=rng)
