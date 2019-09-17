@@ -64,6 +64,49 @@ function GVFNActionAgent(horde, out_horde,
 
 end
 
+
+function agent_settings!(as::Reproduce.ArgParseSettings, agent_type::Type{GVFNActionAgent})
+    Reproduce.@add_arg_table as begin
+        "--alg"
+        help="Algorithm"
+        default="TDLambda"
+        "--params"
+        help="Parameters"
+        arg_type=Float64
+        default=[]
+        nargs='+'
+        "--truncation", "-t"
+        help="Truncation parameter for bptt"
+        arg_type=Int64
+        default=1
+        "--horde"
+        help="The horde used for training"
+        default="gamma_chain"
+        "--gamma"
+        help="The gamma value for the gamma_chain horde"
+        arg_type=Float64
+        default=0.9
+        "--outhorde"
+        help="The horde used for training"
+        default="gamma_chain"
+        "--outgamma"
+        help="The gamma value for the gamma_chain horde"
+        arg_type=Float64
+        default=0.9
+        "--act"
+        help="The activation used for the GVFN"
+        arg_type=String
+        default="sigmoid"
+        "--feature"
+        help="The feature creator to use"
+        arg_type=String
+        default="standard"
+    end
+
+    FluxUtils.opt_settings!(as)
+    
+end
+
 function JuliaRL.start!(agent::GVFNActionAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
 
     # agent.action, agent.action_prob = get_action(env_s_tp1, rng)

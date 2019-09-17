@@ -1,9 +1,11 @@
 #!/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/julia/1.1.0/bin/julia
-#SBATCH -o comp_gvfn_action_rtd.out # Standard output
-#SBATCH -e comp_gvfn_action_rtd.err # Standard error
+#SBATCH --mail-user=mkschleg@ualberta.ca
+#SBATCH --mail-type=ALL
+#SBATCH -o comp_rnn_final.out # Standard output
+#SBATCH -e comp_rnn_final.err # Standard error
 #SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
-#SBATCH --time=24:00:00 # Running time of 12 hours
-#SBATCH --ntasks=64
+#SBATCH --time=08:00:00 # Running time of 12 hours
+#SBATCH --ntasks=40
 #SBATCH --account=rrg-whitem
 
 using Pkg
@@ -15,7 +17,7 @@ Pkg.activate(".")
 
 using Reproduce
 
-const save_loc = "compassworld_gvfn_action_sgd_policies"
+const save_loc = "final_compassworld_gvfn_action_rtd"
 const exp_file = "experiment/compassworld_action.jl"
 const exp_module_name = :CompassWorldActionExperiment
 const exp_func_name = :main_experiment
@@ -23,36 +25,8 @@ const exp_func_name = :main_experiment
 #------ Learning Updates -------#
 
 const learning_update = "RTD"
-# const lambdas = 0.1:0.2:0.9
-const truncations = [1, 8, 16, 24, 32]
-
 
 #------ Optimizers ----------#
-
-# Parameters for the SGD Algorithm
-const optimizer = "Descent"
-# const alphas = clamp.(0.1*1.5.^(-6:6), 0.0, 1.0)
-const alphas = [0.0001, 0.0005, 0.001, 0.005, 0.01]
-# const alphas = 0.1*1.5.^(-6:6)
-
-function make_arguments_tdlambda(args::Dict)
-    horde = args["horde"]
-    alpha = args["alpha"]
-    truncation = args["truncation"]
-    seed = args["seed"]
-    feature = args["feature"]
-    act = args["act"]
-    policy = args["policy"]
-    new_args=["--horde", horde,
-              "--act", act,
-              "--truncation", truncation,
-              "--opt", optimizer,
-              "--optparams", alpha,
-              "--feature", feature,
-              "--policy", policy,
-              "--seed", seed]
-    return new_args
-end
 
 function main()
 
@@ -68,29 +42,24 @@ function main()
         action=:store_true
         "--numsteps"
         arg_type=Int64
-        default=5000000
+        default=1000000
     end
     parsed = parse_args(as)
     num_workers = parsed["numworkers"]
 
-    arg_dict = Dict{String, Any}()
-    arg_list = Array{String, 1}()
+    arg_list = [
+        ["--act", "sigmoid","--horde", "rafols", "--truncation", "1", "--opt", "Descent", "--optparams", "0.1", "--feature", "standard"],
+        ["--act", "sigmoid","--horde", "rafols", "--truncation", "2", "--opt", "Descent", "--optparams", "0.1", "--feature", "standard"],
+        ["--act", "sigmoid","--horde", "rafols", "--truncation", "4", "--opt", "Descent", "--optparams", "0.0444444", "--feature", "standard"],
+        ["--act", "sigmoid","--horde", "rafols", "--truncation", "8", "--opt", "Descent", "--optparams", "0.0444444", "--feature", "standard"],
+        ["--act", "sigmoid","--horde", "rafols", "--truncation", "16", "--opt", "Descent", "--optparams", "0.0444444", "--feature", "standard"],
+        ["--act", "sigmoid","--horde", "rafols", "--truncation", "24", "--opt", "Descent", "--optparams", "0.0444444", "--feature", "standard"],
+        ["--act", "sigmoid","--horde", "rafols", "--truncation", "32", "--opt", "Descent", "--optparams", "0.0666667", "--feature", "standard"]
+    ]
+    runs_iter = 6:(6+20)
 
-
-    arg_dict = Dict([
-        "horde"=>["rafols", "aj_gammas_term", "aj_gammas"],
-        "alpha"=>alphas,
-        "truncation"=>truncations,
-        "feature"=>["standard"],
-        "policy"=>["random", "forward"],
-        "seed"=>collect(1:5),
-        "act"=>["sigmoid"]
-    ])
-    arg_list = ["policy", "feature", "act", "horde", "alpha", "truncation", "seed"]
-    
     static_args = ["--alg", learning_update, "--steps", string(parsed["numsteps"]), "--exp_loc", save_loc]
-    args_iterator = ArgIterator(arg_dict, static_args;
-                                arg_list=arg_list, make_args=make_arguments_tdlambda)
+    args_iterator = ArgLooper(arg_list, static_args, runs_iter, "--seed")
 
     if parsed["numjobs"]
         @info "This experiment has $(length(collect(args_iterator))) jobs."

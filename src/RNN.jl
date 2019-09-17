@@ -1,6 +1,8 @@
 
 # Sepcifying a action-conditional RNN Cell
 
+import Flux
+using Flux: param
 
 mutable struct RNNActionCELL{F, A, V, H}
     σ::F

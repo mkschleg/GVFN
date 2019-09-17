@@ -6,7 +6,6 @@ using ..GVFN, Reproduce
 const RWC = GVFN.RingWorldConst
 
 # export settings!, onestep, chain, gamma_chain, get_horde, oracle
-
 function env_settings!(as::ArgParseSettings)
     @add_arg_table as begin
         "--size"

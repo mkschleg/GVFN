@@ -1,6 +1,6 @@
 __precompile__(true)
 
-module RingWorldRNNSansActionExperiment
+module RingWorldForecastExperiment
 
 import Flux
 import Flux.Tracker
@@ -26,11 +26,15 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings(exc_handler=Reproduce
     #Experiment
 
     GVFN.exp_settings!(as)
-    RWU.env_settings!(as)
-    FLU.opt_settings!(as)
+    GVFN.env_settings!(as, RingWorld)
+    GVFN.agent_settings!(as, GVFN.ForecastActionAgent)
 
-    # shared settings
-    FLU.rnn_settings!(as)
+    @add_arg_table as begin
+        "--klength"
+        help="The length of k used"
+        arg_type=Int64
+        default=1
+    end
     
     return as
 end
@@ -39,7 +43,6 @@ function main_experiment(args::Vector{String})
 
     as = arg_parse()
     parsed = parse_args(args, as)
-    parsed["prev_action_or_not"] = true
 
     savepath = ""
     savefile = ""
@@ -67,15 +70,22 @@ function main_experiment(args::Vector{String})
 
     _, s_t = start!(env)
 
+    forecast_obj = collect(1:parsed["klength"])
+    forecast_obj_idx = fill(2, length(forecast_obj))
+    
     out_horde = RWU.onestep()
     fc = RWU.StandardFeatureCreator()
     fs = JuliaRL.FeatureCreators.feature_size(fc)
     ap = GVFN.RandomActingPolicy([0.5, 0.5])
     
-    agent = GVFN.RNNAgent(out_horde,
-                          fc, fs, ap, parsed;
-                          rng=rng,
-                          init_func=(dims...)->glorot_uniform(rng, dims...))
+    agent = GVFN.ForecastActionAgent(forecast_obj,
+                                     forecast_obj_idx,
+                                     out_horde,
+                                     fc, fs, 2,
+                                     ap,
+                                     parsed;
+                                     rng=rng,
+                                     init_func=(dims...)->glorot_uniform(rng, dims...))
     action = start!(agent, s_t; rng=rng)
 
     prg_bar = ProgressMeter.Progress(num_steps, "Step: ")

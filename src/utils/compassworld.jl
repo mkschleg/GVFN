@@ -49,6 +49,14 @@ function forward()
     return Horde(gvfs)
 end
 
+function onestep()
+    cwc = GVFN.CompassWorldConst
+    gvfs = [GVF(FeatureCumulant(color),
+                ConstantDiscount(0.0),
+                PersistentPolicy(cwc.FORWARD)) for color in 1:5]
+    return Horde(gvfs)
+end
+
 function gammas(gammas = [collect(0.0:0.05:0.95); [0.975, 0.99]])
     cwc = GVFN.CompassWorldConst
     gvfs = Array{GVF, 1}()
@@ -90,6 +98,24 @@ function gammas_scaled(gammas = [collect(0.0:0.05:0.95); [0.975, 0.99]])
     return Horde(gvfs)
 end
 
+function gammas_with_scaled_white(gammas = [collect(0.0:0.05:0.95); [0.975, 0.99]])
+    cwc = GVFN.CompassWorldConst
+    gvfs = Array{GVF, 1}()
+    for color in 1:5
+        new_gvfs = [GVF(
+            FeatureCumulant(color),
+            ConstantDiscount(γ),
+            PersistentPolicy(cwc.FORWARD)) for γ in gammas]
+        append!(gvfs, new_gvfs)
+        # new_gvfs = [GVF(FeatureCumulant(color), StateTerminationDiscount(γ, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD)) for γ in 0.0:0.05:0.95]
+    end
+    new_gvfs = [GVF(
+        ScaledCumulant(1-γ, FeatureCumulant(cwc.WHITE)),
+        ConstantDiscount(γ),
+        PersistentPolicy(cwc.FORWARD)) for γ in gammas]
+    return Horde(gvfs)
+end
+
 function test_network(pred_offset::Integer=0)
     cwc = GVFN.CompassWorldConst
     gvfs = Array{GVF, 1}()
@@ -116,6 +142,8 @@ function get_horde(horde_str::AbstractString, pred_offset::Integer=0)
     horde = forward()
     if horde_str == "forward"
         horde = forward()
+    elseif horde_str == "onestep"
+        horde = onestep()
     elseif horde_str == "rafols"
         horde = rafols(pred_offset)
     elseif horde_str == "gammas"
@@ -128,6 +156,8 @@ function get_horde(horde_str::AbstractString, pred_offset::Integer=0)
         horde = gammas_scaled(1.0 .- 2.0 .^ collect(-7:-1))
     elseif horde_str == "aj_gammas_term"
         horde = gammas_term(1.0 .- 2.0 .^ collect(-7:-1))
+    elseif horde_str == "gammas_with_scaled_white"
+        horde = gammas_with_scaled_white(1.0 .- 2.0 .^ collect(-7:-1))
     elseif horde_str == "test"
         horde = test_network(pred_offset)
     else
@@ -137,6 +167,34 @@ function get_horde(horde_str::AbstractString, pred_offset::Integer=0)
 end
 
 get_horde(parsed::Dict, prefix::AbstractString="", pred_offset::Integer=0) = get_horde(parsed["$(prefix)horde"], pred_offset)
+
+function oracle_onestep(state, world_dims)
+    ret = zeros(5)
+
+    # Forward
+    if state.dir == cwc.NORTH
+        # Orange Check
+        ret[cwc.ORANGE] = (state.y == 1 || state.y == 2)
+    elseif state.dir == cwc.SOUTH
+        # Red Check
+        ret[cwc.RED] = (state.y == world_dims.height || state.y == world_dims.height - 1)
+    elseif state.dir == cwc.WEST
+        if state.y == 1
+            # Green Check
+            ret[cwc.GREEN] = (state.x == 1 || state.x == 2)
+        else
+            # Blue Check
+            ret[cwc.BLUE] = (state.x == 1 || state.x == 2)
+        end
+    elseif state.dir == cwc.EAST
+        # Yellow Check
+        ret[cwc.YELLOW] = (state.x == world_dims.width || state.x == world_dims.width - 1)
+    else
+        throw("OH NO! oracle_onestep $(state.dir)")
+    end
+    # 
+    ret
+end
 
 function oracle_forward(state)
     ret = zeros(5)
@@ -173,6 +231,8 @@ function oracle(env::CompassWorld, horde_str)
     ret = Array{Float64,1}()
     if horde_str == "forward"
         ret = oracle_forward(state)
+    elseif horde_str == "onestep"
+        ret = oracle_onestep(state, env.world_dims)
     elseif horde_str == "rafols"
         oracle_rafols(state)
     elseif horde_str == "gammas"
