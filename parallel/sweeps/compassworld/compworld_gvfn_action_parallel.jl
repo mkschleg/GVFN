@@ -27,7 +27,7 @@ const exp_func_name = :main_experiment
 const learning_update = "RTD"
 const optimizer = "Descent"
 # const lambdas = 0.1:0.2:0.9
-const truncations = [1, 2, 3, 4, 5, 6, 7, 8, 16]
+const truncations = [1, 2, 3, 4, 5, 6, 7, 8, 16, 32, 64]
 const alphas = [0.0001, 0.0002, 0.0003, 0.0004, 0.0005, 0.0006, 0.0007, 0.0008, 0.0009, 0.001, 0.0025, 0.005, 0.0075, 0.01]
 
 function make_arguments_tdlambda(args::Dict)

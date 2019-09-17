@@ -25,7 +25,7 @@ const exp_func_name = :main_experiment
 const optimizer = "Descent"
 # const alphas = clamp.(0.1*1.5.^(-6:4), 0.0, 1.0)
 const alphas = [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1]
-const truncations = [1, 2, 3, 4, 5, 6, 7, 8, 16]
+const truncations = [1, 2, 3, 4, 5, 6, 7, 8, 16, 32, 64]
 
 function make_arguments(args::Dict)
     horde = args["horde"]
