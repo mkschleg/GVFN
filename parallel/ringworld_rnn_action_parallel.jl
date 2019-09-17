@@ -17,7 +17,8 @@ const exp_module_name = :RingWorldRNNExperiment
 const exp_func_name = :main_experiment
 const optimizer = "Descent"
 const alphas = clamp.(0.1*1.5.^(-6:6), 0.0, 1.0)
-const truncations = [1, 2, 4, 8, 12, 16]
+const truncations = [1, 2, 3, 4, 6, 8, 12, 16]
+# const truncations = [1, 2, 4, 8, 12, 16]
 
 function make_arguments(args::Dict)
     alpha = args["alpha"]
@@ -43,7 +44,7 @@ function main()
         action=:store_true
         "--numsteps"
         arg_type=Int64
-        default=750000
+        default=300000
     end
     parsed = parse_args(as)
     num_workers = parsed["numworkers"]
