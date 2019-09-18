@@ -115,6 +115,10 @@ function update!(out_model, rnn::Flux.Recur{T},
                  action_t=nothing, b_prob=1.0; prms=nothing) where {T}
 
     reset!(rnn, h_init)
+    # println("Hidden_state_Init: ", h_init)
+    # println("rnn.state: ", rnn.state)
+    # println("rnn.init: ", rnn.init)
+    # println("rnn.state.tracker", rnn.state.tracker)
     rnn_out = rnn.(state_seq)
     preds = out_model.(rnn_out)
     cumulants, discounts, π_prob = get(horde, action_t, env_state_tp1, Flux.data(preds[end]))
@@ -130,36 +134,36 @@ end
 
 
 # Update for RNNs w/ Auxiliary tasks
-function update!(out_model, rnn::Flux.Recur{T},
-                 horde::AbstractHorde, at_horde::AbstractHorde,
-                 opt, lu::TD, h_init,
-                 state_seq, env_state_tp1,
-                 action_t=nothing, b_prob=1.0; prms=nothing) where {T}
+# function update!(out_model, rnn::Flux.Recur{T},
+#                  horde::AbstractHorde, at_horde::AbstractHorde,
+#                  opt, lu::TD, h_init,
+#                  state_seq, env_state_tp1,
+#                  action_t=nothing, b_prob=1.0; prms=nothing) where {T}
 
-    reset!(rnn, h_init)
-    rnn_out = rnn.(state_seq)
-    preds = out_model.(rnn_out)
+#     reset!(rnn, h_init)
+#     rnn_out = rnn.(state_seq)
+#     preds = out_model.(rnn_out)
 
-    preds_horde_t = preds[end-1][1:length(horde)]
-    preds_horde_tp1 = Flux.data(preds[end][1:length(horde)])
+#     preds_horde_t = preds[end-1][1:length(horde)]
+#     preds_horde_tp1 = Flux.data(preds[end][1:length(horde)])
 
-    preds_at_t = preds[end-1][(1+length(horde)):end]
-    preds_at_tp1 = Flux.data(preds[end][(1+length(horde)):end])
+#     preds_at_t = preds[end-1][(1+length(horde)):end]
+#     preds_at_tp1 = Flux.data(preds[end][(1+length(horde)):end])
     
-    cumulants, discounts, π_prob = get(horde, action_t, env_state_tp1, Flux.data(preds_horde_tp1))
-    ρ = Float32.(π_prob./b_prob)
-    δ_horde = offpolicy_tdloss(ρ, preds_horde_t, Float32.(cumulants), Float32.(discounts), preds_horde_tp1)
+#     cumulants, discounts, π_prob = get(horde, action_t, env_state_tp1, Flux.data(preds_horde_tp1))
+#     ρ = Float32.(π_prob./b_prob)
+#     δ_horde = offpolicy_tdloss(ρ, preds_horde_t, Float32.(cumulants), Float32.(discounts), preds_horde_tp1)
 
-    cumulants, discounts, π_prob = get(at_horde, action_t, env_state_tp1, Flux.data(preds_at_tp1))
-    ρ = Float32.(π_prob./b_prob)
-    δ_at = offpolicy_tdloss(ρ, preds_at_t, Float32.(cumulants), Float32.(discounts), preds_at_tp1)
+#     cumulants, discounts, π_prob = get(at_horde, action_t, env_state_tp1, Flux.data(preds_at_tp1))
+#     ρ = Float32.(π_prob./b_prob)
+#     δ_at = offpolicy_tdloss(ρ, preds_at_t, Float32.(cumulants), Float32.(discounts), preds_at_tp1)
 
-    grads = Flux.Tracker.gradient(()->(δ_horde + δ_at), Flux.params(out_model, rnn))
-    reset!(rnn, h_init)
-    for weights in Flux.params(out_model, rnn)
-        Flux.Tracker.update!(opt, weights, grads[weights])
-    end
-end
+#     grads = Flux.Tracker.gradient(()->(δ_horde + δ_at), Flux.params(out_model, rnn))
+#     reset!(rnn, h_init)
+#     for weights in Flux.params(out_model, rnn)
+#         Flux.Tracker.update!(opt, weights, grads[weights])
+#     end
+# end
 
 
 function update!(model, horde::AbstractHorde, opt, lu::TD, state_seq, env_state_tp1, action_t=nothing, b_prob=1.0; prms=nothing)

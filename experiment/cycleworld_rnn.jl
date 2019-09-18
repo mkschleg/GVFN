@@ -81,6 +81,7 @@ function main_experiment(args::Vector{String})
 
     out_pred_strg = zeros(num_steps, num_gvfs)
     out_err_strg = zeros(num_steps, num_gvfs)
+    oracle_strg = zeros(num_steps, num_gvfs)
 
     _, s_t = start!(env)
     action = start!(agent, s_t; rng=rng)
@@ -94,7 +95,8 @@ function main_experiment(args::Vector{String})
 
         out_pred_strg[step,:] = Flux.data(out_preds)
         out_err_strg[step, :] = out_pred_strg[step, :] .- CycleWorldUtils.oracle(env, parsed["horde"], parsed["gamma"])
-
+        oracle_strg[step, :] = CycleWorldUtils.oracle(env, parsed["horde"], parsed["gamma"])
+        
         if verbose
             println("step: $(step)")
             println(env)
@@ -109,7 +111,9 @@ function main_experiment(args::Vector{String})
         end
     end
 
-    results = Dict(["out_pred"=>out_pred_strg, "out_err_strg"=>out_err_strg])
+    results = Dict(["out_pred"=>out_pred_strg,
+                    "oracle"=>oracle_strg,
+                    "out_err_strg"=>out_err_strg])
     if !parsed["working"]
         save(savefile, results)
     else
