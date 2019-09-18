@@ -95,7 +95,7 @@ function TimeSeriesAgent(parsed; rng=Random.GLOBAL_RNG)
     return TimeSeriesAgent(lu, gvfn_opt, model_opt, gvfn, normalizer, batch_phi, batch_target, batch_hidden, batch_h, batch_obs, hidden_states, hidden_state_init, zeros(Float64, 1), model, horde, out_horde, horizon, 0, batchsize)
 end
 
-function start!(agent::TimeSeriesAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
+function JuliaRL.start!(agent::TimeSeriesAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
 
     stp1 = agent.normalizer(env_s_tp1)
 
@@ -106,7 +106,7 @@ function start!(agent::TimeSeriesAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs
     agent.step+=1
 end
 
-function step!(agent::TimeSeriesAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
+function JuliaRL.step!(agent::TimeSeriesAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
     push!(agent.hidden_states, copy(agent.h))
 
     if agent.step>=agent.horizon
@@ -195,7 +195,7 @@ function JuliaRL.start!(agent::TimeSeriesRNNAgent, env_s_tp1; rng=Random.GLOBAL_
 end
 
 
-function step!(agent::TimeSeriesRNNAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
+function JuliaRL.step!(agent::TimeSeriesRNNAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
 
     push!(agent.state_list, agent.build_features(env_s_tp1, agent.action))
 

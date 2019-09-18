@@ -1,10 +1,16 @@
 import DataStructures: CircularBuffer
 import HDF5: h5read
 
-abstract type TimeSeriesEnv end
+abstract type TimeSeriesEnv <: AbstractEnvironment end
+
+# JuliaRL.reset!(env::ENV; rng = Random.GLOBAL_RNG, kwargs...) where {ENV<:TimeSeriesEnv} =
+#     _start!(env)
+# JuliaRL.environment_step!(env::ENV, action::Int64; rng = Random.GLOBAL_RNG, kwargs...) where {ENV<:TimeSeriesEnv} = 
+
+# JuliaRL.
 
 init!(self::TimeSeriesEnv) = nothing
-step!(self::TimeSeriesEnv, action) = step!(self::TimeSeriesEnv)
+JuliaRL.step!(self::TimeSeriesEnv, action) = JuliaRL.step!(self::TimeSeriesEnv)
 
 get_num_features(self::TimeSeriesEnv) = 1
 
@@ -21,16 +27,18 @@ end
 
 MSO() = MSO(1, [0.2, 0.311, 0.42, 0.51], [0.0])
 
-function start!(self::MSO)
+function JuliaRL.start!(self::MSO)
     self.θ = 1
     return step!(self)
 end
 
-function step!(self::MSO)
+function JuliaRL.step!(self::MSO)
     self.state[1] = sum([sin(self.θ*ω) for ω in self.Ω])
     self.θ += 1
     return self.state
 end
+
+JuliaRL.get_state(self::MSO) = self.state
 
 # =================
 # --- SINE WAVE ---
@@ -48,12 +56,12 @@ mutable struct SineWave <: TimeSeriesEnv
     end
 end
 
-function start!(self::SineWave)
+function JuliaRL.start!(self::SineWave)
     self.idx = 1
     return step!(self)
 end
 
-function step!(self::SineWave)
+function JuliaRL.step!(self::SineWave)
     self.state[1] = self.dataset[self.idx]
     self.idx += 1
     return self.state
@@ -80,11 +88,11 @@ function MackeyGlass(delta=10, tau=17, series=1.2)
     return MackeyGlass(delta, tau, series, history_len, history, [0.0])
 end
 
-function start!(self::MackeyGlass)
+function JuliaRL.start!(self::MackeyGlass)
     return step!(self)
 end
 
-function step!(self::MackeyGlass)
+function JuliaRL.step!(self::MackeyGlass)
     for _ in 1:self.delta
         xtau = self.history[1]
         push!(self.history, self.series)
@@ -115,12 +123,12 @@ function ACEA()
     )
 end
 
-function start!(self::ACEA)
+function JuliaRL.start!(self::ACEA)
     self.idx = 1
     return step!(self)
 end
 
-function step!(self::ACEA)
+function JuliaRL.step!(self::ACEA)
     obs = self.data[self.idx]
     self.idx+=1
     self.state[1] = obs
