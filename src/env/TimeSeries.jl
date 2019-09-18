@@ -1,11 +1,19 @@
 import DataStructures: CircularBuffer
 
-abstract type TimeSeriesEnv end
+abstract type TimeSeriesEnv <: AbstractEnvironment end
 
 init!(self::TimeSeriesEnv) = nothing
-step!(self::TimeSeriesEnv, action) = step!(self::TimeSeriesEnv)
+JuliaRL.environment_step!(self::ENV, action; rng = Random.GLOBAL_RNG, kwargs...) where {ENV<:TimeSeriesEnv} =
+    _step!(self)
+JuliaRL.reset!(self::ENV; rng=Random.GLOBAL_RNG, kwargs...) where {ENV<:TimeSeriesEnv} =
+    _start!(self)
 
 get_num_features(self::TimeSeriesEnv) = 1
+
+JuliaRL.get_actions(self::TimeSeriesEnv) = Set(1)
+JuliaRL.get_reward(self::TimeSeriesEnv) = 0
+
+
 
 mutable struct MSO <: TimeSeriesEnv
     dataset::Vector{Float64}
@@ -21,16 +29,23 @@ mutable struct MSO <: TimeSeriesEnv
     end
 end
 
-function start!(self::MSO)
+function _start!(self::MSO)
     self.idx = 1
-    return step!(self)
+    # return _step!(self)
 end
 
-function step!(self::MSO)
-    self.state[1] = self.dataset[self.idx]
+function _step!(self::MSO)
+    # self.state[1] = self.dataset[self.idx]
     self.idx += 1
-    return self.state
+    # return self.state
 end
+
+function JuliaRL.get_state(self::MSO) # -> get state of agent
+    # env.state[env.idx]
+    [self.dataset[self.idx]]
+end
+
+JuliaRL.is_terminal(self::MSO) = self.idx == length(self.dataset)
 
 mutable struct SineWave <: TimeSeriesEnv
     dataset::Vector{Float64}
@@ -44,16 +59,23 @@ mutable struct SineWave <: TimeSeriesEnv
     end
 end
 
-function start!(self::SineWave)
+function _start!(self::SineWave)
     self.idx = 1
-    return step!(self)
+    # return _step!(self)
 end
 
-function step!(self::SineWave)
-    self.state[1] = self.dataset[self.idx]
+function _step!(self::SineWave)
+    # self.state[1] = self.dataset[self.idx]
     self.idx += 1
-    return self.state
+    # return self.state
 end
+
+function JuliaRL.get_state(self::SineWave) # -> get state of agent
+    # env.state[env.idx]
+    [self.dataset[self.idx]]
+end
+
+JuliaRL.is_terminal(self::SineWave) = self.idx == length(self.dataset)
 
 mutable struct MackeyGlass <: TimeSeriesEnv
     delta::Int
@@ -72,11 +94,11 @@ mutable struct MackeyGlass <: TimeSeriesEnv
     end
 end
 
-function start!(self::MackeyGlass)
-    return step!(self)
+function _start!(self::MackeyGlass)
+    _step!(self)
 end
 
-function step!(self::MackeyGlass)
+function _step!(self::MackeyGlass)
     for _ in 1:self.delta
         xtau = self.history[1]
         push!(self.history, self.series)
@@ -86,3 +108,9 @@ function step!(self::MackeyGlass)
     self.state[1] = self.series
     return self.state
 end
+
+function JuliaRL.get_state(self::MackeyGlass) # -> get state of agent
+    [self.series]
+end
+
+JuliaRL.is_terminal(self::MackeyGlass) = false
