@@ -1,51 +1,40 @@
 import DataStructures: CircularBuffer
+import HDF5: h5read
 
-abstract type TimeSeriesEnv <: AbstractEnvironment end
+abstract type TimeSeriesEnv end
 
 init!(self::TimeSeriesEnv) = nothing
-JuliaRL.environment_step!(self::ENV, action; rng = Random.GLOBAL_RNG, kwargs...) where {ENV<:TimeSeriesEnv} =
-    _step!(self)
-JuliaRL.reset!(self::ENV; rng=Random.GLOBAL_RNG, kwargs...) where {ENV<:TimeSeriesEnv} =
-    _start!(self)
+step!(self::TimeSeriesEnv, action) = step!(self::TimeSeriesEnv)
 
 get_num_features(self::TimeSeriesEnv) = 1
 
-JuliaRL.get_actions(self::TimeSeriesEnv) = Set(1)
-JuliaRL.get_reward(self::TimeSeriesEnv) = 0
-
-
+# ===========
+# --- MSO ---
+# ===========
 
 mutable struct MSO <: TimeSeriesEnv
-    dataset::Vector{Float64}
-    idx::Int
+    θ::Int
+    Ω::Vector{Float64}
 
     state::Vector{Float64}
-
-    function MSO(max_steps::Int)
-        Ω = [0.2, 0.311, 0.42, 0.51]
-
-        values = map(θ -> sum([sin(θ*ω) for ω in Ω]), 0:max_steps)
-        return new(values, 1, [0.0])
-    end
 end
 
-function _start!(self::MSO)
-    self.idx = 1
-    # return _step!(self)
+MSO() = MSO(1, [0.2, 0.311, 0.42, 0.51], [0.0])
+
+function start!(self::MSO)
+    self.θ = 1
+    return step!(self)
 end
 
-function _step!(self::MSO)
-    # self.state[1] = self.dataset[self.idx]
-    self.idx += 1
-    # return self.state
+function step!(self::MSO)
+    self.state[1] = sum([sin(self.θ*ω) for ω in self.Ω])
+    self.θ += 1
+    return self.state
 end
 
-function JuliaRL.get_state(self::MSO) # -> get state of agent
-    # env.state[env.idx]
-    [self.dataset[self.idx]]
-end
-
-JuliaRL.is_terminal(self::MSO) = self.idx == length(self.dataset)
+# =================
+# --- SINE WAVE ---
+# =================
 
 mutable struct SineWave <: TimeSeriesEnv
     dataset::Vector{Float64}
@@ -59,23 +48,20 @@ mutable struct SineWave <: TimeSeriesEnv
     end
 end
 
-function _start!(self::SineWave)
+function start!(self::SineWave)
     self.idx = 1
-    # return _step!(self)
+    return step!(self)
 end
 
-function _step!(self::SineWave)
-    # self.state[1] = self.dataset[self.idx]
+function step!(self::SineWave)
+    self.state[1] = self.dataset[self.idx]
     self.idx += 1
-    # return self.state
+    return self.state
 end
 
-function JuliaRL.get_state(self::SineWave) # -> get state of agent
-    # env.state[env.idx]
-    [self.dataset[self.idx]]
-end
-
-JuliaRL.is_terminal(self::SineWave) = self.idx == length(self.dataset)
+# ===================
+# --- MACKEYGLASS ---
+# ===================
 
 mutable struct MackeyGlass <: TimeSeriesEnv
     delta::Int
@@ -85,20 +71,20 @@ mutable struct MackeyGlass <: TimeSeriesEnv
     history::CircularBuffer{Float64}
 
     state::Vector{Float64}
-
-    function MackeyGlass(delta=10, tau=17, series=1.2)
-        history_len = delta*tau
-        history = CircularBuffer{Float64}(history_len)
-        fill!(history, 0.0)
-        return new(delta, tau, series, history_len, history, [0.0])
-    end
 end
 
-function _start!(self::MackeyGlass)
-    _step!(self)
+function MackeyGlass(delta=10, tau=17, series=1.2)
+    history_len = delta*tau
+    history = CircularBuffer{Float64}(history_len)
+    fill!(history, 0.0)
+    return MackeyGlass(delta, tau, series, history_len, history, [0.0])
 end
 
-function _step!(self::MackeyGlass)
+function start!(self::MackeyGlass)
+    return step!(self)
+end
+
+function step!(self::MackeyGlass)
     for _ in 1:self.delta
         xtau = self.history[1]
         push!(self.history, self.series)
@@ -109,8 +95,35 @@ function _step!(self::MackeyGlass)
     return self.state
 end
 
-function JuliaRL.get_state(self::MackeyGlass) # -> get state of agent
-    [self.series]
+# ============
+# --- ACEA ---
+# ============
+
+mutable struct ACEA <: TimeSeriesEnv
+    data::Vector{Float64}
+    idx::Int
+
+    state::Vector{Float64}
+
 end
 
-JuliaRL.is_terminal(self::MackeyGlass) = false
+function ACEA()
+    return ACEA(
+        h5read(joinpath(@__DIR__, "../../raw_data/acea.h5"), "data"),
+        1,
+        [0.0]
+    )
+end
+
+function start!(self::ACEA)
+    self.idx = 1
+    return step!(self)
+end
+
+function step!(self::ACEA)
+    obs = self.data[self.idx]
+    self.idx+=1
+    self.state[1] = obs
+    return self.state
+end
+

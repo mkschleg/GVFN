@@ -5,9 +5,13 @@ agent_settings!(as::Reproduce.ArgParseSettings, agent::Type{<:JuliaRL.AbstractAg
     throw("Set settings function for $(typeof(agent))")
 
 
+
 # include("agent/cycleworld.jl")
 # include("agent/compassworld.jl")
-include("agent/mackeyglass.jl")
+include("agent/timeseries.jl")
+
+# include("agent/mackeyglass.jl")
+
 
 
 include("agent/GVFNAgent.jl")
