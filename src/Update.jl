@@ -1,7 +1,7 @@
 
 using Statistics
 using LinearAlgebra: Diagonal
-import Flux.Tracker.update!
+# import Flux.Tracker.update!
 
 using Flux.Optimise: apply!
 
@@ -129,6 +129,39 @@ function update!(out_model, rnn::Flux.Recur{T},
 end
 
 
+# Update for RNNs w/ Auxiliary tasks
+function update!(out_model, rnn::Flux.Recur{T},
+                 horde::AbstractHorde, at_horde::AbstractHorde,
+                 opt, lu::TD, h_init,
+                 state_seq, env_state_tp1,
+                 action_t=nothing, b_prob=1.0; prms=nothing) where {T}
+
+    reset!(rnn, h_init)
+    rnn_out = rnn.(state_seq)
+    preds = out_model.(rnn_out)
+
+    preds_horde_t = preds[end-1][1:length(horde)]
+    preds_horde_tp1 = Flux.data(preds[end][1:length(horde)])
+
+    preds_at_t = preds[end-1][(1+length(horde)):end]
+    preds_at_tp1 = Flux.data(preds[end][(1+length(horde)):end])
+    
+    cumulants, discounts, π_prob = get(horde, action_t, env_state_tp1, Flux.data(preds_horde_tp1))
+    ρ = Float32.(π_prob./b_prob)
+    δ_horde = offpolicy_tdloss(ρ, preds_horde_t, Float32.(cumulants), Float32.(discounts), preds_horde_tp1)
+
+    cumulants, discounts, π_prob = get(at_horde, action_t, env_state_tp1, Flux.data(preds_at_tp1))
+    ρ = Float32.(π_prob./b_prob)
+    δ_at = offpolicy_tdloss(ρ, preds_at_t, Float32.(cumulants), Float32.(discounts), preds_at_tp1)
+
+    grads = Flux.Tracker.gradient(()->(δ_horde + δ_at), Flux.params(out_model, rnn))
+    reset!(rnn, h_init)
+    for weights in Flux.params(out_model, rnn)
+        Flux.Tracker.update!(opt, weights, grads[weights])
+    end
+end
+
+
 function update!(model, horde::AbstractHorde, opt, lu::TD, state_seq, env_state_tp1, action_t=nothing, b_prob=1.0; prms=nothing)
 
     if prms == nothing
@@ -197,7 +230,7 @@ function update!(gvfn::Flux.Recur{T}, opt, lu::RTD, h_init, states, env_state_tp
     cumulants, discounts, π_prob = get(gvfn.cell, action_t, env_state_tp1, preds_tilde)
     ρ = π_prob ./ b_prob
 
-    grads = Tracker.gradient(()->offpolicy_tdloss(Float32.(ρ), preds_t, Float32.(cumulants), Float32.(discounts), preds_tilde), prms)
+    grads = Tracker.gradient(()->offpolicy_tdloss_gvfn(Float32.(ρ), preds_t, Float32.(cumulants), Float32.(discounts), preds_tilde), prms)
     for weights in prms
         Flux.Tracker.update!(opt, weights, grads[weights])
     end
@@ -214,9 +247,10 @@ function update!(gvfn::Flux.Recur{T}, opt, lu::RTD, h_init, states, env_state_tp
     cumulants, discounts, π_prob = get(gvfn.cell, action_t, env_state_tp1, preds_tilde)
     ρ = π_prob/b_prob
 
-    grads = Tracker.gradient(() ->tdloss(preds_t, cumulants, discounts, preds_tilde), prms)
+    # grads = Tracker.gradient(() ->tdloss(preds_t, cumulants, discounts, preds_tilde), prms)
+    grads = Tracker.gradient(()->offpolicy_tdloss_gvfn(Float32.(ρ), preds_t, Float32.(cumulants), Float32.(discounts), preds_tilde), prms)
     for weights in prms
-        Flux.Tracker.update!(opt, weights, -grads[weights].*(ρ'))
+        Flux.Tracker.update!(opt, weights, grads[weights])
     end
 
 end
@@ -242,33 +276,7 @@ end
 #     return preds, out_preds
 # end
 
-mutable struct RTDC <: LearningUpdate
-    # α::Float64
-    β::Float64
-    h::IdDict
-    RTD(α) = new(α)
-end
 
-function update!(gvfn::Flux.Recur{T}, lu::RTDC, h_init, states, env_state_tp1) where {T <: AbstractGVFLayer}
-
-    # α = lu.α
-
-    reset!(gvfn, h_init)
-    preds = gvfn.(states)
-    preds_t = preds[end-1]
-    preds_tilde = Flux.data(preds[end])
-
-    cumulants, discounts, ρ = get(gvfn.cell, preds_tilde, env_state_tp1)
-    targets = cumulants .+ discounts.*preds_tilde
-    δ = targets .- preds_t
-
-    prms = params(gvfn)
-    # println(prms)
-    grads = Tracker.gradient(() ->mean(δ.^2), prms)
-    for weights in prms
-        Flux.Tracker.update!(weights, -α.*grads[weights])
-    end
-end
 
 mutable struct RTD_jacobian <: LearningUpdate
     # α::Float64
@@ -299,9 +307,3 @@ function update!(gvfn::Flux.Recur{T}, lu::RTD_jacobian, h_init, states, env_stat
 
     # return preds
 end
-
-
-
-
-
-

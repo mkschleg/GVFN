@@ -4,16 +4,7 @@ using Random
 
 # import JuliaRL.reset!, JuliaRL.environment_step!, JuliaRL.get_reward
 
-"""
- RingWorld
-States: 1     2     3     ...     n
-Vis:    1 <-> 0 <-> 0 <-> ... <-> 0 <-|
-        ^-----------------------------|
 
-chain_length: size (diameter) of ring
-actions: Forward of Backward
-
-"""
 
 module RingWorldConst
 
@@ -24,16 +15,38 @@ const ACTIONS = Set([FORWARD, BACKWARD])
 end
 
 
+"""
+ RingWorld
+    States: 1     2     3     ...     n
+    Obs:    1 <-> 0 <-> 0 <-> ... <-> 0 <-|
+            ^-----------------------------|
+
+ring_size: size (diameter) of ring
+actions: Forward of Backward (See RingWorldConst)
+
+"""
 mutable struct RingWorld <: AbstractEnvironment
     ring_size::Int64
     agent_state::Int64
     actions::AbstractSet
     partially_observable::Bool
-    RingWorld(ring_size::Int64; rng=Random.GLOBAL_RNG, partially_observable=true) =
-        new(ring_size,
-            1,
-            RingWorldConst.ACTIONS,
-            partially_observable)
+
+end
+
+RingWorld(ring_size::Int64; partially_observable=true) =
+    RingWorld(ring_size,
+              1,
+              RingWorldConst.ACTIONS,
+              partially_observable)
+
+function env_settings!(as::Reproduce.ArgParseSettings,
+                       env_type::Type{RingWorld})
+    Reproduce.@add_arg_table as begin
+        "--size"
+        help="The length of the ring world chain"
+        arg_type=Int64
+        default=6
+    end
 end
 
 Base.size(env::RingWorld) = env.ring_size
