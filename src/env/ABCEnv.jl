@@ -51,6 +51,7 @@ end
 mutable struct TrialABCEnv
     trial::ABCEnvConst.AbstractTrial
     cur_step_in_trial::Int64
+    random::bool
 end
 
 TrialABCEnv() = TrialABCEnv(ÃB̃(0), 1)
