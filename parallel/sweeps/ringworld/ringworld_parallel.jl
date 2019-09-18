@@ -20,7 +20,7 @@ const alphas = clamp.(0.1*1.5.^(-6:1), 0.0, 1.0)
 
 
 const learning_update = "RTD"
-const truncations = [1, 2, 4, 8, 12, 16]
+const truncations = [1, 2, 3, 4, 6, 8, 12, 16]
 
 function make_arguments(args::Dict)
     horde = args["horde"]
@@ -54,7 +54,7 @@ function main()
     arg_dict = Dict([
         #"horde"=>["chain", "gamma_chain", "gammas_aj_term"],
 	# "horde"=>["half_chain", "gamma_chain"],
-        "horde"=>["full_chain"],
+        "horde"=>["half_chain", "gamma_chain", "full_chain"],
         "alpha"=>alphas,
         "truncation"=>truncations,
         "activation"=>["relu", "sigmoid"],
