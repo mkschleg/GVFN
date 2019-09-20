@@ -5,23 +5,26 @@ using Reproduce
 
 Pkg.activate(".")
 
-const save_loc = "cycleworld_rnn_sweep_sgd"
+const save_loc = "cycleworld_rnn_chain_length"
 const exp_file = "experiment/cycleworld_rnn.jl"
 const exp_module_name = :CycleWorldRNNExperiment
 const exp_func_name = :main_experiment
-const optimizer = "RMSProp"
-const alphas = 0.0001
-const chain = [6, 10, 20, 30, 40, 50, 60, 70, 80, 100]
-const truncation_percentages = 0.0:0.1:1.0
+const optimizer = "Descent"
+const alphas = 0.1 .* 1.5.^(-4:2:2)
+const chain = 6:4:30
+const truncation_percentages = 0.0:0.2:1.0
+const truncations = [1, 2, 4, 6, 8, 10, 14, 18, 24, 30]
 
 function make_arguments(args::Dict)
     horde = args["horde"]
     alpha = args["alpha"]
     cell = args["cell"]
+    # truncation = Int64(floor(parse(Int64, args["chain"]) * parse(Float64, args["trunc_perc"])))
     truncation = args["truncation"]
     seed = args["seed"]
+    chain = args["chain"]
     # save_file = "$(save_loc)/$(horde)/$(cell)/$(optimizer)_alpha_$(alpha)_truncation_$(truncation)/run_$(seed).jld2"
-    new_args=["--horde", horde, "--truncation", truncation, "--opt", optimizer, "--optparams", alpha, "--cell", cell, "--seed", seed]
+    new_args=["--horde", horde, "--truncation", truncation, "--opt", optimizer, "--optparams", alpha, "--cell", cell, "--numhidden", chain, "--chain", chain, "--seed", seed]
     return new_args
 end
 
@@ -42,15 +45,17 @@ function main()
     num_workers = parsed["numworkers"]
 
     arg_dict = Dict([
-        "horde"=>["onestep", "chain", "gamma_chain"],
+        "horde"=>["onestep"],
         "alpha"=>alphas,
+        # "trunc_perc"=>truncation_percentages,
         "truncation"=>truncations,
-        "cell"=>["RNN", "LSTM", "GRU"],
+        "cell"=>["RNN"],
+        "chain"=>collect(chain),
         "seed"=>collect(1:10)
     ])
-    arg_list = ["horde", "cell", "alpha", "truncation", "seed"]
+    arg_list = ["chain", "horde", "cell", "alpha", "truncation", "seed"]
 
-    static_args = ["--steps", "300000", "--numhidden", "7", "--exp_loc", save_loc]
+    static_args = ["--steps", "10", "--exp_loc", save_loc]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments)
 
     if parsed["numjobs"]

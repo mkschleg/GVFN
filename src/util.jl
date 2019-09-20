@@ -8,6 +8,21 @@ import Reproduce: ArgParseSettings, @add_arg_table
 glorot_uniform(rng::Random.AbstractRNG, dims...) = (rand(rng, Float32, dims...) .- 0.5f0) .* sqrt(24.0f0/sum(dims))
 glorot_normal(rng::Random.AbstractRNG, dims...) = randn(rng, Float32, dims...) .* sqrt(2.0f0/sum(dims))
 
+
+function reset!(m, h_init)
+    Flux.reset!(m)
+    # println("Hidden state: ", m.state, " ", h_init)
+    m.state.data .= Flux.data(h_init)
+end
+
+function reset!(m::Flux.Recur{T}, h_init) where {T<:Flux.LSTMCell}
+    Flux.reset!(m)
+    # println(h_init)
+    m.state[1].data .= Flux.data(h_init[1])
+    m.state[2].data .= Flux.data(h_init[2])
+end
+
+
 function jacobian(δ, pms)
     k  = length(δ)
     J = IdDict()
