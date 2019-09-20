@@ -71,6 +71,14 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         help="input normalizer"
         arg_type=String
         default="Identity"
+        "--max"
+        help="max normalizing constant"
+        arg_type=Float64
+        default=1.0
+        "--min"
+        help="min normalizing constant"
+        arg_type=Float64
+        default=0.0
 
         # GVFN
         "--gvfn_opt"

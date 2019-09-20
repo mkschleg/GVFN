@@ -62,7 +62,7 @@ include("ActingPolicy.jl")
 include("Environments.jl")
 
 export jacobian, glorot_uniform, glorot_normal, StopGradient, get_clip_coeff
-export FluxUtils, CycleWorldUtils, RingWorldUtils, CompassWorldUtils
+export FluxUtils, CycleWorldUtils, RingWorldUtils, CompassWorldUtils, TimeSeriesUtils
 include("util.jl")
 
 include("Agent.jl")

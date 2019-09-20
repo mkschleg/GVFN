@@ -6,24 +6,6 @@ import DataStructures
 
 #import JuliaRL
 
-abstract type Normalizer end
-
-struct  Identity <: Normalizer
-end
-(id::Identity)(x) = x
-
-mutable struct Unity{F} <: Normalizer
-    mn::Vector{F}
-    mx::Vector{F}
-end
-
-Unity() = Unity([0.0],[1.0])
-
-function (u::Unity)(x)
-    u.mn, u.mx = min.(x,u.mn), max.(x,u.mx)
-    return (x.-u.mn) ./ (u.mx.-u.mn)
-end
-
 mutable struct TimeSeriesAgent{GVFNOpt,ModelOpt, J, H, Φ, M, G1, G2, N} <: JuliaRL.AbstractAgent
     lu::LearningUpdate
     gvfn_opt::GVFNOpt
@@ -69,7 +51,7 @@ function TimeSeriesAgent(parsed; rng=Random.GLOBAL_RNG)
     model_opt_func = getproperty(Flux, Symbol(model_opt_string))
     model_opt = model_opt_func(parsed["model_stepsize"])
 
-    normalizer = getproperty(GVFN, Symbol(parsed["normalizer"]))()
+    normalizer = TimeSeriesUtils.getNormalizer(parsed)
 
     init_func = (dims...)->glorot_uniform(rng, dims...)
     gvfn = JankyGVFLayer(1, num_gvfs; init=init_func)

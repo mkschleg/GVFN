@@ -29,6 +29,8 @@ const exp_func_name = :main_experiment
 
 const learning_update = "BatchTD"
 const normalizer = "Unity"
+const mx = 109.075
+const mn = 3.9
 
 #------ Model ----------#
 
@@ -39,10 +41,10 @@ const model_opt = ["ADAM"]
 const model_stepsize = [0.0001]
 
 #------ GVFN ------#
-const gvfn_stepsize = [3e-5]
+const gvfn_stepsize = [0.001]
 const γlo = [0.1]
-const γhi = [0.97]
-const num_gvfs = [64]
+const γhi = [0.9]
+const num_gvfs = [128]
 const gvfn_opt = ["Descent"]
 
 function make_arguments_rtd(args::Dict)
@@ -121,7 +123,9 @@ function main()
                    "--exp_loc", save_loc,
                    "--agent", agent_t,
                    "--env", env_t,
-                   "--normalizer", normalizer]
+                   "--normalizer", normalizer,
+                   "--max", string(mx),
+                   "--min", string(mn)]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments_rtd)
 
     println(collect(args_iterator)[num_workers])
