@@ -2,10 +2,26 @@
 
 using Flux
 using Flux.Tracker
+using LinearAlgebra
 import Reproduce: ArgParseSettings, @add_arg_table
 
 glorot_uniform(rng::Random.AbstractRNG, dims...) = (rand(rng, Float32, dims...) .- 0.5f0) .* sqrt(24.0f0/sum(dims))
 glorot_normal(rng::Random.AbstractRNG, dims...) = randn(rng, Float32, dims...) .* sqrt(2.0f0/sum(dims))
+
+
+function reset!(m, h_init)
+    Flux.reset!(m)
+    # println("Hidden state: ", m.state, " ", h_init)
+    m.state.data .= Flux.data(h_init)
+end
+
+function reset!(m::Flux.Recur{T}, h_init) where {T<:Flux.LSTMCell}
+    Flux.reset!(m)
+    # println(h_init)
+    m.state[1].data .= Flux.data(h_init[1])
+    m.state[2].data .= Flux.data(h_init[2])
+end
+
 
 function jacobian(δ, pms)
     k  = length(δ)
@@ -48,6 +64,16 @@ end
 (layer::StopGradient)(x) = Flux.data(layer.cell(x))
 
 reset!(layer::StopGradient, hidden_state_init) = reset!(layer.cell, hidden_state_init)
+
+function get_clip_coeff(grads,prms; max_norm)
+    total_norm=0.0
+    for p in prms
+        total_norm += norm(Flux.data(grads[p]))^2
+    end
+    total_norm = sqrt(total_norm)
+    clip_coef = max_norm/(total_norm+1e-6)
+    return clip_coef < 1.0 ? clip_coef : 1.0
+end
 
 function exp_settings!(as::ArgParseSettings)
     @add_arg_table as begin

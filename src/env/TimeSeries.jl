@@ -1,36 +1,48 @@
 import DataStructures: CircularBuffer
+import HDF5: h5read
 
-abstract type TimeSeriesEnv end
+abstract type TimeSeriesEnv <: AbstractEnvironment end
+
+# JuliaRL.reset!(env::ENV; rng = Random.GLOBAL_RNG, kwargs...) where {ENV<:TimeSeriesEnv} =
+#     _start!(env)
+# JuliaRL.environment_step!(env::ENV, action::Int64; rng = Random.GLOBAL_RNG, kwargs...) where {ENV<:TimeSeriesEnv} = 
+
+# JuliaRL.
 
 init!(self::TimeSeriesEnv) = nothing
-step!(self::TimeSeriesEnv, action) = step!(self::TimeSeriesEnv)
+JuliaRL.step!(self::TimeSeriesEnv, action) = JuliaRL.step!(self::TimeSeriesEnv)
 
 get_num_features(self::TimeSeriesEnv) = 1
 
+# ===========
+# --- MSO ---
+# ===========
+
 mutable struct MSO <: TimeSeriesEnv
-    dataset::Vector{Float64}
-    idx::Int
+    θ::Int
+    Ω::Vector{Float64}
 
     state::Vector{Float64}
-
-    function MSO(max_steps::Int)
-        Ω = [0.2, 0.311, 0.42, 0.51]
-
-        values = map(θ -> sum([sin(θ*ω) for ω in Ω]), 0:max_steps)
-        return new(values, 1, [0.0])
-    end
 end
 
-function start!(self::MSO)
-    self.idx = 1
+MSO() = MSO(1, [0.2, 0.311, 0.42, 0.51], [0.0])
+
+function JuliaRL.start!(self::MSO)
+    self.θ = 1
     return step!(self)
 end
 
-function step!(self::MSO)
-    self.state[1] = self.dataset[self.idx]
-    self.idx += 1
+function JuliaRL.step!(self::MSO)
+    self.state[1] = sum([sin(self.θ*ω) for ω in self.Ω])
+    self.θ += 1
     return self.state
 end
+
+JuliaRL.get_state(self::MSO) = self.state
+
+# =================
+# --- SINE WAVE ---
+# =================
 
 mutable struct SineWave <: TimeSeriesEnv
     dataset::Vector{Float64}
@@ -44,16 +56,20 @@ mutable struct SineWave <: TimeSeriesEnv
     end
 end
 
-function start!(self::SineWave)
+function JuliaRL.start!(self::SineWave)
     self.idx = 1
     return step!(self)
 end
 
-function step!(self::SineWave)
+function JuliaRL.step!(self::SineWave)
     self.state[1] = self.dataset[self.idx]
     self.idx += 1
     return self.state
 end
+
+# ===================
+# --- MACKEYGLASS ---
+# ===================
 
 mutable struct MackeyGlass <: TimeSeriesEnv
     delta::Int
@@ -63,20 +79,20 @@ mutable struct MackeyGlass <: TimeSeriesEnv
     history::CircularBuffer{Float64}
 
     state::Vector{Float64}
-
-    function MackeyGlass(delta=10, tau=17, series=1.2)
-        history_len = delta*tau
-        history = CircularBuffer{Float64}(history_len)
-        fill!(history, 0.0)
-        return new(delta, tau, series, history_len, history, [0.0])
-    end
 end
 
-function start!(self::MackeyGlass)
+function MackeyGlass(delta=10, tau=17, series=1.2)
+    history_len = delta*tau
+    history = CircularBuffer{Float64}(history_len)
+    fill!(history, 0.0)
+    return MackeyGlass(delta, tau, series, history_len, history, [0.0])
+end
+
+function JuliaRL.start!(self::MackeyGlass)
     return step!(self)
 end
 
-function step!(self::MackeyGlass)
+function JuliaRL.step!(self::MackeyGlass)
     for _ in 1:self.delta
         xtau = self.history[1]
         push!(self.history, self.series)
@@ -86,3 +102,36 @@ function step!(self::MackeyGlass)
     self.state[1] = self.series
     return self.state
 end
+
+# ============
+# --- ACEA ---
+# ============
+
+mutable struct ACEA <: TimeSeriesEnv
+    data::Vector{Float64}
+    idx::Int
+
+    state::Vector{Float64}
+
+end
+
+function ACEA()
+    return ACEA(
+        h5read(joinpath(@__DIR__, "../../raw_data/acea.h5"), "data"),
+        1,
+        [0.0]
+    )
+end
+
+function JuliaRL.start!(self::ACEA)
+    self.idx = 1
+    return step!(self)
+end
+
+function JuliaRL.step!(self::ACEA)
+    obs = self.data[self.idx]
+    self.idx+=1
+    self.state[1] = obs
+    return self.state
+end
+

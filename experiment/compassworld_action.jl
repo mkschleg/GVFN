@@ -50,7 +50,7 @@ function results_synopsis(err, ::Val{true})
         "desc"=>"All operations are on the RMSE",
         "all"=>mean(rmse),
         "end"=>mean(rmse[Int64(floor(length(rmse)*0.8)):end]),
-        "lc"=>mean(reshape(rmse, 1000, Int64(length(rmse)/1000));dims=1)'
+        "lc"=>mean(reshape(rmse, 1000, Int64(length(rmse)/1000)); dims=1)
     ])
 end
 

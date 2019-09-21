@@ -48,7 +48,6 @@ JuliaRL.get_actions(env::CycleWorld) = env.actions
 JuliaRL.environment_step!(env::CycleWorld, action::Int64; rng = Random.GLOBAL_RNG, kwargs...) = 
     env.agent_state = (env.agent_state + 1) % env.chain_length
 
-
 JuliaRL.get_reward(env::CycleWorld) = 0 # -> get the reward of the environment
 
 function JuliaRL.get_state(env::CycleWorld) # -> get state of agent

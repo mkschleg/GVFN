@@ -46,6 +46,21 @@ end
 get(cumulant::ScaledCumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1) =
     cumulant.scale*get(cumulant.cumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1)
 
+mutable struct NormalizedCumulant{F<:Number, T<:AbstractCumulant} <: AbstractCumulant
+    scale::F
+    cumulant::T
+
+    rmax::F
+end
+
+NormalizedCumulant(scale, cumulant) = NormalizedCumulant(scale, cumulant, 1.0)
+
+function get(cumulant::NormalizedCumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1)
+    c = get(cumulant.cumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1)
+    cumulant.rmax = max(cumulant.rmax,c)
+    return c * cumulant.scale / cumulant.rmax
+end
+
 
 """
 Discounting
