@@ -17,7 +17,7 @@ Pkg.activate(".")
 
 using Reproduce
 
-const save_loc = "compassworld_gvfn_action_sgd_onestep"
+const save_loc = "compassworld_gvfn_action_sgd_onestep_with_expert"
 const exp_file = "experiment/compassworld_action.jl"
 const exp_module_name = :CompassWorldActionExperiment
 const exp_func_name = :main_experiment
@@ -28,7 +28,7 @@ const learning_update = "RTD"
 const optimizer = "Descent"
 # const lambdas = 0.1:0.2:0.9
 const truncations = [1, 2, 3, 4, 5, 6, 7, 8, 16]
-const alphas = [0.0001, 0.0002, 0.0003, 0.0004, 0.0005, 0.0006, 0.0007, 0.0008, 0.0009, 0.001, 0.0025, 0.005, 0.0075, 0.01]
+const alphas = [0.01 .* 1.5.^(-7:2:5); [0.1]]
 
 function make_arguments_tdlambda(args::Dict)
     horde = args["horde"]
@@ -63,7 +63,7 @@ function main()
         action=:store_true
         "--numsteps"
         arg_type=Int64
-        default=5000000
+        default=2000000
     end
     parsed = parse_args(as)
     num_workers = parsed["numworkers"]
@@ -73,12 +73,12 @@ function main()
 
 
     arg_dict = Dict([
-        "horde"=>["aj_gammas"],
+        "horde"=>["gammas_and_expert"],
         # "horde"=>["rafols", "aj_gammas_term", "aj_gammas"],
         "alpha"=>alphas,
         "truncation"=>truncations,
         "feature"=>["standard"],
-        "policy"=>["random", "forward"],
+        "policy"=>["random", "forward", "rafols"],
         "seed"=>collect(1:5),
         "act"=>["sigmoid"]
     ])

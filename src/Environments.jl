@@ -21,3 +21,6 @@ include("env/RingWorld.jl")
 
 export ContFourRooms
 include("env/ContFourRooms.jl")
+
+export TrialABCEnv, ContABCEnv
+include("env/ABCEnv.jl")
