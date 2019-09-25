@@ -16,6 +16,7 @@ include("agent/timeseries.jl")
 
 include("agent/GVFNAgent.jl")
 include("agent/GVFNActionAgent.jl")
+include("agent/RGTDAgent.jl")
 include("agent/RNNAgent.jl")
 include("agent/RNNActionAgent.jl")
 

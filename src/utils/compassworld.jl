@@ -139,6 +139,38 @@ function gammas_and_expert(gammas = [collect(0.0:0.05:0.95); [0.975, 0.99]], pre
         ScaledCumulant(1-γ, FeatureCumulant(cwc.WHITE)),
         ConstantDiscount(γ),
         PersistentPolicy(cwc.FORWARD)) for γ in gammas]
+    append!(gvfs, new_gvfs)
+    return Horde(gvfs)
+end
+
+function direction_conditional(gammas = [collect(0.0:0.05:0.95); [0.975, 0.99]], pred_offset=0)
+    cwc = GVFN.CompassWorldConst
+    gvfs = Array{GVF, 1}()
+    for color in 1:5
+        new_gvfs = [GVF(FeatureCumulant(color), StateTerminationDiscount(1.0, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD))]
+        append!(gvfs, new_gvfs)
+    end
+    for color in 1:5
+        new_gvfs = [GVF(
+            FeatureCumulant(color),
+            ConstantDiscount(γ),
+            PersistentPolicy(cwc.FORWARD)) for γ in gammas]
+        append!(gvfs, new_gvfs)
+    end
+
+    for color in 1:5
+        new_gvfs = [GVF(
+            FeatureCumulant(color),
+            ConstantDiscount(γ),
+            PredictionConditionalPolicy(
+                PersistentPolicy(cwc.FORWARD),
+                (preds_tp1)->(preds_tp1[color + pred_offset]>=0.7))) for γ in [0.0, 0.5, 0.9, 0.95]]
+        append!(gvfs, new_gvfs)
+    end
+    # new_gvfs = [GVF(
+    #     ScaledCumulant(1-γ, FeatureCumulant(cwc.WHITE)),
+    #     ConstantDiscount(γ),
+    #     PersistentPolicy(cwc.FORWARD)) for γ in gammas]
     return Horde(gvfs)
 end
 
@@ -186,6 +218,8 @@ function get_horde(horde_str::AbstractString, pred_offset::Integer=0)
         horde = gammas_with_scaled_white(1.0 .- 2.0 .^ collect(-7:-1))
     elseif horde_str == "gammas_and_expert"
         horde = gammas_and_expert(1.0 .- 2.0 .^ collect(-7:-1))
+    elseif horde_str == "direction_conditional"
+        horde = direction_conditional(1.0 .- 2.0 .^ collect(-7:-1))
     elseif horde_str == "test"
         horde = test_network(pred_offset)
     else
