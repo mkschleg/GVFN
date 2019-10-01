@@ -414,7 +414,7 @@ function update_full_hessian!(gvfn::GradientGVFN{H},
         hess .= new_H
 
         for (k,j) in Iterators.product(1:num_gvfs, 1:(nd))
-            ϕ[:, (k-1)*(nd) + j] = preds′[1] .* (_sum_kron_delta_2!(θ[:, (num_feats+1):end]*ϕ[:, (k-1)*(nd) + j], k, xtp1[j]))
+            ϕ[:, (k-1)*(nd) + j] = preds′[tp1] .* (_sum_kron_delta_2!(θ[:, (num_feats+1):end]*ϕ[:, (k-1)*(nd) + j], k, xtp1[j]))
         end
     end
 
@@ -424,7 +424,7 @@ function update_full_hessian!(gvfn::GradientGVFN{H},
 
     for (k,j) in Iterators.product(1:num_gvfs, 1:(nd))
         # _gradJK[(num_feats+1):end] .= ϕ[:, (k-1)*(nd) + j]
-        ϕ′[:, (k-1)*(nd) + j] = preds′[1] .* (_sum_kron_delta_2!(θ[:, (num_feats+1):end]*ϕ[:, (k-1)*(nd) + j], k, xtp1[j]))
+        ϕ′[:, (k-1)*(nd) + j] = preds′[end] .* (_sum_kron_delta_2!(θ[:, (num_feats+1):end]*ϕ[:, (k-1)*(nd) + j], k, xtp1[j]))
         # ϕ′[:, (k-1)*(nd) + j] = preds′[1] .* (_sum_kron_delta_2!(θ*ϕ[:, (k-1)*(nd) + j], k, xtp1[j]))
     end
 
