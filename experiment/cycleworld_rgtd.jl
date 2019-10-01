@@ -73,9 +73,12 @@ function main_experiment(args::Vector{String})
     out_pred_strg = zeros(num_steps)
     out_err_strg = zeros(num_steps)
 
+
     _, s_t = start!(env)
 
     horde = CWU.get_horde(parsed)
+    pred_err_strg = zeros(num_steps, length(horde))
+    
     out_horde = Horde([GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())])
     fc = (state, action)->CWU.build_features_cycleworld(state)
     fs = 3
@@ -84,8 +87,8 @@ function main_experiment(args::Vector{String})
     agent = GVFN.RGTDAgent(horde, out_horde,
                            fc, fs, ap, parsed;
                            rng=rng,
-                           # init_func=(dims...)->glorot_uniform(rng, dims...))
-                           init_func=(dims...)->Flux.zeros(dims...).+(1//2))
+                           init_func=(dims...)->0.00005f0.*glorot_normal(rng, dims...))
+                           # init_func=(dims...)->Flux.zeros(dims...).+(1//2))
     start!(agent, s_t; rng=rng)
 
     prg_bar = ProgressMeter.Progress(num_steps, "Step: ")
@@ -98,6 +101,8 @@ function main_experiment(args::Vector{String})
         out_pred_strg[step] = Flux.data(out_preds)[1]
         out_err_strg[step] = out_pred_strg[step][1] - CWU.oracle(env, "onestep", parsed["gamma"])[1]
 
+        pred_err_strg[step, :] .= preds - CWU.oracle(env, parsed["horde"], parsed["gamma"])
+        
         if verbose
             println("step: $(step)")
             println(env)
@@ -110,7 +115,7 @@ function main_experiment(args::Vector{String})
         end
     end
 
-    results = Dict(["out_pred"=>out_pred_strg, "out_err_strg"=>out_err_strg])
+    results = Dict(["out_pred"=>out_pred_strg, "out_err_strg"=>out_err_strg, "pred_err_strg"=>pred_err_strg])
 
     if !parsed["working"]
         JLD2.@save savefile results

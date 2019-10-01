@@ -69,6 +69,7 @@ mutable struct GradientGVFN{H<:AbstractHorde, F<:Function}
     Φ′::Matrix{Float32}
     # H
     Hvp::Matrix{Float32}
+    Hessian::Array{Float32, 3}
     # deltaH
 
     # Questions Graph (𝒳)
@@ -95,6 +96,7 @@ function GradientGVFN(in, horde, σ; initθ=Flux.glorot_uniform)
         zeros(Float32, n, n*npk), # Φ 
         zeros(Float32, n, n*npk), # Φ′
         zeros(Float32, n, n*npk), # H
+        zeros(Float32, n, n*npk, n*npk), # Hessian, i, kj, mn
         horde,
         σ,
         in,
@@ -135,8 +137,11 @@ function is_cumulant_mat(gvfn::T) where {T<:GradientGVFN}
 end
 
 mutable struct RGTD <: LearningUpdate
-    α::Float64
-    β::Float64
+    α::Float32
+    β::Float32
+    term_1::IdDict
+    term_2::IdDict
+    RGTD(α, β) = new(α, β, IdDict(), IdDict())
 end
 
 """
@@ -161,6 +166,11 @@ function _sum_kron_delta(lhs, rhs, k, n)
         ret[i, idx:(idx+(n+k-1))] .+= rhs
     end
     ret
+end
+
+function _sum_kron_delta_2!(lhs, k, val)
+    lhs[k] += val
+    lhs
 end
 
 function update!(gvfn::GradientGVFN{H},
@@ -202,7 +212,7 @@ function update!(gvfn::GradientGVFN{H},
     # xtp1 = [states[2]; preds[1]] # x_tp1 = [o_tp1, h_t]
     # Time Step t
     # η n\byn*(n+k)
-    η .= _sum_kron_delta(θ[:, (k+1):end]*ϕ, xtp1, k, n) # tp1
+    η .= _sum_kron_delta(θ[:, (k+1):end]*ϕ, xtp1, k, n) # η_tp1
     ϕ′ .= preds′[1] .* η # tp1
     # @show preds′[1]
     # @show η
@@ -211,9 +221,10 @@ function update!(gvfn::GradientGVFN{H},
     wx = w*xtp1
     # ξ is n+k
     term_1 = (preds′′[1].*(θ[:, (k+1):end]*ξ .+ wx)) .* η
-    term_2 = preds′[1] .* _sum_kron_delta(θ[:, (k+1):end]*hvp .+ w[:, (k+1):end]*ϕ, [zero(states[1]); ξ], n, k)
-
+    # println(size(term_1))
+    term_2 = preds′[1] .* _sum_kron_delta(θ[:, (k+1):end]*hvp .+ w[:, (k+1):end]*ϕ, [zero(states[1]); ξ], k, n)
     hvp .= term_1 .+ term_2
+
 
     ξ .= preds′[1].*(θ[:, (k+1):end]*ξ + wx)
     ϕ .= ϕ′ # tp1 -> t
@@ -223,11 +234,11 @@ function update!(gvfn::GradientGVFN{H},
         ϕ′ .= preds′[tp1] .* η
 
         wx = w*xtp1
+        # println(wx)
         # ξ is n+k
         term_1 = (preds′′[tp1].*(θ[:, (k+1):end]*ξ .+ wx)) .* η
-        term_2 = preds′[tp1] .* _sum_kron_delta(θ[:, (k+1):end]*hvp .+ w[:, (k+1):end]*ϕ, [zero(states[1]); ξ], n, k)
+        term_2 = preds′[tp1] .* _sum_kron_delta(θ[:, (k+1):end]*hvp .+ w[:, (k+1):end]*ϕ, [zero(states[1]); ξ], k, n)
 
-        
         hvp .= term_1 .+ term_2
 
         ξ .= preds′[tp1].*(θ[:, (k+1):end]*ξ + wx)
@@ -237,22 +248,6 @@ function update!(gvfn::GradientGVFN{H},
     xtp1 = [states[end]; preds[end-1]] # x_tp1 = [o_t, h_{t-1}]
     η .= _sum_kron_delta(θ[:, (k+1):end]*ϕ, xtp1, k, n)
     ϕ′ .= preds′[end] .* η
-
-
-    # println(states)
-    # @show preds
-    # @show θ
-    # @show ϕ
-    # @show η
-    # @show preds′[end]
-    # @show ϕ′
-
-    # println(θ)
-    # println(ϕ)
-    # println(ϕ′)
-
-    # println(ϕ′)
-    # println(ϕ)
 
     cumulants, discounts, π_prob = get(gvfn.horde, action_t, env_state_tp1, preds_tilde)
     ρ = π_prob ./ b_prob
@@ -269,13 +264,197 @@ function update!(gvfn::GradientGVFN{H},
     α = lu.α
     β = lu.β
     C = is_cumulant_mat(gvfn)
-    
+    # println(C)
+    # println(discounts.*ϕ′)
+    # rs_θ .+= α.*(sum(((ρ.*δ).*ϕ .- (ρ.*ϕw) .* (C*ϕ′ .+ discounts.*ϕ′)); dims=1)[1,:] .- Ψ)
+    # println(C*ϕ′)
     rs_θ .+= α.*(sum(((ρ.*δ).*ϕ .- (ρ.*ϕw) .* (C*ϕ′ .+ discounts.*ϕ′)); dims=1)[1,:] .- Ψ)
+    # rs_θ .+= α.*(sum(((ρ.*δ).*ϕ); dims=1)[1,:] .- Ψ)
 
     rs_w = reshape(w', length(w),)
     rs_w .+= β.*sum(((ρ.*δ - ϕw) .* ϕ); dims=1)[1,:]
-    # println(w)
-    # println(hvp)
+
+end
+
+
+function update_full_hessian!(gvfn::GradientGVFN{H},
+                 opt,
+                 lu::RGTD,
+                 h_init,
+                 states,
+                 env_state_tp1,
+                 action_t=nothing,
+                 b_prob::F=1.0f0) where {H <: AbstractHorde, F<:AbstractFloat}
+
+    η = gvfn.η
+    ϕ = gvfn.Φ
+    ϕ′ = gvfn.Φ′
+    Ψ = gvfn.Ψ
+    θ = gvfn.θ
+    w = gvfn.h
+    num_feats = gvfn.k
+    num_gvfs = gvfn.n
+    ξ = gvfn.ξ
+    hvp = gvfn.Hvp
+    hess = gvfn.Hessian
+
+    nd = num_gvfs+num_feats
+    
+    _hess = zeros(Float32, nd)
+    _gradMN = zeros(Float32, nd)
+    _gradJK = zeros(Float32, nd)
+    new_H = zero(hess)
+    
+    term_1 = get!(lu.term_1, gvfn, [zeros(Float32, size(η)[2], size(η)[2]) for i in 1:num_gvfs])::Array{Array{Float32, 2}, 1}
+    term_2 = get!(lu.term_1, gvfn, [zeros(Float32, size(η)[2], size(η)[2]) for i in 1:num_gvfs])::Array{Array{Float32, 2}, 1}
+    
+    preds = roll(gvfn, states, h_init, Prediction)
+    preds′ = roll(gvfn, states, h_init, Derivative)
+    preds′′ = roll(gvfn, states, h_init, DoubleDerivative)
+
+    preds_t = preds[end-1]
+    preds_tilde = preds[end]
+
+    # calculate the gradients:
+    # Assume the gradients are zero at the beginning of input (I.e. truncated).
+    fill!(ϕ, zero(eltype(ϕ)))
+    fill!(ϕ', zero(eltype(ϕ)))
+    fill!(ξ, zero(eltype(ξ)))
+    fill!(hess, zero(eltype(hess)))
+
+
+    xtp1 = [states[1]; h_init] # x_tp1 = [o_tp1, h_{t}]
+    # xtp1 = [states[2]; preds[1]] # x_tp1 = [o_tp1, h_t]
+    # Time Step t
+    # η n\byn*(n+k)
+
+    tp1=1
+    for (k,j) in Iterators.product(1:num_gvfs, 1:(nd))
+
+        _gradJK[(num_feats+1):end] .= ϕ[:, (k-1)*(nd) + j]
+                
+        for (m,n) in Iterators.product(1:num_gvfs, 1:(nd))
+
+            _hess[(num_feats+1):end] .= hess[:, (k-1) * nd + j, (m-1) * (nd) + n]
+            _gradMN[(num_feats+1):end] .= ϕ[:, (m-1)*nd + n];
+
+            for i in 1:num_gvfs
+                if i==m && i==k
+                    new_H[i, (k-1) * nd + j, (m-1) * nd + n] =
+                        preds′′[tp1][i] * (dot(_gradMN, θ[i, :]) + xtp1[n]) * (dot(_gradJK, θ[i,:]) + xtp1[j]) +
+                        preds′[tp1][i] * (dot(_hess, θ[i, :]) + _gradJK[n] + _hess[j])
+                elseif i==m
+                    new_H[i, (k-1) * nd + j, (m-1) * nd + n] =
+                        preds′′[tp1][i] * (dot(_gradMN, θ[i, :]) + xtp1[n]) * (dot(_gradJK, θ[i,:])) +
+                        preds′[tp1][i] * (dot(_hess, θ[i, :]) + _gradJK[n])
+                elseif i==k
+                    new_H[i, (k-1) * nd + j, (m-1) * nd + n] =
+                        preds′′[tp1][i] * (dot(_gradMN, θ[i, :])) * (dot(_gradJK, θ[i,:]) + xtp1[j]) +
+                        preds′[tp1][i] * (dot(_hess, θ[i, :]) + _hess[j])
+                else
+                    new_H[i, (k-1) * nd + j, (m-1) * nd + n] =
+                        preds′′[tp1][i] * (dot(_gradMN, θ[i, :])) * (dot(_gradJK, θ[i,:])) +
+                        preds′[tp1][i] * (dot(_hess, θ[i, :]))
+                end
+            end
+        end
+    end
+
+    for (k,j) in Iterators.product(1:num_gvfs, 1:(nd))
+        # _gradJK[(num_feats+1):end] .= ϕ[:, (k-1)*(nd) + j]
+        ϕ[:, (k-1)*(nd) + j] = preds′[1] .* (_sum_kron_delta_2!(θ[:, (num_feats+1):end]*ϕ[:, (k-1)*(nd) + j], k, xtp1[j]))
+        # ϕ′[:, (k-1)*(nd) + j] = preds′[1] .* (_sum_kron_delta_2!(θ*ϕ[:, (k-1)*(nd) + j], k, xtp1[j]))
+    end
+
+    hess .= new_H
+
+    # η .= _sum_kron_delta(θ[:, (num_feats+1):end]*ϕ, xtp1, num_feats, num_gvfs) # η_tp1
+    # ϕ′ .= preds′[1] .* η # tp1
+
+    
+    for tp1 in 2:(length(states)-1)
+
+        xtp1 = [states[tp1]; preds[tp1-1]] # x_tp1 = [o_t, h_{t-1}]
+        # η .= _sum_kron_delta(θ[:, (num_feats+1):end]*ϕ, xtp1, num_feats, num_gvfs)
+        # ϕ′ .= preds′[tp1] .* η
+
+        nd = num_feats+num_gvfs
+            
+        for (k,j) in Iterators.product(1:num_gvfs, 1:(nd))
+
+            _gradJK[(num_feats+1):end] .= ϕ[:, (k-1)*(nd) + j]
+                
+            for (m,n) in Iterators.product(1:num_gvfs, 1:(nd))
+
+                _hess[(num_feats+1):end] .= hess[:, (k-1) * nd + j, (m-1) * (nd) + n]
+                _gradMN[(num_feats+1):end] .= ϕ[:, (m-1)*nd + n];
+
+                for i in 1:num_gvfs
+                    if i==m && i==k
+                        new_H[i, (k-1) * nd + j, (m-1) * nd + n] =
+                            preds′′[tp1][i] * (dot(_gradMN, θ[i, :]) + xtp1[n]) * (dot(_gradJK, θ[i,:]) + xtp1[j]) +
+                            preds′[tp1][i] * (dot(_hess, θ[i, :]) + _gradJK[n] + _hess[j])
+                    elseif i==m
+                        new_H[i, (k-1) * nd + j, (m-1) * nd + n] =
+                            preds′′[tp1][i] * (dot(_gradMN, θ[i, :]) + xtp1[n]) * (dot(_gradJK, θ[i,:])) +
+                            preds′[tp1][i] * (dot(_hess, θ[i, :]) + _gradJK[n])
+                    elseif i==k
+                        new_H[i, (k-1) * nd + j, (m-1) * nd + n] =
+                            preds′′[tp1][i] * (dot(_gradMN, θ[i, :])) * (dot(_gradJK, θ[i,:]) + xtp1[j]) +
+                            preds′[tp1][i] * (dot(_hess, θ[i, :]) + _hess[j])
+                    else
+                        new_H[i, (k-1) * nd + j, (m-1) * nd + n] =
+                            preds′′[tp1][i] * (dot(_gradMN, θ[i, :])) * (dot(_gradJK, θ[i,:])) +
+                            preds′[tp1][i] * (dot(_hess, θ[i, :]))
+                    end
+                end
+            end
+        end
+
+        hess .= new_H
+
+        for (k,j) in Iterators.product(1:num_gvfs, 1:(nd))
+            ϕ[:, (k-1)*(nd) + j] = preds′[1] .* (_sum_kron_delta_2!(θ[:, (num_feats+1):end]*ϕ[:, (k-1)*(nd) + j], k, xtp1[j]))
+        end
+    end
+
+    xtp1 = [states[end]; preds[end-1]] # x_tp1 = [o_tp1, h_{t}]
+    # η .= _sum_kron_delta(θ[:, (num_feats+1):end]*ϕ, xtp1, num_feats, num_gvfs)
+    # ϕ′ .= preds′[end] .* η
+
+    for (k,j) in Iterators.product(1:num_gvfs, 1:(nd))
+        # _gradJK[(num_feats+1):end] .= ϕ[:, (k-1)*(nd) + j]
+        ϕ′[:, (k-1)*(nd) + j] = preds′[1] .* (_sum_kron_delta_2!(θ[:, (num_feats+1):end]*ϕ[:, (k-1)*(nd) + j], k, xtp1[j]))
+        # ϕ′[:, (k-1)*(nd) + j] = preds′[1] .* (_sum_kron_delta_2!(θ*ϕ[:, (k-1)*(nd) + j], k, xtp1[j]))
+    end
+
+    cumulants, discounts, π_prob = get(gvfn.horde, action_t, env_state_tp1, preds_tilde)
+    ρ = π_prob ./ b_prob
+    targets = cumulants .+ discounts.*preds_tilde
+    δ =  targets .- preds_t
+    # println(δ)
+
+    ϕw = ϕ*reshape(w', length(w), 1)
+
+    rs_θ = reshape(θ', length(θ),)
+
+    for i in 1:num_gvfs
+        hvp[i,:] .= hess[i,:,:]*reshape(w', length(w), )
+    end
+    
+    Ψ .= sum((ρ.*δ .- ϕw).*hvp; dims=1)[1,:]
+
+    α = lu.α
+    β = lu.β
+    C = is_cumulant_mat(gvfn)
+    # println(C)
+    # println(discounts.*ϕ′)
+    # rs_θ .+= α.*(sum(((ρ.*δ).*ϕ .- (ρ.*ϕw) .* (C*ϕ′ .+ discounts.*ϕ′)); dims=1)[1,:] .- Ψ)
+    rs_θ .+= α.*(sum(((ρ.*δ).*ϕ .- (ρ.*ϕw) .* (C*ϕ′ .+ discounts.*ϕ′)); dims=1)[1,:] .- Ψ)
+    # rs_θ .+= α.*(sum(((ρ.*δ).*ϕ); dims=1)[1,:] .- Ψ)
+
+    rs_w = reshape(w', length(w),)
+    rs_w .+= β.*sum(((ρ.*δ - ϕw) .* ϕ); dims=1)[1,:]
 
 end
 

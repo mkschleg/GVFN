@@ -55,7 +55,7 @@ function RGTDAgent(horde, out_horde,
     act = FluxUtils.get_activation(parsed["act"])
 
     prev_action_or_not = get(parsed, "prev_action_or_not", false)
-
+    
     gvfn = GradientGVFN(feature_size, horde, act; initθ=init_func)
 
     num_out_gvfs = length(out_horde)
@@ -98,7 +98,7 @@ function JuliaRL.step!(agent::RGTDAgent, env_s_tp1, r, terminal; rng=Random.GLOB
         push!(agent.state_list, agent.build_features(env_s_tp1, new_action))
     end
 
-    update!(agent.gvfn,
+    update_full_hessian!(agent.gvfn,
             agent.opt,
             agent.lu,
             agent.hidden_state_init,
