@@ -204,6 +204,8 @@ function get_horde(horde_str::AbstractString, pred_offset::Integer=0)
         horde = onestep()
     elseif horde_str == "rafols"
         horde = rafols(pred_offset)
+    elseif horde_str == "out_gammas"
+        horde = gammas_term()
     elseif horde_str == "gammas"
         horde = gammas_term()
     elseif horde_str == "gammas_scaled"
@@ -287,6 +289,36 @@ function oracle_gammas(state)
     throw("Gammas not implemented.")
 end
 
+function oracle_out_gammas(state, world_dims)
+
+    γ = 0.7
+    
+    ret = zeros(5)
+    if state.dir == cwc.NORTH
+        # Orange
+        ret[cwc.ORANGE] = γ^(max(0, state.y-2))
+    elseif state.dir == cwc.SOUTH
+        # Red
+        ret[cwc.RED] = γ^(max(0, world_dims.height - state.y - 1))
+    elseif state.dir == cwc.WEST
+        if state.y == 1
+            # Green
+            ret[cwc.GREEN] = γ^(max(0, state.x-2))
+        else
+            #Blue
+            ret[cwc.BLUE] = γ^(max(0, state.x-2))
+        end
+    elseif state.dir == cwc.EAST
+        #Yellow
+        ret[cwc.YELLOW] = γ^(max(0, world_dims.width - state.x - 1))
+    else
+        println(state.dir)
+        throw("Bug Found in Oracle:Forward")
+    end
+    return ret
+    
+end
+
 function oracle(env::CompassWorld, horde_str)
     
     state = env.agent_state
@@ -296,9 +328,11 @@ function oracle(env::CompassWorld, horde_str)
     elseif horde_str == "onestep"
         ret = oracle_onestep(state, env.world_dims)
     elseif horde_str == "rafols"
-        oracle_rafols(state)
+        ret = oracle_rafols(state)
     elseif horde_str == "gammas"
-        oracle_gammas(state)
+        ret = oracle_gammas(state)
+    elseif horde_str == "out_gammas"
+        ret = oracle_out_gammas(state, env.world_dims)
     else
         throw("Bug Found in Oracle")
     end

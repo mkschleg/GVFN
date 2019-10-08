@@ -173,6 +173,8 @@ function _sum_kron_delta_2!(lhs, k, val)
     lhs
 end
 
+_kron_delta(x::T, i, j) where {T<:Number} = i==j ? one(x) : zero(x)
+
 function update!(gvfn::GradientGVFN{H},
                  opt,
                  lu::RGTD,
@@ -304,6 +306,8 @@ function update_full_hessian!(gvfn::GradientGVFN{H},
     _gradMN = zeros(Float32, nd)
     _gradJK = zeros(Float32, nd)
     new_H = zero(hess)
+
+    _kd_mat = Diagonal(ones(Int64, num_gvfs))
     
     term_1 = get!(lu.term_1, gvfn, [zeros(Float32, size(η)[2], size(η)[2]) for i in 1:num_gvfs])::Array{Array{Float32, 2}, 1}
     term_2 = get!(lu.term_1, gvfn, [zeros(Float32, size(η)[2], size(η)[2]) for i in 1:num_gvfs])::Array{Array{Float32, 2}, 1}
@@ -323,12 +327,12 @@ function update_full_hessian!(gvfn::GradientGVFN{H},
     fill!(hess, zero(eltype(hess)))
 
 
-    xtp1 = [states[1]; h_init] # x_tp1 = [o_tp1, h_{t}]
-    # xtp1 = [states[2]; preds[1]] # x_tp1 = [o_tp1, h_t]
+    x_t = [states[1]; h_init] # x_t = [o_t, h_{t-1}]
+    # xtp1 = [states[2]; preds[1]] # x_tp1 = [o_tp1, h_{t}]
     # Time Step t
     # η n\byn*(n+k)
 
-    tp1=1
+    t=1
     for (k,j) in Iterators.product(1:num_gvfs, 1:(nd))
 
         _gradJK[(num_feats+1):end] .= ϕ[:, (k-1)*(nd) + j]
@@ -336,33 +340,36 @@ function update_full_hessian!(gvfn::GradientGVFN{H},
         for (m,n) in Iterators.product(1:num_gvfs, 1:(nd))
 
             _hess[(num_feats+1):end] .= hess[:, (k-1) * nd + j, (m-1) * (nd) + n]
-            _gradMN[(num_feats+1):end] .= ϕ[:, (m-1)*nd + n];
+            _gradMN[(num_feats+1):end] .= ϕ[:, (m-1)*nd + n]
 
             for i in 1:num_gvfs
-                if i==m && i==k
-                    new_H[i, (k-1) * nd + j, (m-1) * nd + n] =
-                        preds′′[tp1][i] * (dot(_gradMN, θ[i, :]) + xtp1[n]) * (dot(_gradJK, θ[i,:]) + xtp1[j]) +
-                        preds′[tp1][i] * (dot(_hess, θ[i, :]) + _gradJK[n] + _hess[j])
-                elseif i==m
-                    new_H[i, (k-1) * nd + j, (m-1) * nd + n] =
-                        preds′′[tp1][i] * (dot(_gradMN, θ[i, :]) + xtp1[n]) * (dot(_gradJK, θ[i,:])) +
-                        preds′[tp1][i] * (dot(_hess, θ[i, :]) + _gradJK[n])
-                elseif i==k
-                    new_H[i, (k-1) * nd + j, (m-1) * nd + n] =
-                        preds′′[tp1][i] * (dot(_gradMN, θ[i, :])) * (dot(_gradJK, θ[i,:]) + xtp1[j]) +
-                        preds′[tp1][i] * (dot(_hess, θ[i, :]) + _hess[j])
-                else
-                    new_H[i, (k-1) * nd + j, (m-1) * nd + n] =
-                        preds′′[tp1][i] * (dot(_gradMN, θ[i, :])) * (dot(_gradJK, θ[i,:])) +
-                        preds′[tp1][i] * (dot(_hess, θ[i, :]))
-                end
+                new_H[i, (k-1) * nd + j, (m-1) * nd + n] =
+                    preds′′[t][i] * (dot(_gradMN, θ[i, :]) + x_t[n]*_kd_mat[i, m]) * (dot(_gradJK, θ[i,:]) + x_t[j]*_kd_mat[i,k]) +
+                    preds′[t][i] * (dot(_hess, θ[i, :]) + _gradJK[n]*_kd_mat[i, m] + _hess[j]*_kd_mat[i,k])
+                # if i==m && i==k
+                #     new_H[i, (k-1) * nd + j, (m-1) * nd + n] =
+                #         preds′′[tp1][i] * (dot(_gradMN, θ[i, :]) + xtp1[n]) * (dot(_gradJK, θ[i,:]) + xtp1[j]) +
+                #         preds′[tp1][i] * (dot(_hess, θ[i, :]) + _gradJK[n] + _hess[j])
+                # elseif i==m
+                #     new_H[i, (k-1) * nd + j, (m-1) * nd + n] =
+                #         preds′′[tp1][i] * (dot(_gradMN, θ[i, :]) + xtp1[n]) * (dot(_gradJK, θ[i,:])) +
+                #         preds′[tp1][i] * (dot(_hess, θ[i, :]) + _gradJK[n])
+                # elseif i==k
+                #     new_H[i, (k-1) * nd + j, (m-1) * nd + n] =
+                #         preds′′[tp1][i] * (dot(_gradMN, θ[i, :])) * (dot(_gradJK, θ[i,:]) + xtp1[j]) +
+                #         preds′[tp1][i] * (dot(_hess, θ[i, :]) + _hess[j])
+                # else
+                #     new_H[i, (k-1) * nd + j, (m-1) * nd + n] =
+                #         preds′′[tp1][i] * (dot(_gradMN, θ[i, :])) * (dot(_gradJK, θ[i,:])) +
+                #         preds′[tp1][i] * (dot(_hess, θ[i, :]))
+                # end
             end
         end
     end
 
     for (k,j) in Iterators.product(1:num_gvfs, 1:(nd))
-        # _gradJK[(num_feats+1):end] .= ϕ[:, (k-1)*(nd) + j]
-        ϕ[:, (k-1)*(nd) + j] = preds′[1] .* (_sum_kron_delta_2!(θ[:, (num_feats+1):end]*ϕ[:, (k-1)*(nd) + j], k, xtp1[j]))
+        _gradJK[(num_feats+1):end] .= ϕ[:, (k-1)*(nd) + j]
+        ϕ[:, (k-1)*(nd) + j] .= preds′[t] .* (_sum_kron_delta_2!(θ*_gradJK, k, x_t[j]))
         # ϕ′[:, (k-1)*(nd) + j] = preds′[1] .* (_sum_kron_delta_2!(θ*ϕ[:, (k-1)*(nd) + j], k, xtp1[j]))
     end
 
@@ -374,7 +381,7 @@ function update_full_hessian!(gvfn::GradientGVFN{H},
     
     for tp1 in 2:(length(states)-1)
 
-        xtp1 = [states[tp1]; preds[tp1-1]] # x_tp1 = [o_t, h_{t-1}]
+        x_t = [states[tp1]; preds[tp1-1]] # x_tp1 = [o_t, h_{t-1}]
         # η .= _sum_kron_delta(θ[:, (num_feats+1):end]*ϕ, xtp1, num_feats, num_gvfs)
         # ϕ′ .= preds′[tp1] .* η
 
@@ -390,23 +397,32 @@ function update_full_hessian!(gvfn::GradientGVFN{H},
                 _gradMN[(num_feats+1):end] .= ϕ[:, (m-1)*nd + n];
 
                 for i in 1:num_gvfs
-                    if i==m && i==k
-                        new_H[i, (k-1) * nd + j, (m-1) * nd + n] =
-                            preds′′[tp1][i] * (dot(_gradMN, θ[i, :]) + xtp1[n]) * (dot(_gradJK, θ[i,:]) + xtp1[j]) +
-                            preds′[tp1][i] * (dot(_hess, θ[i, :]) + _gradJK[n] + _hess[j])
-                    elseif i==m
-                        new_H[i, (k-1) * nd + j, (m-1) * nd + n] =
-                            preds′′[tp1][i] * (dot(_gradMN, θ[i, :]) + xtp1[n]) * (dot(_gradJK, θ[i,:])) +
-                            preds′[tp1][i] * (dot(_hess, θ[i, :]) + _gradJK[n])
-                    elseif i==k
-                        new_H[i, (k-1) * nd + j, (m-1) * nd + n] =
-                            preds′′[tp1][i] * (dot(_gradMN, θ[i, :])) * (dot(_gradJK, θ[i,:]) + xtp1[j]) +
-                            preds′[tp1][i] * (dot(_hess, θ[i, :]) + _hess[j])
-                    else
-                        new_H[i, (k-1) * nd + j, (m-1) * nd + n] =
-                            preds′′[tp1][i] * (dot(_gradMN, θ[i, :])) * (dot(_gradJK, θ[i,:])) +
-                            preds′[tp1][i] * (dot(_hess, θ[i, :]))
-                    end
+                    # new_H[i, (k-1) * nd + j, (m-1) * nd + n] =
+                    #     preds′′[tp1][i] * (dot(_gradMN, θ[i, :]) + xtp1[n]*_kron_delta(i, m)) * (dot(_gradJK, θ[i,:]) + xtp1[j]*_kron_delta(i,k)) +
+                    #     preds′[tp1][i] * (dot(_hess, θ[i, :]) + _gradJK[n]*_kron_delta(i, m) + _hess[j]*_kron_delta(i,k))
+                    new_H[i, (k-1) * nd + j, (m-1) * nd + n] =
+                        preds′′[t][i] * (dot(_gradMN, θ[i, :]) + x_t[n]*_kd_mat[i, m]) * (dot(_gradJK, θ[i,:]) + x_t[j]*_kd_mat[i,k]) +
+                        preds′[t][i] * (dot(_hess, θ[i, :]) + _gradJK[n]*_kd_mat[i, m] + _hess[j]*_kd_mat[i,k])
+                        # preds′′[t][i] * (dot(_gradMN, θ[i, :]) + x_t[n]*_kron_delta(x_t[n], i, m)) * (dot(_gradJK, θ[i,:]) + x_t[j]*_kron_delta(x_t[j],i,k)) +
+                        # preds′[t][i] * (dot(_hess, θ[i, :]) + _gradJK[n]*_kron_delta(_gradJK[n], i, m) + _hess[j]*_kron_delta(_hess[j], i,k))
+
+                    # if i==m && i==k
+                    #     new_H[i, (k-1) * nd + j, (m-1) * nd + n] =
+                    #         preds′′[tp1][i] * (dot(_gradMN, θ[i, :]) + xtp1[n]) * (dot(_gradJK, θ[i,:]) + xtp1[j]) +
+                    #         preds′[tp1][i] * (dot(_hess, θ[i, :]) + _gradJK[n] + _hess[j])
+                    # elseif i==m
+                    #     new_H[i, (k-1) * nd + j, (m-1) * nd + n] =
+                    #         preds′′[tp1][i] * (dot(_gradMN, θ[i, :]) + xtp1[n]) * (dot(_gradJK, θ[i,:])) +
+                    #         preds′[tp1][i] * (dot(_hess, θ[i, :]) + _gradJK[n])
+                    # elseif i==k
+                    #     new_H[i, (k-1) * nd + j, (m-1) * nd + n] =
+                    #         preds′′[tp1][i] * (dot(_gradMN, θ[i, :])) * (dot(_gradJK, θ[i,:]) + xtp1[j]) +
+                    #         preds′[tp1][i] * (dot(_hess, θ[i, :]) + _hess[j])
+                    # else
+                    #     new_H[i, (k-1) * nd + j, (m-1) * nd + n] =
+                    #         preds′′[tp1][i] * (dot(_gradMN, θ[i, :])) * (dot(_gradJK, θ[i,:])) +
+                    #         preds′[tp1][i] * (dot(_hess, θ[i, :]))
+                    # end
                 end
             end
         end
@@ -414,7 +430,9 @@ function update_full_hessian!(gvfn::GradientGVFN{H},
         hess .= new_H
 
         for (k,j) in Iterators.product(1:num_gvfs, 1:(nd))
-            ϕ[:, (k-1)*(nd) + j] = preds′[tp1] .* (_sum_kron_delta_2!(θ[:, (num_feats+1):end]*ϕ[:, (k-1)*(nd) + j], k, xtp1[j]))
+            # ϕ[:, (k-1)*(nd) + j] = preds′[tp1] .* (_sum_kron_delta_2!(θ[:, (num_feats+1):end]*ϕ[:, (k-1)*(nd) + j], k, xtp1[j]))
+            _gradJK[(num_feats+1):end] .= ϕ[:, (k-1)*(nd) + j]
+            ϕ[:, (k-1)*(nd) + j] .= preds′[t] .* (_sum_kron_delta_2!(θ*_gradJK, k, x_t[j]))
         end
     end
 
@@ -423,9 +441,8 @@ function update_full_hessian!(gvfn::GradientGVFN{H},
     # ϕ′ .= preds′[end] .* η
 
     for (k,j) in Iterators.product(1:num_gvfs, 1:(nd))
-        # _gradJK[(num_feats+1):end] .= ϕ[:, (k-1)*(nd) + j]
-        ϕ′[:, (k-1)*(nd) + j] = preds′[end] .* (_sum_kron_delta_2!(θ[:, (num_feats+1):end]*ϕ[:, (k-1)*(nd) + j], k, xtp1[j]))
-        # ϕ′[:, (k-1)*(nd) + j] = preds′[1] .* (_sum_kron_delta_2!(θ*ϕ[:, (k-1)*(nd) + j], k, xtp1[j]))
+        _gradJK[(num_feats+1):end] .= ϕ[:, (k-1)*(nd) + j]
+        ϕ′[:, (k-1)*(nd) + j] = preds′[end] .* _sum_kron_delta_2!(θ*_gradJK, k, xtp1[j])
     end
 
     cumulants, discounts, π_prob = get(gvfn.horde, action_t, env_state_tp1, preds_tilde)
@@ -436,13 +453,14 @@ function update_full_hessian!(gvfn::GradientGVFN{H},
 
     ϕw = ϕ*reshape(w', length(w), 1)
 
-    rs_θ = reshape(θ', length(θ),)
+    rs_θ = reshape(θ', length(θ), 1)
 
     for i in 1:num_gvfs
         hvp[i,:] .= hess[i,:,:]*reshape(w', length(w), )
     end
     
-    Ψ .= sum((ρ.*δ .- ϕw).*hvp; dims=1)[1,:]
+    Ψ .= sum([(ρ[i]*δ[i] - ϕw[i]).*hvp[i,:] for i in 1:num_gvfs])
+
 
     α = lu.α
     β = lu.β
@@ -450,12 +468,21 @@ function update_full_hessian!(gvfn::GradientGVFN{H},
     # println(C)
     # println(discounts.*ϕ′)
     # rs_θ .+= α.*(sum(((ρ.*δ).*ϕ .- (ρ.*ϕw) .* (C*ϕ′ .+ discounts.*ϕ′)); dims=1)[1,:] .- Ψ)
-    rs_θ .+= α.*(sum(((ρ.*δ).*ϕ .- (ρ.*ϕw) .* (C*ϕ′ .+ discounts.*ϕ′)); dims=1)[1,:] .- Ψ)
-    # rs_θ .+= α.*(sum(((ρ.*δ).*ϕ); dims=1)[1,:] .- Ψ)
+    # Δθ = α.*(((ρ.*δ)*ϕ .- (ρ.*ϕw) .* (C*ϕ′ .+ Diagonal(discounts)*ϕ′)) .- Ψ)
+    # println(size(ϕw))
+    # println(size(C*ϕ′))
+    # println(size(ρ.*ϕw))
+    # println(size(ϕ'*(ρ.*δ)))
+    # println(size((C*ϕ′)' * (ρ.*ϕw)))
+    #     println(size(ϕ'*(ρ.*δ) - ((C*ϕ′)' * (ρ.*ϕw)) .- Ψ))
 
-    rs_w = reshape(w', length(w),)
-    rs_w .+= β.*sum(((ρ.*δ - ϕw) .* ϕ); dims=1)[1,:]
+    # println(size(Δθ))
+    # println(size(rs_θ))
+    rs_θ .+= α.*(ϕ'*(ρ.*δ) - ((C*ϕ′)' * (ρ.*ϕw)) .- Ψ)
 
+    rs_w = reshape(w', length(w), 1)
+    rs_w .+= β.*(ϕ'*(ρ.*δ - ϕw))
+    # throw("There we go")
 end
 
 
