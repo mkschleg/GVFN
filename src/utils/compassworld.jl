@@ -205,7 +205,7 @@ function get_horde(horde_str::AbstractString, pred_offset::Integer=0)
     elseif horde_str == "rafols"
         horde = rafols(pred_offset)
     elseif horde_str == "out_gammas"
-        horde = gammas_term()
+        horde = gammas_scaled(0.7)
     elseif horde_str == "gammas"
         horde = gammas_term()
     elseif horde_str == "gammas_scaled"
