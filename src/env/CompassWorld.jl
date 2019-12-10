@@ -1,5 +1,6 @@
 
 using Random
+
 # using JuliaRL
 
 # import JuliaRL.reset!, JuliaRL.environment_step!, JuliaRL.get_reward
@@ -48,35 +49,58 @@ end
    b r r r r r r r r y
 
 """
-
-
 mutable struct CompassWorld <: AbstractEnvironment
-    world_dims::NamedTuple{(:width, :height),Tuple{Int64, Int64}}
-    agent_state::NamedTuple{(:x, :y, :dir),Tuple{Int64, Int64, Int64}}
+    world_dims::NamedTuple{(:width, :height),
+                           Tuple{Int64, Int64}}
+    agent_state::NamedTuple{(:x, :y, :dir),
+                            Tuple{Int64, Int64, Int64}}
     actions::AbstractSet
     partially_observable::Bool
-    CompassWorld(width, height; rng=Random.GLOBAL_RNG, partially_observable=true) =
-        new((width=width, height=height),
-            (x=rand(rng, 1:width), y=rand(rng, 1:height), dir=rand(rng, 0:3)),
-            Set(1:3),
-            partially_observable)
+    CompassWorld(width, height;
+                 rng=Random.GLOBAL_RNG,
+                 partially_observable=true) =
+                     new((width=width, height=height),
+                         (x=rand(rng, 1:width), y=rand(rng, 1:height), dir=rand(rng, 0:3)),
+                         Set(1:3),
+                         partially_observable)
 end
 
-CompassWorld(_size; kwargs...) = CompassWorld(_size, _size; kwargs...)
+CompassWorld(_size; kwargs...) =
+    CompassWorld(_size, _size; kwargs...)
 
-function JuliaRL.reset!(env::CompassWorld; rng = Random.GLOBAL_RNG, kwargs...)
-    env.agent_state = (x=rand(rng, 1:env.world_dims.width), y=rand(rng, 1:env.world_dims.height), dir=rand(rng, 0:3))
+function env_settings!(as::Reproduce.ArgParseSettings,
+                       env_type::Type{CompassWorld})
+    Reproduce.@add_arg_table as begin
+        "--size"
+        help="The length of the ring world chain"
+        arg_type=Int64
+        default=8
+    end
 end
 
-JuliaRL.get_actions(env::CompassWorld) = env.actions
-get_num_features(env::CompassWorld) = env.partially_observable ? 6 : 3
 
-function JuliaRL.environment_step!(env::CompassWorld, action::Int64; rng = Random.GLOBAL_RNG, kwargs...)
-    # actions 1 == Turn Left
-    # actions 2 == Turn Right
-    # actions 3 == Up
+
+function JuliaRL.reset!(env::CompassWorld;
+                        rng = Random.GLOBAL_RNG, kwargs...)
+    
+    env.agent_state = (x=rand(rng, 1:env.world_dims.width),
+                       y=rand(rng, 1:env.world_dims.height),
+                       dir=rand(rng, 0:3))
+end
+
+JuliaRL.get_actions(env::CompassWorld) =
+    env.actions
+
+get_num_features(env::CompassWorld) =
+    env.partially_observable ? 6 : 3
+
+function JuliaRL.environment_step!(env::CompassWorld,
+                                   action::Int64;
+                                   rng = Random.GLOBAL_RNG,
+                                   kwargs...)
 
     @boundscheck action in env.actions
+    
     CWC = CompassWorldConst
     x = env.agent_state.x
     y = env.agent_state.y
@@ -103,9 +127,11 @@ function JuliaRL.environment_step!(env::CompassWorld, action::Int64; rng = Rando
     env.agent_state = (x=x, y=y, dir=dir)
 end
 
+
 function JuliaRL.get_reward(env::CompassWorld) # -> get the reward of the environment
     return 0
 end
+
 
 function JuliaRL.get_state(env::CompassWorld) # -> get state of agent
     if env.partially_observable
@@ -115,9 +141,13 @@ function JuliaRL.get_state(env::CompassWorld) # -> get state of agent
     end
 end
 
+
 function fully_observable_state(env::CompassWorld)
-    return [env.agent_state.x, env.agent_state.y, env.agent_state.dir]
+    return [env.agent_state.x,
+            env.agent_state.y,
+            env.agent_state.dir]
 end
+
 
 function partially_observable_state(env::CompassWorld)
     CWC = CompassWorldConst
@@ -148,27 +178,44 @@ function JuliaRL.is_terminal(env::CompassWorld) # -> determines if the agent_sta
     return false
 end
 
+
 function build_gridworld_char_rep(env::CompassWorld)
     CWC = CompassWorldConst
-    model = fill('W', (env.world_dims.height+2, env.world_dims.width+2))
+    model = fill("W",
+                 (env.world_dims.height+2,
+                  env.world_dims.width+2))
 
-    model[1,:] .= 'O'
-    model[end, :] .= 'R'
+    model[1,:] .= "O"
+    model[end, :] .= "R"
 
-    model[:,1] .= 'B'
-    model[1:2, 1] .= 'G'
-    model[:, end] .= 'Y'
+    model[:,1] .= "B"
+    model[1:2, 1] .= "G"
+    model[:, end] .= "Y"
 
-    model[env.agent_state.y+1, env.agent_state.x+1] = CWC.DIR_CHAR[env.agent_state.dir]
+    model[env.agent_state.y+1, env.agent_state.x+1] =
+        Base.string(CWC.DIR_CHAR[env.agent_state.dir])
 
     return model
 end
 
-function Base.show(io::IO, env::CompassWorld)
-    println(env.agent_state)
+
+function Base.string(env::CompassWorld)
     model = build_gridworld_char_rep(env)
+    str = ""
     for r in 1:size(model)[1]
-        print(model[r,:], "\n")
+        str *= join(model[r,:], " ")*"\n"
+    end
+    return str
+end
+
+
+function Base.print(io::IO, env::CompassWorld)
+    print(io, env.agent_state)
+    print(io, "\n")
+    model = build_gridworld_char_rep(env)
+    println(size(model))
+    for r in 1:size(model)[1]
+        print(io, join(model[r,:], " ")*"\n")
     end
 end
 

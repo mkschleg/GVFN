@@ -38,6 +38,28 @@ end
 
 get(cumulant::PredictionCumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1) = preds_tp1[cumulant.idx]
 
+struct ScaledCumulant{F<:Number, T<:AbstractCumulant} <: AbstractCumulant
+    scale::F
+    cumulant::T
+end
+
+get(cumulant::ScaledCumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1) =
+    cumulant.scale*get(cumulant.cumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1)
+
+mutable struct NormalizedCumulant{F<:Number, T<:AbstractCumulant} <: AbstractCumulant
+    scale::F
+    cumulant::T
+    rmax::F
+end
+
+NormalizedCumulant(scale, cumulant) = NormalizedCumulant(scale, cumulant, 1.0)
+
+function get(cumulant::NormalizedCumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1)
+    c = get(cumulant.cumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1)
+    cumulant.rmax = max(cumulant.rmax,c)
+    return c * cumulant.scale / cumulant.rmax
+end
+
 
 """
 Discounting
@@ -87,13 +109,29 @@ get(π::PersistentPolicy, state_t, action_t, state_tp1, action_tp1, preds_tp1) =
 struct RandomPolicy{T<:AbstractFloat} <: AbstractPolicy
     probabilities::Array{T,1}
     weight_vec::Weights{T, T, Array{T, 1}}
-    RandomPolicy{T}(probabilities::Array{T,1}) where {T<:AbstractFloat} = new{T}(probabilities, Weights(probabilities))
+    RandomPolicy(probabilities::Array{T,1}) where {T<:AbstractFloat} = new{T}(probabilities, Weights(probabilities))
 end
 
 get(π::RandomPolicy, state_t, action_t, state_tp1, action_tp1, preds_tp1) = π.probabilities[action_t]
 
-StatsBase.sample(π::RandomPolicy) = sample(Random.GLOBAL_RNG, π)
-StatsBase.sample(rng::Random.AbstractRNG, π::RandomPolicy) = sample(rng, π.weight_vec, 1:length(π.weight_vec))
+StatsBase.sample(π::RandomPolicy) = StatsBase.sample(Random.GLOBAL_RNG, π)
+StatsBase.sample(rng::Random.AbstractRNG, π::RandomPolicy) = StatsBase.sample(rng, π.weight_vec)
+StatsBase.sample(rng::Random.AbstractRNG, π::RandomPolicy, state) = StatsBase.sample(rng, π.weight_vec)
+
+struct FunctionalPolicy{F} <: AbstractPolicy
+    func::F
+end
+
+Base.get(π::FunctionalPolicy, state_t, action_t, state_tp1, action_tp1, preds_tp1) =
+    π.func(state_t, action_t, state_tp1, action_tp1, preds_tp1)
+
+struct PredictionConditionalPolicy{P<:AbstractPolicy, F} <: AbstractPolicy
+    policy::P
+    condition::F
+end
+
+Base.get(π::PredictionConditionalPolicy, state_t, action_t, state_tp1, action_tp1, preds_tp1) =
+    π.condition(preds_tp1) * get(π.policy, state_t, action_t, state_tp1, action_tp1, preds_tp1)
 
 abstract type AbstractGVF end
 
@@ -132,6 +170,9 @@ struct Horde{T<:AbstractGVF} <: AbstractHorde
     gvfs::Vector{T}
 end
 
+
+# combine(gvfh_1::Horde, gvfh_2::Horde) = Horde([gvfh_1.gvfs; ])
+
 function get(gvfh::Horde, state_t, action_t, state_tp1, action_tp1, preds_tp1)
     C = map(gvf -> get(cumulant(gvf), state_t, action_t, state_tp1, action_tp1, preds_tp1), gvfh.gvfs)
     Γ = map(gvf -> get(discount(gvf), state_t, action_t, state_tp1, action_tp1, preds_tp1), gvfh.gvfs)
@@ -152,4 +193,8 @@ get(gvfh::Horde, state_t, action_t, state_tp1, preds_tp1) = get(gvfh::Horde, sta
 
 get!(C, Γ, Π_probs,gvfh::Horde, action_t, state_tp1, preds_tp1) = get!(C, Γ, Π_probs, gvfh::Horde, nothing, action_t, state_tp1, nothing, preds_tp1)
 
-@forward Horde.gvfs Base.length
+@forward Horde.gvfs Base.length, Base.getindex
+
+
+
+

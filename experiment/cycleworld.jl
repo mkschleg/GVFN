@@ -2,80 +2,46 @@ __precompile__(true)
 
 module CycleWorldExperiment
 
-using GVFN: CycleWorld, step!, start!
-using GVFN
 import Flux
 import Flux.Tracker
-using Statistics
+import JLD2
 import LinearAlgebra.Diagonal
+
+# using GVFN: CycleWorld, step!, start!
+using GVFN: CycleWorld, step!, start!
+using GVFN: CycleWorldAgent
+using GVFN
+using Statistics
 using Random
 using ProgressMeter
-using FileIO
-using ArgParse
+using Reproduce
 using Random
 using DataStructures: CircularBuffer
 
+
 # include("utils/util.jl")
-import GVFN.CycleWorldSettings
+CWU = GVFN.CycleWorldUtils
+FLU = GVFN.FluxUtils
 
-function Flux.Optimise.apply!(o::Flux.RMSProp, x, Δ)
-  η, ρ = o.eta, o.rho
-  acc = get!(o.acc, x, zero(x))::typeof(Flux.data(x))
-  @. acc = ρ * acc + (1 - ρ) * Δ^2
-  @. Δ *= η / (√acc + Flux.Optimise.ϵ)
-end
+# function Flux.Optimise.apply!(o::Flux.RMSProp, x, Δ)
+#   η, ρ = o.eta, o.rho
+#   acc = get!(o.acc, x, zero(x))::typeof(Flux.data(x))
+#   @. acc = ρ * acc + (1 - ρ) * Δ^2
+#   @. Δ *= η / (√acc + Flux.Optimise.ϵ)
+# end
 
-function arg_parse(as::ArgParseSettings = ArgParseSettings())
+function arg_parse(as::ArgParseSettings = ArgParseSettings(exc_handler=Reproduce.ArgParse.debug_handler))
 
     #Experiment
-    @add_arg_table as begin
-        "--seed"
-        help="Seed of rng"
-        arg_type=Int64
-        default=0
-        "--steps"
-        help="number of steps"
-        arg_type=Int64
-        default=100
-        "--savefile"
-        help="save file for experiment"
-        arg_type=String
-        default="temp.jld"
-    end
-
-    #Cycle world
-    @add_arg_table as begin
-        "--chain"
-        help="The length of the cycle world chain"
-        arg_type=Int64
-        default=6
-    end
+    
+    GVFN.exp_settings!(as)
+    CWU.env_settings!(as)
+    FLU.opt_settings!(as)
 
     # shared settings
-    @add_arg_table as begin
-        "--truncation", "-t"
-        help="Truncation parameter for bptt"
-        arg_type=Int64
-        default=1
-    end
+    GVFN.gvfn_arg_table!(as)
 
-    # GVFN 
     @add_arg_table as begin
-        "--alg"
-        help="Algorithm"
-        default="TDLambda"
-        "--params"
-        help="Parameters"
-        arg_type=Float64
-        nargs='+'
-        "--opt"
-        help="Optimizer"
-        default="Descent"
-        "--optparams"
-        help="Parameters"
-        arg_type=Float64
-        default=[]
-        nargs='+'
         "--horde"
         help="The horde used for training"
         default="gamma_chain"
@@ -84,32 +50,7 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         arg_type=Float64
         default=0.9
     end
-
     return as
-end
-
-
-function onestep(chain_length::Integer)
-    gvfs = [GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())]
-    return Horde(gvfs)
-end
-
-function chain(chain_length::Integer)
-    gvfs = [[GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())];
-            [GVF(PredictionCumulant(i-1), ConstantDiscount(0.0), NullPolicy()) for i in 2:chain_length]]
-    return Horde(gvfs)
-end
-
-function gamma_chain(chain_length::Integer, γ::AbstractFloat)
-    gvfs = [[GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())];
-            [GVF(PredictionCumulant(i-1), ConstantDiscount(0.0), NullPolicy()) for i in 2:chain_length];
-            [GVF(FeatureCumulant(1), StateTerminationDiscount(0.9, ((env_state)->env_state[1] == 1)), NullPolicy())]]
-    return Horde(gvfs)
-end
-
-function gammas(chain_length::Integer)
-    gvfs = [GVF(FeatureCumulant(1), StateTerminationDiscount(γ, ((env_state)->env_state[1] == 1)), NullPolicy()) for γ in 0.0:0.1:0.9]
-    return Horde(gvfs)
 end
 
 function oracle(env::CycleWorld, horde_str, γ=0.9)
@@ -125,6 +66,9 @@ function oracle(env::CycleWorld, horde_str, γ=0.9)
         ret[end] = γ^(chain_length - state - 1)
     elseif horde_str == "gammas"
         ret = collect(0.0:0.1:0.9).^(chain_length - state - 1)
+    elseif horde_str == "onestep"
+        ret = zeros(chain_length)
+        ret = chain_length - state == 1 ? 1.0 : 0.0
     else
         throw("Bug Found")
     end
@@ -132,94 +76,77 @@ function oracle(env::CycleWorld, horde_str, γ=0.9)
     return ret
 end
 
-build_features(s) = [1.0, s[1], 1-s[1]]
-
 function main_experiment(args::Vector{String})
 
     as = arg_parse()
     parsed = parse_args(args, as)
 
-    savefile = parsed["savefile"]
-    savepath = dirname(savefile)
-
-    if savepath != ""
-        if !isdir(savepath)
-            mkpath(savepath)
+    savepath = ""
+    savefile = ""
+    if !parsed["working"]
+        create_info!(parsed, parsed["exp_loc"]; filter_keys=["verbose", "working", "exp_loc"])
+        savepath = Reproduce.get_save_dir(parsed)
+        savefile = joinpath(savepath, "results.jld2")
+        if isfile(savefile)
+            return
         end
     end
 
     num_steps = parsed["steps"]
     seed = parsed["seed"]
+    verbose = parsed["verbose"]
+    progress = parsed["progress"]
     rng = Random.MersenneTwister(seed)
 
     env = CycleWorld(parsed["chain"])
-    horde = chain(parsed["chain"])
-    if parsed["horde"] == "gamma_chain"
-        horde = gamma_chain(parsed["chain"], parsed["gamma"])
-    elseif parsed["horde"] == "gammas"
-        horde = gammas(parsed["chain"])
-    end
 
-    num_gvfs = length(horde)
-
-    alg_string = parsed["alg"]
-    gvfn_lu_func = getproperty(GVFN, Symbol(alg_string))
-    lu = gvfn_lu_func(Float64.(parsed["params"])...)
-    τ=parsed["truncation"]
-
-    opt_string = parsed["opt"]
-
-    opt_func = getproperty(Flux, Symbol(opt_string))
-    opt = opt_func(Float64.(parsed["optparams"])...)
-
-    pred_strg = zeros(num_steps, num_gvfs)
     out_pred_strg = zeros(num_steps)
-    err_strg = zeros(num_steps, num_gvfs)
     out_err_strg = zeros(num_steps)
 
     _, s_t = start!(env)
 
-    gvfn = GVFNetwork(num_gvfs, 3, horde; init=(dims...)->0.001*randn(rng, Float32, dims...), σ_int=Flux.σ)
-
-    model = SingleLayer(num_gvfs, 1, sigmoid, sigmoid′)
-
+    horde = CWU.get_horde(parsed)
     out_horde = Horde([GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())])
-    out_opt = Flux.ADAM(0.01)
-    out_lu = TD()
+    fc = (state, action)->CWU.build_features_cycleworld(state)
+    fs = 3
+    ap = GVFN.RandomActingPolicy([1.0])
+    
+    agent = GVFN.GVFNAgent(horde, out_horde,
+                           fc, fs, ap, parsed;
+                           rng=rng,
+                           init_func=(dims...)->glorot_uniform(rng, dims...))
+    start!(agent, s_t; rng=rng)
 
-    state_list = CircularBuffer{Array{Float64, 1}}(τ+1)
-    fill!(state_list, zeros(3))
-    push!(state_list, build_features(s_t))
-    hidden_state_init = zeros(num_gvfs)
+    prg_bar = ProgressMeter.Progress(num_steps, "Step: ")
 
-    @showprogress 0.1 "Step: " for step in 1:num_steps
-    # for step in 1:num_steps
-
+    for step in 1:num_steps
+ 
         _, s_tp1, _, _ = step!(env, 1)
+        out_preds, action = step!(agent, s_tp1, 0, false; rng=rng)
 
-        push!(state_list, build_features(s_tp1))
-
-        train!(gvfn, opt, lu, hidden_state_init, state_list, s_tp1)
-
-        reset!(gvfn, hidden_state_init)
-        preds = gvfn.(state_list)
-
-        train!(model, out_horde, out_opt, out_lu, Flux.data.(preds), s_tp1)
-
-        out_preds = model(preds[end])
-
-        pred_strg[step, :] .= Flux.data(preds[end])
-        err_strg[step, :] .= Flux.data(preds[end]) - oracle(env, parsed["horde"], parsed["gamma"])
         out_pred_strg[step] = Flux.data(out_preds)[1]
-        out_err_strg[step] = out_pred_strg[step][1] - oracle(env, parsed["horde"], parsed["gamma"])[1]
+        out_err_strg[step] = out_pred_strg[step][1] - oracle(env, "onestep", parsed["gamma"])[1]
 
-        s_t .= s_tp1
-        hidden_state_init .= Flux.data(preds[1])
+        if verbose
+            println("step: $(step)")
+            println(env)
+            println(agent)
+            println(out_preds)
+        end
+
+        if progress
+           next!(prg_bar)
+        end
     end
 
-    results = Dict(["predictions"=>pred_strg, "error"=>err_strg, "out_pred"=>out_pred_strg, "out_err_strg"=>out_err_strg])
-    # save(savefile, results)
-    # return pred_strg, err_strg
+    results = Dict(["out_pred"=>out_pred_strg, "out_err_strg"=>out_err_strg])
+
+    if !parsed["working"]
+        JLD2.@save savefile results
+    else
+        return results
+    end
+
 end
 
 Base.@ccallable function julia_main(ARGS::Vector{String})::Cint

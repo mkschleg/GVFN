@@ -1,22 +1,22 @@
-#!/usr/local/bin/julia
+#!/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/julia/1.1.0/bin/julia
+#SBATCH -o comp_rnn_cell.out # Standard output
+#SBATCH -e comp_rnn_cell.err # Standard error
+#SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
+#SBATCH --time=24:00:00 # Running time of 12 hours
+#SBATCH --ntasks=64
+#SBATCH --account=rrg-whitem
 
 using Pkg
-using ArgParse
-# import Reproduce: ArgIterator
+Pkg.activate(".")
+
 using Reproduce
 
-# cd("..")
-Pkg.activate(".")
-# include("parallel_experiment_new.jl")
-
-# println("Hello Wolrd...")
 
 #------ Optimizers ----------#
 const save_loc = "compworld_rnn_sweep"
 const exp_file = "experiment/compassworld_rnn.jl"
 const exp_module_name = :CompassWorldRNNExperiment
 const exp_func_name = :main_experiment
-
 
 
 # Parameters for the SGD Algorithm
@@ -26,7 +26,7 @@ const alphas = [0.001, 0.01, 0.1, 0.25, 0.5, 0.75]
 const truncations = [1, 3, 6, 12, 24]
 
 
-function make_arguments(args::Dict{String, String})
+function make_arguments(args::Dict)
     horde = args["horde"]
     alpha = args["alpha"]
     cell = args["cell"]
@@ -55,13 +55,13 @@ function main(args::Vector{String}=ARGS)
         "horde"=>["forward"],
         "alpha"=>alphas,
         "truncation"=>truncations,
-        "cell"=>["LSTM", "GRU", "RNN"],
+        "cell"=>["RNN"],
         # "cell"=>["RNN", "GRU"],
         "seed"=>collect(1:5)
     ])
     arg_list = ["horde", "alpha", "truncation", "seed", "cell"]
 
-    static_args = ["--steps", "5000"]
+    static_args = ["--steps", "5000000"]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments)
 
     experiment = Experiment(save_loc,
@@ -85,7 +85,7 @@ function main(args::Vector{String}=ARGS)
 
     create_experiment_dir(experiment)
     add_experiment(experiment; settings_dir="settings")
-    ret = job(experiment; num_workers=num_workers)
+    ret = job(experiment; num_workers=num_workers, job_file_dir="cell_rnn_jobs")
     post_experiment(experiment, ret)
 end
 
