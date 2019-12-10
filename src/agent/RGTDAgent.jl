@@ -15,10 +15,10 @@ import JuliaRL
 # end
 
 
-mutable struct RGTDAgent{O, T, F, H, Φ, Π, M, G} <: JuliaRL.AbstractAgent
-    lu::LearningUpdate
+mutable struct RGTDAgent{O, GVFN<:GradientGVFN, F, H, Φ, Π, M, G} <: JuliaRL.AbstractAgent
+    lu::RGTD
     opt::O
-    gvfn::Flux.Recur{T}
+    gvfn::GVFN
     build_features::F
     state_list::DataStructures.CircularBuffer{Φ}
     hidden_state_init::H
@@ -45,8 +45,7 @@ function RGTDAgent(horde, out_horde,
     num_gvfs = length(horde)
 
     alg_string = parsed["alg"]
-    gvfn_lu_func = getproperty(GVFN, Symbol(alg_string))
-    lu = gvfn_lu_func(Float64.(parsed["params"])...)
+    lu = RGTD(Float64.(parsed["params"])...)
     τ=parsed["truncation"]
 
     opt_string = parsed["opt"]
@@ -56,9 +55,8 @@ function RGTDAgent(horde, out_horde,
     act = FluxUtils.get_activation(parsed["act"])
 
     prev_action_or_not = get(parsed, "prev_action_or_not", false)
-
-    gvfn = GVFNetwork(num_gvfs, feature_size, horde;
-                      init=init_func, σ_int=act)
+    
+    gvfn = GradientGVFN(feature_size, horde, act; initθ=init_func)
 
     num_out_gvfs = length(out_horde)
     model = Linear(num_gvfs, num_out_gvfs; init=init_func)
@@ -80,9 +78,6 @@ end
 
 function JuliaRL.start!(agent::RGTDAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
 
-    # agent.action, agent.action_prob = get_action(env_s_tp1, rng)
-    # agent.action = sample(rng, agent.π, env_s_tp1)
-    # agent.action_prob = get(agent.π, env_s_tp1, agent.action)
     agent.action, agent.action_prob = agent.π(env_s_tp1, rng)
 
     fill!(agent.state_list, zeros(length(agent.build_features(env_s_tp1, agent.action))))
@@ -97,20 +92,35 @@ function JuliaRL.step!(agent::RGTDAgent, env_s_tp1, r, terminal; rng=Random.GLOB
     # Decide Action
     new_action, new_prob = agent.π(env_s_tp1, rng)
 
-    ## NOTE: Fix back to Action_t when done testing.
     if agent.prev_action_or_not
         push!(agent.state_list, agent.build_features(env_s_tp1, agent.action))
     else
         push!(agent.state_list, agent.build_features(env_s_tp1, new_action))
     end
-    # push!(agent.state_list, agent.build_features(env_s_tp1, new_action))
 
-    update!(agent.gvfn, agent.opt, agent.lu, agent.hidden_state_init, agent.state_list, env_s_tp1, agent.action, agent.action_prob)
+    update_full_hessian!(agent.gvfn,
+            agent.opt,
+            agent.lu,
+            agent.hidden_state_init,
+            agent.state_list,
+            env_s_tp1,
+            agent.action,
+            agent.action_prob)
 
-    reset!(agent.gvfn, agent.hidden_state_init)
-    preds = agent.gvfn.(agent.state_list)
-    agent.preds_tp1 .= Flux.data(preds[end])
-    update!(agent.model, agent.out_horde, agent.opt, agent.lu, Flux.data.(preds), env_s_tp1, agent.action, agent.action_prob)
+    preds = GVFN.roll(agent.gvfn,
+                      agent.state_list,
+                      agent.hidden_state_init,
+                      GVFN.Prediction)
+    
+    agent.preds_tp1 .= preds[end]
+    update!(agent.model,
+            agent.out_horde,
+            agent.opt,
+            agent.lu,
+            Flux.data.(preds),
+            env_s_tp1,
+            agent.action,
+            agent.action_prob)
 
     out_preds = agent.model(preds[end])
 
@@ -120,7 +130,7 @@ function JuliaRL.step!(agent::RGTDAgent, env_s_tp1, r, terminal; rng=Random.GLOB
     agent.s_t .= env_s_tp1
     agent.hidden_state_init .= Flux.data(preds[1])
 
-    return Flux.data.(out_preds), agent.action
+    return Flux.data.(out_preds), agent.action, preds[end]
 end
 
 JuliaRL.get_action(agent::RGTDAgent, state) = agent.action

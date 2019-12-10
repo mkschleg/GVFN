@@ -4,6 +4,7 @@ using ..Flux
 using Reproduce
 import ..GVFN.RNNActionLayer
 import ..GVFN.RNNInv
+import ..GVFN
 
 
 function rnn_settings!(as::ArgParseSettings)
@@ -77,7 +78,7 @@ end
 
 function get_activation(act::AbstractString)
     if act == "sigmoid"
-        return Flux.σ
+        return GVFN.sigmoid
     elseif act == "tanh"
         return tanh
     elseif act == "linear"

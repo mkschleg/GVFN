@@ -4,8 +4,10 @@ using NaNMath
 
 include("../plot/plot_reproduce.jl")
 
-cycleworld_data_clean_func(di) = mean(abs.(di["out_err_strg"]))
-cycleworld_data_clean_func_end(di) = mean(abs.(di["out_err_strg"][250000:300000]))
+rmse(v) = sqrt.(mean(v.^2; dims=2))
+
+ringworld_data_clean_func(di) = mean(rmse(di["results"]["out_err_strg"]))
+ringworld_data_clean_func_end(di) = mean(rmse(di["results"]["out_err_strg"])[250000:300000])
 
 # cycleworld_data_clean_func_rnn(di) = di["results"]["mean"]
 # cycleworld_data_clean_func_rnn_end(di) = di["results"]["mean_end"]
@@ -46,7 +48,7 @@ end
 
 
 runs_func(μ::Array{<:AbstractFloat}) = Dict(
-    "mean"=>isnan(mean(μ)) ? Inf : mean(μ),
+    "mean"=>mean(μ),
     "stderr"=>std(μ)/length(μ),
     "median"=>length(μ) == 0 ? Inf : median(μ),
     "best"=>NaNMath.minimum(μ),
@@ -58,8 +60,8 @@ function synopsis(exp_loc::String; best_args=["truncation", "horde"])
     # Iterators.product
     args = Iterators.product(["mean", "median", "best"], ["all", "end"])
     func_dict = Dict(
-        "all"=>cycleworld_data_clean_func,
-        "end"=>cycleworld_data_clean_func_end)
+        "all"=>ringworld_data_clean_func,
+        "end"=>ringworld_data_clean_func_end)
 
     if !isdir(joinpath(exp_loc, "synopsis"))
         mkdir(joinpath(exp_loc, "synopsis"))
@@ -76,51 +78,53 @@ function synopsis(exp_loc::String; best_args=["truncation", "horde"])
             save_locs=[joinpath(exp_loc, "synopsis/order_settings_$(a[1])_$(a[2]).$(ext)") for ext in ["jld2", "txt"]])
     end
 
+    best_args_str = join(best_args, "_")
+    
     ret = best_settings(exp_loc, best_args;
-                        run_key="seed", clean_func=cycleworld_data_clean_func,
+                        run_key="seed", clean_func=func_dict["all"],
                         runs_func=runs_func,
                         sort_idx="mean",
-                        save_locs=[joinpath(exp_loc, "best_trunc_horde.txt"), joinpath(exp_loc, "best_trunc_horde.jld2")])
+                        save_locs=[joinpath(exp_loc, "synopsis", "best_$(best_args_str).txt")])
 
     ret = best_settings(exp_loc, best_args;
-                        run_key="seed", clean_func=cycleworld_data_clean_func_end,
+                        run_key="seed", clean_func=func_dict["end"],
                         runs_func=runs_func,
                         sort_idx="mean",
-                        save_locs=[joinpath(exp_loc, "best_trunc_horde_end.txt"), joinpath(exp_loc, "best_trunc_horde_end.jld2")])
+                        save_locs=[joinpath(exp_loc, "synopsis", "best_$(best_args_str)_end.txt")])
 end
 
-function synopsis_rnn(exp_loc::String; best_args=["truncation", "cell"])
+# function synopsis_rnn(exp_loc::String; best_args=["truncation", "cell"])
     
-    # Iterators.product
-    args = Iterators.product(["mean", "median", "best"], ["all", "end"])
-    func_dict = Dict(
-        "all"=>cycleworld_data_clean_func_rnn,
-        "end"=>cycleworld_data_clean_func_rnn_end)
+#     # Iterators.product
+#     args = Iterators.product(["mean", "median", "best"], ["all", "end"])
+#     func_dict = Dict(
+#         "all"=>ringworld_data_clean_func_rnn,
+#         "end"=>ringworld_data_clean_func_rnn_end)
 
-    if !isdir(joinpath(exp_loc, "synopsis"))
-        mkdir(joinpath(exp_loc, "synopsis"))
-    end
+#     if !isdir(joinpath(exp_loc, "synopsis"))
+#         mkdir(joinpath(exp_loc, "synopsis"))
+#     end
     
-    for a in args
-        @info "Current Arg $(a)"
-        order_settings(
-            exp_loc;
-            run_key="seed",
-            clean_func=func_dict[a[2]],
-            runs_func=runs_func,
-            sort_idx=a[1],
-            save_locs=[joinpath(exp_loc, "synopsis/order_settings_$(a[1])_$(a[2]).$(ext)") for ext in ["jld2", "txt"]])
-    end
+#     for a in args
+#         @info "Current Arg $(a)"
+#         order_settings(
+#             exp_loc;
+#             run_key="seed",
+#             clean_func=func_dict[a[2]],
+#             runs_func=runs_func,
+#             sort_idx=a[1],
+#             save_locs=[joinpath(exp_loc, "synopsis/order_settings_$(a[1])_$(a[2]).$(ext)") for ext in ["jld2", "txt"]])
+#     end
 
-    ret = best_settings(exp_loc, best_args;
-                        run_key="seed", clean_func=cycleworld_data_clean_func_rnn,
-                        runs_func=runs_func,
-                        sort_idx="mean",
-                        save_locs=[joinpath(exp_loc, "best_trunc_horde.txt")])
+#     ret = best_settings(exp_loc, best_args;
+#                         run_key="seed", clean_func=cycleworld_data_clean_func_rnn,
+#                         runs_func=runs_func,
+#                         sort_idx="mean",
+#                         save_locs=[joinpath(exp_loc, "best_trunc_horde.txt")])
 
-    ret = best_settings(exp_loc, best_args;
-                        run_key="seed", clean_func=cycleworld_data_clean_func_rnn_end,
-                        runs_func=runs_func,
-                        sort_idx="mean",
-                        save_locs=[joinpath(exp_loc, "best_trunc_horde_end.txt")])
-end
+#     ret = best_settings(exp_loc, best_args;
+#                         run_key="seed", clean_func=cycleworld_data_clean_func_rnn_end,
+#                         runs_func=runs_func,
+#                         sort_idx="mean",
+#                         save_locs=[joinpath(exp_loc, "best_trunc_horde_end.txt")])
+# end

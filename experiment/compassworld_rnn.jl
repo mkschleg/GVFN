@@ -165,7 +165,9 @@ function main_experiment(args::Vector{String})
 
     _, s_t = start!(env)
 
-    out_horde = cwu.forward()
+    # out_horde = cwu.forward()
+    out_horde = cwu.get_horde(parsed)
+
 
     out_pred_strg = zeros(num_steps, length(out_horde))
     out_err_strg = zeros(num_steps, length(out_horde))

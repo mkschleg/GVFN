@@ -9,6 +9,7 @@ using JLD2
 
 
 function save_settings(save_loc, settings_vec)
+    println("save_settings")
     if split(basename(save_loc), ".")[end] == "txt"
         open(save_loc, "w") do f
             for v in settings_vec
@@ -16,7 +17,9 @@ function save_settings(save_loc, settings_vec)
             end
         end
     else
-        @save save_loc Dict("settings"=>settings_vec)
+        results = Dict("settings"=>settings_vec)
+        println("SAVE")
+        JLD2.@save save_loc settings_vec
     end
 end
 

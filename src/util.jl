@@ -6,7 +6,7 @@ using LinearAlgebra
 import Reproduce: ArgParseSettings, @add_arg_table
 
 glorot_uniform(rng::Random.AbstractRNG, dims...) = (rand(rng, Float32, dims...) .- 0.5f0) .* sqrt(24.0f0/sum(dims))
-glorot_normal(rng::Random.AbstractRNG, dims...) = randn(rng, Float32, dims...) .* sqrt(2.0f0/sum(dims))
+glorot_normal(rng::Random.AbstractRNG, dims...) = randn(rng, Float32, dims...) .* Float32(sqrt(2.0f0/sum(dims)))
 
 
 function reset!(m, h_init)
@@ -104,8 +104,8 @@ end
 
 
 # Activations
+# σ(x::Real) = one(x) / (one(x) + exp(-x))
 sigmoid(x) = Flux.σ(x)
-
 function sigmoid′(x)
     s = sigmoid(x)
     s*(1-s)

@@ -48,13 +48,12 @@ end
 end
 
 
-mutable struct TrialABCEnv
+mutable struct TrialABCEnv <: AbstractEnvironment
     trial::ABCEnvConst.AbstractTrial
     cur_step_in_trial::Int64
-    random::bool
 end
 
-TrialABCEnv() = TrialABCEnv(ÃB̃(0), 1)
+TrialABCEnv() = TrialABCEnv(ABCEnvConst.ÃB̃(0), 1)
 
 function get_new_trial(rng::Random.AbstractRNG)
     cnst = ABCEnvConst
@@ -78,7 +77,8 @@ function JuliaRL.environment_step!(env::TrialABCEnv,
                                    action;
                                    rng = Random.GLOBAL_RNG,
                                    kwargs...)
-    env.cur_step_in_trial 0= 1
+    @assert !(env.cur_step_in_trial >= env.trial.length)
+    env.cur_step_in_trial += 1
 end
 
 
@@ -114,7 +114,7 @@ function env_settings!(as::Reproduce.ArgParseSettings,
 end
 
 
-mutable struct ContABCEnv
+mutable struct ContABCEnv <: AbstractEnvironment
     trial::ABCEnvConst.AbstractTrial
     cur_step_in_trial::Int64
 end

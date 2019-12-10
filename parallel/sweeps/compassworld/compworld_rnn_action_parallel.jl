@@ -15,7 +15,7 @@ using Reproduce
 
 
 #------ Optimizers ----------#
-const save_loc = "compworld_rnn_action_sweep_onestep"
+const save_loc = "compworld_rnn_action_sweep_gammas"
 const exp_file = "experiment/compassworld_rnn_action.jl"
 const exp_module_name = :CompassWorldRNNActionExperiment
 const exp_func_name = :main_experiment
@@ -23,9 +23,10 @@ const exp_func_name = :main_experiment
 
 # Parameters for the SGD Algorithm
 const optimizer = "Descent"
-# const alphas = clamp.(0.1*1.5.^(-6:4), 0.0, 1.0)
-const alphas = [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1]
-const truncations = [1, 2, 3, 4, 5, 6, 7, 8, 16]
+const alphas = clamp.(0.1*1.5.^(-8:2:0), 0.0, 1.0)
+# const alphas = [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1]
+# const truncations = [1, 2, 3, 4, 5, 6, 7, 8, 16, 32, 64]
+const truncations = [1, 2, 3, 4, 8, 16, 32]
 
 function make_arguments(args::Dict)
     horde = args["horde"]
@@ -69,7 +70,7 @@ function main(args::Vector{String}=ARGS)
     arg_list = Array{String, 1}()
 
     arg_dict = Dict([
-        "horde"=>["forward"],
+        "horde"=>["out_gammas"],
         "alpha"=>alphas,
         "truncation"=>truncations,
         "cell"=>["RNN"],
@@ -80,7 +81,8 @@ function main(args::Vector{String}=ARGS)
     ])
     arg_list = ["policy", "feature", "horde", "alpha", "truncation", "seed", "cell"]
 
-    static_args = ["--steps", string(parsed["numsteps"]), "--exp_loc", save_loc, "--sweep", "--numhidden", "35"]
+    static_args = ["--steps", string(parsed["numsteps"]), "--exp_loc", save_loc, "--numhidden", "45"]
+    # static_args = ["--steps", string(parsed["numsteps"]), "--exp_loc", save_loc, "--sweep", "--numhidden", "35"]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments)
 
     if parsed["numjobs"]

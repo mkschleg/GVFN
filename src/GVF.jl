@@ -49,7 +49,6 @@ get(cumulant::ScaledCumulant, state_t, action_t, state_tp1, action_tp1, preds_tp
 mutable struct NormalizedCumulant{F<:Number, T<:AbstractCumulant} <: AbstractCumulant
     scale::F
     cumulant::T
-
     rmax::F
 end
 
@@ -126,6 +125,14 @@ end
 Base.get(π::FunctionalPolicy, state_t, action_t, state_tp1, action_tp1, preds_tp1) =
     π.func(state_t, action_t, state_tp1, action_tp1, preds_tp1)
 
+struct PredictionConditionalPolicy{P<:AbstractPolicy, F} <: AbstractPolicy
+    policy::P
+    condition::F
+end
+
+Base.get(π::PredictionConditionalPolicy, state_t, action_t, state_tp1, action_tp1, preds_tp1) =
+    π.condition(preds_tp1) * get(π.policy, state_t, action_t, state_tp1, action_tp1, preds_tp1)
+
 abstract type AbstractGVF end
 
 function get(gvf::AbstractGVF, state_t, action_t, state_tp1, action_tp1, preds_tp1) end
@@ -186,7 +193,7 @@ get(gvfh::Horde, state_t, action_t, state_tp1, preds_tp1) = get(gvfh::Horde, sta
 
 get!(C, Γ, Π_probs,gvfh::Horde, action_t, state_tp1, preds_tp1) = get!(C, Γ, Π_probs, gvfh::Horde, nothing, action_t, state_tp1, nothing, preds_tp1)
 
-@forward Horde.gvfs Base.length
+@forward Horde.gvfs Base.length, Base.getindex
 
 
 

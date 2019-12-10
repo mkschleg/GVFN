@@ -31,6 +31,7 @@ export
     Horde,
     NullPolicy,
     PersistentPolicy,
+    PredictionConditionalPolicy,
     ConstantDiscount,
     StateTerminationDiscount,
     FeatureCumulant,

@@ -51,11 +51,11 @@ function main()
         "truncation"=>truncations,
         "cell"=>["RNN"],
         "chain"=>collect(chain),
-        "seed"=>collect(1:10)
+        "seed"=>collect(11:50)
     ])
     arg_list = ["chain", "horde", "cell", "alpha", "truncation", "seed"]
 
-    static_args = ["--steps", "10", "--exp_loc", save_loc]
+    static_args = ["--steps", "300000", "--exp_loc", save_loc]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments)
 
     if parsed["numjobs"]
