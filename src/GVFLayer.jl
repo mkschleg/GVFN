@@ -4,17 +4,6 @@
 using Flux
 
 
-# mutable struct GVFCell{F, A, V}
-#     σ::F # Activation function for the predictions
-#     Wi::A
-#     Wh::A
-#     b::V
-#     h::V
-# end
-
-# function (m::GVFCell)(h, x)
-# end
-
 sigmoid(x::Float64) = 1.0/(1.0 + exp(-x))
 sigmoidprime(x::Float64) = sigmoid(x)*(1.0-sigmoid(x))
 

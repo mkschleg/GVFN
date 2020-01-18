@@ -158,6 +158,6 @@ function oracle(env::CycleWorld, horde_str, γ=0.9)
     return ret
 end
 
-build_features_cycleworld(s) = Float32[1.0, s[1], 1-s[1]]
+build_features_cycleworld(s) = Float32[s[1], 1-s[1]]
 
 end

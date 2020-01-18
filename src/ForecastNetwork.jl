@@ -1,7 +1,7 @@
 
 
 
-mutable struct TargetCell{F, A, V} <: AbstractGVFLayer
+mutable struct TargetCell{F, A, V} <: AbstractGVFRCell
     σ::F
     Wx::A
     Wh::A
@@ -40,7 +40,7 @@ function update!(frnn::Flux.Recur{T}, opt, h_init, hist_state_seq, targets) wher
 end
 
 
-mutable struct TargetActionCell{F, A, B, V} <: AbstractGVFLayer
+mutable struct TargetActionCell{F, A, B, V} <: AbstractGVFRCell
     σ::F
     Wx::A
     Wh::A

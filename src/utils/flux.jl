@@ -2,8 +2,8 @@ module FluxUtils
 
 using ..Flux
 using Reproduce
-import ..GVFN.RNNActionLayer
-import ..GVFN.RNNInv
+import ..GVFN.ARNNCell
+# import ..GVFN.RNNInvCell
 import ..GVFN
 
 
@@ -53,8 +53,9 @@ end
 
 function construct_rnn(cell::AbstractString, in::Integer, num_hidden::Integer, args...; kwargs...)
     if cell == "RNNInv"
-        cell_func = RNNInv
-        return cell_func(in, num_hidden, args...; kwargs...)
+        throw("No Longer Implemented")
+        # cell_func = RNNInv
+        # return cell_func(in, num_hidden, args...; kwargs...)
     else
         cell_func = getproperty(Flux, Symbol(cell))
         return cell_func(in, num_hidden, args...; kwargs...)

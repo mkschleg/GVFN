@@ -12,7 +12,7 @@ include("agent/timeseries.jl")
 
 # include("agent/mackeyglass.jl")
 
-
+include("agent/FluxAgent.jl")
 
 include("agent/GVFNAgent.jl")
 include("agent/GVFNActionAgent.jl")

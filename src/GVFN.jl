@@ -41,7 +41,7 @@ export
 
 include("GVF.jl")
 
-export GVFNetwork, GVFActionNetwork, reset!, get, RNNActionLayer, ForecastNetwork
+export GVFNetwork, GVFActionNetwork, reset!, get, RNNActionLayer, ForecastNetwork, GVFR, GVFRAction
 include("GVFNetwork.jl")
 include("RNN.jl")
 include("ForecastNetwork.jl")
@@ -49,13 +49,14 @@ include("ForecastNetwork.jl")
 export RTD, RTD_jacobian, TDLambda, TD, update!
 include("Loss.jl")
 include("Update.jl")
+include("FluxUpdate.jl")
 include("TimeseriesUpdates.jl")
 
 export GradientGVFN
 include("RGTD.jl")
 
-export OnlineJointTD, OnlineTD_RNN, train_step!
-include("RNN_updates.jl")
+# export OnlineJointTD, OnlineTD_RNN, train_step!
+# include("RNN_updates.jl")
 
 
 include("ActingPolicy.jl")

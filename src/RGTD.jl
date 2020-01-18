@@ -10,6 +10,7 @@ sigmoid(x, type::Type{Prediction}) = sigmoid(x)
 sigmoid(x, type::Type{Derivative}) = sigmoid′(x)
 sigmoid(x, type::Type{DoubleDerivative}) = sigmoid′′(x)
 
+σ(x) = sigmoid(x)
 σ(x, type::Type{Prediction}) = sigmoid(x)
 σ(x, type::Type{Derivative}) = sigmoid′(x)
 σ(x, type::Type{DoubleDerivative}) = sigmoid′′(x)

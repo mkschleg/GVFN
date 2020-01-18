@@ -45,7 +45,7 @@ end
 
 # GVFN
 
-function update!(gvfn::JankyGVFLayer, opt, lu::BatchTD, hidden_states, states, targets, action_t=nothing, b_prob=1.0) where {T <: AbstractGVFLayer}
+function update!(gvfn::JankyGVFLayer, opt, lu::BatchTD, hidden_states, states, targets, action_t=nothing, b_prob=1.0) where {T <: AbstractGVFRCell}
     prms = Params([gvfn.W, gvfn.H, gvfn.b])
     N = length(hidden_states)
 

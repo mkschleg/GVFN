@@ -7,8 +7,8 @@ using Flux.Optimise: apply!
 
 abstract type LearningUpdate end
 
-function update!(gvfn::Flux.Recur{T}, lu::LearningUpdate, h_init, state_seq, env_state_tp1) where {T <: AbstractGVFLayer} end
-function update!(gvfn::AbstractGVFLayer, lu::LearningUpdate, h_init, state_seq, env_state_tp1)
+function update!(gvfn::Flux.Recur{T}, lu::LearningUpdate, h_init, state_seq, env_state_tp1) where {T <: AbstractGVFRCell} end
+function update!(gvfn::AbstractGVFRCell, lu::LearningUpdate, h_init, state_seq, env_state_tp1)
     throw("$(typeof(lu)) not implemented for $(typeof(gvfn)). Try Flux.Recur{$(typeof(gvfn))} ")
 end
 
@@ -21,7 +21,7 @@ mutable struct TDLambda <: LearningUpdate
     TDLambda(λ) = new(λ, IdDict(), IdDict())
 end
 
-function update!(gvfn::Flux.Recur{T}, opt, lu::TDLambda, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: AbstractGVFLayer}
+function update!(gvfn::Flux.Recur{T}, opt, lu::TDLambda, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: AbstractGVFRCell}
 
     λ = lu.λ
     reset!(gvfn, h_init)
@@ -50,7 +50,7 @@ function update!(gvfn::Flux.Recur{T}, opt, lu::TDLambda, h_init, states, env_sta
     # return Flux.data.(preds)
 end
 
-function update!(gvfn::Flux.Recur{T}, opt, lu::TDLambda, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: GVFRActionLayer}
+function update!(gvfn::Flux.Recur{T}, opt, lu::TDLambda, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: GVFRActionCell}
 
     λ = lu.λ
     reset!(gvfn, h_init)
@@ -105,6 +105,7 @@ function update!(model::SingleLayer, horde::AbstractHorde, opt, lu::TDLambda, st
 end
 
 
+
 struct TD <: LearningUpdate
 end
 
@@ -115,10 +116,6 @@ function update!(out_model, rnn::Flux.Recur{T},
                  action_t=nothing, b_prob=1.0; prms=nothing) where {T}
 
     reset!(rnn, h_init)
-    # println("Hidden_state_Init: ", h_init)
-    # println("rnn.state: ", rnn.state)
-    # println("rnn.init: ", rnn.init)
-    # println("rnn.state.tracker", rnn.state.tracker)
     rnn_out = rnn.(state_seq)
     preds = out_model.(rnn_out)
     cumulants, discounts, π_prob = get(horde, action_t, env_state_tp1, Flux.data(preds[end]))
@@ -131,40 +128,6 @@ function update!(out_model, rnn::Flux.Recur{T},
         Flux.Tracker.update!(opt, weights, grads[weights])
     end
 end
-
-
-# Update for RNNs w/ Auxiliary tasks
-# function update!(out_model, rnn::Flux.Recur{T},
-#                  horde::AbstractHorde, at_horde::AbstractHorde,
-#                  opt, lu::TD, h_init,
-#                  state_seq, env_state_tp1,
-#                  action_t=nothing, b_prob=1.0; prms=nothing) where {T}
-
-#     reset!(rnn, h_init)
-#     rnn_out = rnn.(state_seq)
-#     preds = out_model.(rnn_out)
-
-#     preds_horde_t = preds[end-1][1:length(horde)]
-#     preds_horde_tp1 = Flux.data(preds[end][1:length(horde)])
-
-#     preds_at_t = preds[end-1][(1+length(horde)):end]
-#     preds_at_tp1 = Flux.data(preds[end][(1+length(horde)):end])
-    
-#     cumulants, discounts, π_prob = get(horde, action_t, env_state_tp1, Flux.data(preds_horde_tp1))
-#     ρ = Float32.(π_prob./b_prob)
-#     δ_horde = offpolicy_tdloss(ρ, preds_horde_t, Float32.(cumulants), Float32.(discounts), preds_horde_tp1)
-
-#     cumulants, discounts, π_prob = get(at_horde, action_t, env_state_tp1, Flux.data(preds_at_tp1))
-#     ρ = Float32.(π_prob./b_prob)
-#     δ_at = offpolicy_tdloss(ρ, preds_at_t, Float32.(cumulants), Float32.(discounts), preds_at_tp1)
-
-#     grads = Flux.Tracker.gradient(()->(δ_horde + δ_at), Flux.params(out_model, rnn))
-#     reset!(rnn, h_init)
-#     for weights in Flux.params(out_model, rnn)
-#         Flux.Tracker.update!(opt, weights, grads[weights])
-#     end
-# end
-
 
 function update!(model, horde::AbstractHorde, opt, lu::TD, state_seq, env_state_tp1, action_t=nothing, b_prob=1.0; prms=nothing)
 
@@ -194,7 +157,7 @@ function update!(model::SingleLayer, horde::AbstractHorde, opt, lu::TD, state_se
     model.b .-= apply!(opt, model.b, Δ)
 end
 
-function update!(gvfn::Flux.Recur{T}, opt, lu::TD, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: GVFRActionLayer}
+function update!(gvfn::Flux.Recur{T}, opt, lu::TD, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: GVFRActionCell}
 
     prms = Params([gvfn.cell.Wx, gvfn.cell.Wh])
 
@@ -205,9 +168,6 @@ function update!(gvfn::Flux.Recur{T}, opt, lu::TD, h_init, states, env_state_tp1
 
     cumulants, discounts, π_prob = get(gvfn.cell, action_t, env_state_tp1, preds_tilde)
     ρ = π_prob/b_prob
-
-    # targets = cumulants .+ discounts.*preds_tilde
-    # δ = targets .- preds_t
     grads = gradient(()->tdloss(preds_t, cumulants, discounts, preds_tilde), prms)
 
     for weights in prms
@@ -216,14 +176,15 @@ function update!(gvfn::Flux.Recur{T}, opt, lu::TD, h_init, states, env_state_tp1
     # return preds
 end
 
+
+
+
 mutable struct RTD <: LearningUpdate
     # α::Float64
     RTD() = new()
 end
 
-
-
-function update!(gvfn::Flux.Recur{T}, opt, lu::RTD, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: AbstractGVFLayer}
+function update!(gvfn::Flux.Recur{T}, opt, lu::RTD, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: AbstractGVFRCell}
 
     prms = Params([gvfn.cell.Wx, gvfn.cell.Wh])
 
@@ -240,7 +201,7 @@ function update!(gvfn::Flux.Recur{T}, opt, lu::RTD, h_init, states, env_state_tp
     end
 end
 
-function update!(gvfn::Flux.Recur{T}, opt, lu::RTD, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: GVFRActionLayer}
+function update!(gvfn::Flux.Recur{T}, opt, lu::RTD, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: GVFRActionCell}
 
     prms = Params([gvfn.cell.Wx, gvfn.cell.Wh])
 
@@ -271,7 +232,7 @@ mutable struct RTD_jacobian <: LearningUpdate
     RTD_jacobian() = new(IdDict{Any, Array{Float64, 3}}())
 end
 
-function update!(gvfn::Flux.Recur{T}, lu::RTD_jacobian, h_init, states, env_state_tp1, b_prob=1.0) where {T <: AbstractGVFLayer}
+function update!(gvfn::Flux.Recur{T}, lu::RTD_jacobian, h_init, states, env_state_tp1, b_prob=1.0) where {T <: AbstractGVFRCell}
 
     # α = lu.α
     reset!(gvfn, h_init)
@@ -296,34 +257,6 @@ function update!(gvfn::Flux.Recur{T}, lu::RTD_jacobian, h_init, states, env_stat
 end
 
 
-mutable struct RGTDF <: LearningUpdate
-    
-end
 
-# function update!(gvfn::Flux.Recur{T}, opt, lu::RTD, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: GVFLayer}
-    
-#     prms = Params([gvfn.cell.Wx, gvfn.cell.Wh])
 
-#     reset!(gvfn, h_init)
-#     preds = gvfn.(states)
 
-#     ϕ_t = jacobian(preds[end-1], Params([gvfn.cell.Wx, gvfn.cell.Wh]))
-
-#     reset!(gvfn, h_init)
-#     preds = gvfn.(states)
-
-#     ϕ_tp1 = jacobian(preds[end], Params([gvfn.cell.Wx, gvfn.cell.Wh]))
-
-#     reset!()
-
-#     preds_t = preds[end-1]
-#     preds_tilde = Flux.data(preds[end])
-#     cumulants, discounts, π_prob = get(gvfn.cell, action_t, env_state_tp1, preds_tilde)
-#     ρ = π_prob ./ b_prob
-
-#     grads = Tracker.gradient(()->offpolicy_tdloss_gvfn(Flat32.(ρ), preds_t, Float32.(cumulants), Float32.(discounts), preds_tilde), prms, nested=true)
-#     hess = Tracker.gradient(()->grads, prms, nested=true)
-#     for weights in prms
-#         Flux.Tracker.update!(opt, weights, grads[weights])
-#     end
-# end
