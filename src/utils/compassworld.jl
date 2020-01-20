@@ -410,6 +410,12 @@ function build_features_action(state, action)
     return [action==1 ? ϕ : zero(ϕ); action==2 ? ϕ : zero(ϕ); action==3 ? ϕ : zero(ϕ);]
 end
 
+mutable struct NoActionFeatureCreator end
+
+(fc::NoActionFeatureCreator)(s, a) = create_features(fc, s, a)
+JuliaRL.FeatureCreators.create_features(fc::NoActionFeatureCreator, state, action) = [state; 1 .- state]
+JuliaRL.FeatureCreators.feature_size(fc::NoActionFeatureCreator) = 12
+
 mutable struct StandardFeatureCreator end
 
 (fc::StandardFeatureCreator)(s, a) = create_features(fc, s, a)

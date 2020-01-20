@@ -21,7 +21,7 @@ mutable struct TDLambda <: LearningUpdate
     TDLambda(λ) = new(λ, IdDict(), IdDict())
 end
 
-function update!(gvfn::Flux.Recur{T}, opt, lu::TDLambda, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: AbstractGVFRCell}
+function _gvfn_update!(gvfn, opt, lu::TDLambda, h_init, states, env_state_tp1, action_t, b_prob)
 
     λ = lu.λ
     reset!(gvfn, h_init)
@@ -50,7 +50,7 @@ function update!(gvfn::Flux.Recur{T}, opt, lu::TDLambda, h_init, states, env_sta
     # return Flux.data.(preds)
 end
 
-function update!(gvfn::Flux.Recur{T}, opt, lu::TDLambda, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: GVFRActionCell}
+function _action_gvfn_update!(gvfn, opt, lu::TDLambda, h_init, states, env_state_tp1, action_t, b_prob)
 
     λ = lu.λ
     reset!(gvfn, h_init)
@@ -77,6 +77,15 @@ function update!(gvfn::Flux.Recur{T}, opt, lu::TDLambda, h_init, states, env_sta
     γ_t .= discounts
 
     # return preds
+end
+
+
+function update!(gvfn::Flux.Recur{T}, opt, lu::TDLambda, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: AbstractGVFRCell}
+    if _needs_action_input(gvfn)
+        _action_gvfn_update!(gvfn, opt, lu, h_init, states, env_state_tp1, action_t, b_prob)
+    else
+        _gvfn_update!(gvfn, opt, lu, h_init, states, env_state_tp1, action_t, b_prob)
+    end
 end
 
 function update!(model::SingleLayer, horde::AbstractHorde, opt, lu::TDLambda, state_seq, env_state_tp1, action_t=nothing, b_prob=1.0; prms=nothing)
@@ -157,7 +166,7 @@ function update!(model::SingleLayer, horde::AbstractHorde, opt, lu::TD, state_se
     model.b .-= apply!(opt, model.b, Δ)
 end
 
-function update!(gvfn::Flux.Recur{T}, opt, lu::TD, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: GVFRActionCell}
+function update!(gvfn::Flux.Recur{GVFRCell{RT}}, opt, lu::TD, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {RT <: AbstractActionRNN}
 
     prms = Params([gvfn.cell.Wx, gvfn.cell.Wh])
 
@@ -176,15 +185,12 @@ function update!(gvfn::Flux.Recur{T}, opt, lu::TD, h_init, states, env_state_tp1
     # return preds
 end
 
-
-
-
 mutable struct RTD <: LearningUpdate
     # α::Float64
     RTD() = new()
 end
 
-function update!(gvfn::Flux.Recur{T}, opt, lu::RTD, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: AbstractGVFRCell}
+function _gvfn_update!(gvfn, opt, lu::RTD, h_init, states, env_state_tp1, action_t, b_prob)
 
     prms = Params([gvfn.cell.Wx, gvfn.cell.Wh])
 
@@ -201,7 +207,7 @@ function update!(gvfn::Flux.Recur{T}, opt, lu::RTD, h_init, states, env_state_tp
     end
 end
 
-function update!(gvfn::Flux.Recur{T}, opt, lu::RTD, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: GVFRActionCell}
+function _action_gvfn_update!(gvfn, opt, lu::RTD, h_init, states, env_state_tp1, action_t, b_prob) 
 
     prms = Params([gvfn.cell.Wx, gvfn.cell.Wh])
 
@@ -217,7 +223,14 @@ function update!(gvfn::Flux.Recur{T}, opt, lu::RTD, h_init, states, env_state_tp
     for weights in prms
         Flux.Tracker.update!(opt, weights, grads[weights])
     end
+end
 
+function update!(gvfn::Flux.Recur{T}, opt, lu::RTD, h_init, states, env_state_tp1, action_t=nothing, b_prob=1.0) where {T <: AbstractGVFRCell}
+    if _needs_action_input(gvfn)
+        _action_gvfn_update!(gvfn, opt, lu, h_init, states, env_state_tp1, action_t, b_prob)
+    else
+        _gvfn_update!(gvfn, opt, lu, h_init, states, env_state_tp1, action_t, b_prob)
+    end
 end
 
 function update!(model::SingleLayer, horde::AbstractHorde, opt, lu::RTD, state_seq, env_state_tp1, action_t=nothing, b_prob=1.0; prms=nothing)

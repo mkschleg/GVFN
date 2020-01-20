@@ -34,7 +34,7 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings(exc_handler=Reproduce
 
     @add_arg_table as begin
         "--horde"
-        help="The horde used for training"
+        help="The horde used for GVFN training"
         default="gamma_chain"
         "--gamma"
         help="The gamma value for the gamma_chain horde"
@@ -71,7 +71,7 @@ function main_experiment(parsed::Dict)
     fs = 2
     ap = GVFN.RandomActingPolicy([1.0])
 
-    chain = Flux.Chain(GVFN.GVFR_GRU(fs, horde),
+    chain = Flux.Chain(GVFN.GVFR(horde, Flux.RNNCell, fs, length(horde), Flux.sigmoid),
                        Flux.data,
                        Dense(length(horde), length(out_horde)))
 

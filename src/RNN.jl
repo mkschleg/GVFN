@@ -126,13 +126,13 @@ mutable struct ARNNCell{F, A, V, H} <: AbstractActionRNN
     h::H
 end
 
-ARNNCell(num_ext_features, num_actions, num_hidden; init=Flux.glorot_uniform, σ_int=tanh) =
+ARNNCell(in, num_actions, out, activation=tanh; init=Flux.glorot_uniform) =
     ARNNCell(
-        σ_int,
-        param(init(num_actions, num_hidden, num_ext_features)),
-        param(init(num_actions, num_hidden, num_hidden)),
-        param(zeros(Float32, num_actions, num_hidden)),
-        param(Flux.zeros(num_hidden)))
+        activation,
+        param(init(num_actions, out, in)),
+        param(init(num_actions, out, out)),
+        param(zeros(Float32, num_actions, out)),
+        param(Flux.zeros(out)))
 
 function (m::ARNNCell)(h, x::Tuple{I, A}) where {I<:Integer, A}
     new_h = m.σ.(m.Wx[x[1], :, :]*x[2] .+ m.Wh[x[1], :, :]*h .+ m.b[x[1], :])
