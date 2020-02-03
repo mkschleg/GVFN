@@ -116,6 +116,7 @@ function sigmoid′′(x)
     s*(1-s)*(1-2*s)
 end
 
+relu(x) = Flux.relu(x)
 
 
 # Should we export the namespaces? I think not...

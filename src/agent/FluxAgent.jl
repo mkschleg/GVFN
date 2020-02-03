@@ -39,7 +39,7 @@ function FluxAgent(out_horde,
         end
     end
     
-    hidden_state_init = get_initial_hidden_state(c)
+    hidden_state_init = get_initial_hidden_state(chain)
     
     FluxAgent(TD(),
               opt,

@@ -163,7 +163,16 @@ function oracle(env::RingWorld, horde_str, γ=0.9)
         ret[1] = state == chain_length ? 1 : 0
         ret[2] = state == 2 ? 1 : 0
     # elseif horde_str == "gammas"
-    #     ret = collect(0.0:0.1:0.9).^(chain_length - state - 1)
+        #     ret = collect(0.0:0.1:0.9).^(chain_length - state - 1)
+    elseif horde_str == "gammas_term"
+        ret = zeros(20)
+        if state == 1
+            ret[1:10] .= collect(0.0:0.1:0.9).^(chain_length)
+            ret[11:end] .= collect(0.0:0.1:0.9).^(chain_length)
+        else
+            ret[1:10] .= collect(0.0:0.1:0.9).^(chain_length - state)
+            ret[11:end] .= collect(0.0:0.1:0.9).^(state - 2)
+        end
     else
         throw("Bug Found")
     end

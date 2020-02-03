@@ -92,6 +92,16 @@ end
 get_initial_hidden_state(rnn::Flux.Recur{T}) where {T} = copy(Flux.data(rnn.init))
 get_initial_hidden_state(rnn::Flux.Recur{T}) where {T<:Flux.LSTMCell} = deepcopy(Flux.data.(rnn.init))
 
+function _get_next_hidden_state(c, datum::Array{<:AbstractFloat, 1})
+    p = c(datum)
+    get_hidden_state(c), p
+end
+
+function get_hidden_states_and_preds(c, data)
+    map((datum)->_get_next_hidden_state(c, datum), data)
+end
+
+
 
 abstract type AbstractActionRNN end
 
