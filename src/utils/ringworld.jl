@@ -162,8 +162,6 @@ function oracle(env::RingWorld, horde_str, γ=0.9)
         ret = zeros(2)
         ret[1] = state == chain_length ? 1 : 0
         ret[2] = state == 2 ? 1 : 0
-    # elseif horde_str == "gammas"
-        #     ret = collect(0.0:0.1:0.9).^(chain_length - state - 1)
     elseif horde_str == "gammas_term"
         ret = zeros(20)
         if state == 1

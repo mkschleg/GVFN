@@ -71,7 +71,8 @@ function construct_agent(parsed, rng=Random.GLOBAL_RNG)
     
     chain = Flux.Chain(GVFN.GVFR(horde, GVFN.ARNNCell, fs, 3, length(horde), Flux.sigmoid),
                        Flux.data,
-                       Dense(length(horde), length(out_horde)))
+                       Dense(length(horde), 32, Flux.relu),
+                       Dense(32, length(out_horde)))
 
     agent = GVFN.FluxAgent(out_horde,
                            chain,

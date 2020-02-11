@@ -21,8 +21,8 @@ using DataStructures: CircularBuffer
 RWU = GVFN.RingWorldUtils
 const FLU = GVFN.FluxUtils
 
-function results_synopsis(err, ::Val{true})
-    rmse = sqrt.(mean(err.^2; dims=2))
+function results_synopsis(results, ::Val{true})
+    rmse = sqrt.(mean(results["err"].^2; dims=2))
     Dict([
         "desc"=>"All operations are on the RMSE",
         "all"=>mean(rmse),
@@ -31,7 +31,7 @@ function results_synopsis(err, ::Val{true})
     ])
 end
 
-results_synopsis(err, ::Val{false}) = sqrt.(mean(err.^2; dims=2))
+results_synopsis(results, ::Val{false}) = results
 
 function arg_parse(as::ArgParseSettings = ArgParseSettings(exc_handler=Reproduce.ArgParse.debug_handler))
 
@@ -40,22 +40,15 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings(exc_handler=Reproduce
     FLU.opt_settings!(as)
     GVFN.gvfn_arg_table!(as)
 
-    @add_arg_table as begin
-        "--horde"
-        help="The horde used for training"
-        default="gamma_chain"
-        "--gamma"
-        help="The gamma value for the gamma_chain horde"
-        arg_type=Float64
-        default=0.9
-    end
+    RWU.horde_settings!(as, "out")
+    RWU.horde_settings!(as)
 
     return as
 end
 
 function construct_agent(parsed, rng=Random.GLOBAL_RNG)
     # out_horde = cwu.get_horde(parsed, "out")
-    out_horde = RWU.onestep()
+    out_horde = RWU.get_horde(parsed, "out")
     ap = GVFN.RandomActingPolicy([0.5f0, 0.5f0])
     
     # GVFN horde
@@ -66,7 +59,8 @@ function construct_agent(parsed, rng=Random.GLOBAL_RNG)
     
     chain = Flux.Chain(GVFN.GVFR(horde, GVFN.ARNNCell, fs, 3, length(horde), Flux.sigmoid),
                        Flux.data,
-                       Dense(length(horde), length(out_horde)))
+                       Dense(length(horde), 16, Flux.relu),
+                       Dense(16, length(out_horde)))
 
     agent = GVFN.FluxAgent(out_horde,
                            chain,
@@ -104,12 +98,13 @@ function main_experiment(parsed::Dict)
 
     callback(env, agent, (rew, term, s_tp1), (out_preds, action), step) = begin
         out_pred_strg[step, :] .= Flux.data(out_preds)
-        out_err_strg[step, :] .= out_pred_strg[step, :] .- RWU.oracle(env, "onestep", 0.0f0)
+        out_err_strg[step, :] .= out_pred_strg[step, :] .- RWU.oracle(env, parsed["outhorde"], parsed["outgamma"])
     end
 
     GVFN.continuous_experiment(env, agent, num_steps, parsed["verbose"], parsed["progress"], callback; rng=rng)
 
-    results = results_synopsis(out_err_strg, Val(parsed["sweep"]))
+    results = Dict("err"=>out_err_strg, "pred"=>out_pred_strg)
+    results = results_synopsis(results, Val(parsed["sweep"]))
     GVFN.save_results(savefile, results, parsed["working"])
 end
 
