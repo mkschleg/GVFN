@@ -47,7 +47,7 @@ function TimeSeriesFluxAgent(parsed; rng=Random.GLOBAL_RNG)
 
     model = Flux.Chain(
         GVFR_RNN(1, horde, identity; init=init_func),
-        Flux.data, 
+        Flux.data,
         Flux.Dense(num_gvfs, num_gvfs, relu; initW=init_func),
         Flux.Dense(num_gvfs, 1; initW=init_func)
     )
@@ -96,7 +96,7 @@ function JuliaRL.step!(agent::TimeSeriesFluxAgent, env_s_tp1, r, terminal; rng=R
     push!(agent.state_list, agent.build_features(env_s_tp1))
     
 
-    push!(agent.hidden_states, copy(agent.h))
+    push!(agent.hidden_states, get_hidden_state(agent.model))
 
     if agent.step>=agent.horizon
         push!(agent.batch_h, popfirst!(agent.hidden_states))
