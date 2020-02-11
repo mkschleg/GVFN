@@ -179,7 +179,7 @@ function main_experiment(args::Vector{String})
 
     Agent_t = parsed["agent"]
     if Agent_t == "GVFN"
-        agent = GVFN.TimeSeriesFluxAgent(parsed; rng=rng)
+        agent = TimeSeriesAgent(parsed; rng=rng)
     elseif Agent_t == "RNN"
         agent = TimeSeriesRNNAgent(parsed;rng=rng)
     else
@@ -212,7 +212,7 @@ function main_experiment(args::Vector{String})
     end
 
     testPreds=zeros(Float64,num_test)
-    tgt = zeros(Float64, num_test-horizon)
+    tgt = zeros(Float64, num_test)
     @showprogress 0.1 "Test Step: " for step in 1:num_test
         s_tp1= step!(env)
         if step>horizon
@@ -238,3 +238,6 @@ Base.@ccallable function julia_main(ARGS::Vector{String})::Cint
 end
 
 end
+
+# CycleWorldExperiment.main_experiment()
+

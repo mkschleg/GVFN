@@ -15,3 +15,5 @@ deriv(layer::SingleLayer, x) = layer.σ′.(layer.W*x .+ layer.b)
 Linear(in::Integer, out::Integer; kwargs...) =
     SingleLayer(in, out, identity, (x)->1.0; kwargs...)
 
+
+(l::Flux.Dense)(x::T) where {T<:Tuple} = (x[2], l(x[1]))

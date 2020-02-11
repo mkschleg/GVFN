@@ -9,18 +9,19 @@ glorot_uniform(rng::Random.AbstractRNG, dims...) = (rand(rng, Float32, dims...) 
 glorot_normal(rng::Random.AbstractRNG, dims...) = randn(rng, Float32, dims...) .* Float32(sqrt(2.0f0/sum(dims)))
 
 
-function reset!(m, h_init)
-    Flux.reset!(m)
-    # println("Hidden state: ", m.state, " ", h_init)
-    m.state.data .= Flux.data(h_init)
-end
+# Implemented elsewhere
+# function reset!(m, h_init)
+#     Flux.reset!(m)
+#     # println("Hidden state: ", m.state, " ", h_init)
+#     m.state.data .= Flux.data(h_init)
+# end
 
-function reset!(m::Flux.Recur{T}, h_init) where {T<:Flux.LSTMCell}
-    Flux.reset!(m)
-    # println(h_init)
-    m.state[1].data .= Flux.data(h_init[1])
-    m.state[2].data .= Flux.data(h_init[2])
-end
+# function reset!(m::Flux.Recur{T}, h_init) where {T<:Flux.LSTMCell}
+#     Flux.reset!(m)
+#     # println(h_init)
+#     m.state[1].data .= Flux.data(h_init[1])
+#     m.state[2].data .= Flux.data(h_init[2])
+# end
 
 
 function jacobian(δ, pms)
@@ -115,6 +116,7 @@ function sigmoid′′(x)
     s*(1-s)*(1-2*s)
 end
 
+relu(x) = Flux.relu(x)
 
 
 # Should we export the namespaces? I think not...
@@ -124,3 +126,5 @@ include("utils/ringworld.jl")
 include("utils/flux.jl")
 include("utils/timeseries.jl")
 include("utils/arg_tables.jl")
+
+include("utils/experiment.jl")
