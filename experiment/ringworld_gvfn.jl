@@ -1,8 +1,8 @@
 __precompile__(true)
 
-module CompassWorldActionExperiment
+module RingWorldExperiment
 
-using GVFN: CompassWorld, step!, start!
+using GVFN: RingWorld, step!, start!
 using GVFN
 using Flux
 using Flux.Tracker
@@ -18,7 +18,7 @@ using Random
 # using Flux.Tracker: TrackedArray, TrackedReal, track, @grad
 
 using DataStructures: CircularBuffer
-const cwu = GVFN.CompassWorldUtils
+RWU = GVFN.RingWorldUtils
 const FLU = GVFN.FluxUtils
 
 function results_synopsis(err, ::Val{true})
@@ -36,37 +36,32 @@ results_synopsis(err, ::Val{false}) = sqrt.(mean(err.^2; dims=2))
 function arg_parse(as::ArgParseSettings = ArgParseSettings(exc_handler=Reproduce.ArgParse.debug_handler))
 
     GVFN.exp_settings!(as)
-
-    #Compass World
-    @add_arg_table as begin
-        "--policy"
-        help="Acting policy of Agent"
-        arg_type=String
-        default="acting"
-        "--size"
-        help="The size of the compass world chain"
-        arg_type=Int64
-        default=8
-    end
-
-    cwu.horde_settings!(as)
-    cwu.horde_settings!(as, "out")
-
-    # GVFN
+    RWU.env_settings!(as)
     FLU.opt_settings!(as)
     GVFN.gvfn_arg_table!(as)
+
+    @add_arg_table as begin
+        "--horde"
+        help="The horde used for training"
+        default="gamma_chain"
+        "--gamma"
+        help="The gamma value for the gamma_chain horde"
+        arg_type=Float64
+        default=0.9
+    end
 
     return as
 end
 
 function construct_agent(parsed, rng=Random.GLOBAL_RNG)
-    out_horde = cwu.get_horde(parsed, "out")
-    ap = cwu.get_behavior_policy(parsed["policy"])
+    # out_horde = cwu.get_horde(parsed, "out")
+    out_horde = RWU.onestep()
+    ap = GVFN.RandomActingPolicy([0.5f0, 0.5f0])
     
     # GVFN horde
-    horde = cwu.get_horde(parsed)
+    horde = RWU.get_horde(parsed)
 
-    fc = cwu.NoActionFeatureCreator()
+    fc = RWU.StandardFeatureCreator()
     fs = JuliaRL.FeatureCreators.feature_size(fc)
     
     chain = Flux.Chain(GVFN.GVFR(horde, GVFN.ARNNCell, fs, 3, length(horde), Flux.sigmoid),
@@ -99,7 +94,7 @@ function main_experiment(parsed::Dict)
     rng = Random.MersenneTwister(seed)
 
     # Construct Environment
-    env = CompassWorld(parsed["size"], parsed["size"])
+    env = RingWorld(parsed["size"])
 
     agent = construct_agent(parsed, rng)
     # Out Horde
@@ -109,7 +104,7 @@ function main_experiment(parsed::Dict)
 
     callback(env, agent, (rew, term, s_tp1), (out_preds, action), step) = begin
         out_pred_strg[step, :] .= Flux.data(out_preds)
-        out_err_strg[step, :] .= out_pred_strg[step, :] .- cwu.oracle(env, parsed["outhorde"])
+        out_err_strg[step, :] .= out_pred_strg[step, :] .- RWU.oracle(env, "onestep", 0.0f0)
     end
 
     GVFN.continuous_experiment(env, agent, num_steps, parsed["verbose"], parsed["progress"], callback; rng=rng)

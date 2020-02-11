@@ -52,7 +52,7 @@ mutable struct NormalizedCumulant{F<:Number, T<:AbstractCumulant} <: AbstractCum
     rmax::F
 end
 
-NormalizedCumulant(scale, cumulant) = NormalizedCumulant(scale, cumulant, 1.0)
+NormalizedCumulant(scale, cumulant) = NormalizedCumulant(scale, cumulant, 1.0f0)
 
 function get(cumulant::NormalizedCumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1)
     c = get(cumulant.cumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1)
@@ -80,7 +80,7 @@ struct StateTerminationDiscount{T<:Number, F} <: AbstractDiscount
     γ::T
     condition::F
     terminal::T
-    StateTerminationDiscount(γ, condition) = new{typeof(γ), typeof(condition)}(γ, condition, convert(typeof(γ), 0.0)) 
+    StateTerminationDiscount(γ, condition) = new{typeof(γ), typeof(condition)}(γ, condition, convert(typeof(γ), 0.0f0)) 
 end
 
 get(td::StateTerminationDiscount, state_t, action_t, state_tp1, action_tp1, preds_tp1) =
@@ -98,13 +98,13 @@ end
 
 struct NullPolicy <: AbstractPolicy
 end
-get(π::NullPolicy, state_t, action_t, state_tp1, action_tp1, preds_tp1) = 1.0
+get(π::NullPolicy, state_t, action_t, state_tp1, action_tp1, preds_tp1) = 1.0f0
 
 struct PersistentPolicy <: AbstractPolicy
     action::Int64
 end
 
-get(π::PersistentPolicy, state_t, action_t, state_tp1, action_tp1, preds_tp1) = π.action == action_t ? 1.0 : 0.0
+get(π::PersistentPolicy, state_t, action_t, state_tp1, action_tp1, preds_tp1) = π.action == action_t ? 1.0f0 : 0.0f0
 
 struct RandomPolicy{T<:AbstractFloat} <: AbstractPolicy
     probabilities::Array{T,1}
@@ -174,9 +174,9 @@ end
 # combine(gvfh_1::Horde, gvfh_2::Horde) = Horde([gvfh_1.gvfs; ])
 
 function get(gvfh::Horde, state_t, action_t, state_tp1, action_tp1, preds_tp1)
-    C = map(gvf -> get(cumulant(gvf), state_t, action_t, state_tp1, action_tp1, preds_tp1), gvfh.gvfs)
-    Γ = map(gvf -> get(discount(gvf), state_t, action_t, state_tp1, action_tp1, preds_tp1), gvfh.gvfs)
-    Π_probs = map(gvf -> get(policy(gvf), state_t, action_t, state_tp1, action_tp1, preds_tp1), gvfh.gvfs)
+    C = Float32.(map(gvf -> get(cumulant(gvf), state_t, action_t, state_tp1, action_tp1, preds_tp1), gvfh.gvfs))
+    Γ = Float32.(map(gvf -> get(discount(gvf), state_t, action_t, state_tp1, action_tp1, preds_tp1), gvfh.gvfs))
+    Π_probs = Float32.(map(gvf -> get(policy(gvf), state_t, action_t, state_tp1, action_tp1, preds_tp1), gvfh.gvfs))
     return C, Γ, Π_probs
 end
 

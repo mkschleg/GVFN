@@ -55,10 +55,6 @@ include("TimeseriesUpdates.jl")
 export GradientGVFN
 include("RGTD.jl")
 
-# export OnlineJointTD, OnlineTD_RNN, train_step!
-# include("RNN_updates.jl")
-
-
 include("ActingPolicy.jl")
 
 include("Environments.jl")

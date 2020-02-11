@@ -28,14 +28,14 @@ function rafols(pred_offset::Integer=0)
     cwc = GVFN.CompassWorldConst
     gvfs = Array{GVF, 1}()
     for color in 1:5
-        new_gvfs = [GVF(FeatureCumulant(color), ConstantDiscount(0.0), PersistentPolicy(cwc.FORWARD)),
-                    GVF(FeatureCumulant(color), ConstantDiscount(0.0), PersistentPolicy(cwc.LEFT)),
-                    GVF(FeatureCumulant(color), ConstantDiscount(0.0), PersistentPolicy(cwc.RIGHT)),
-                    GVF(FeatureCumulant(color), StateTerminationDiscount(1.0, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD)),
-                    GVF(PredictionCumulant(8*(color-1) + 4 + pred_offset), ConstantDiscount(0.0), PersistentPolicy(cwc.LEFT)),
-                    GVF(PredictionCumulant(8*(color-1) + 4 + pred_offset), ConstantDiscount(0.0), PersistentPolicy(cwc.RIGHT)),
-                    GVF(PredictionCumulant(8*(color-1) + 5 + pred_offset), StateTerminationDiscount(1.0, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD)),
-                    GVF(PredictionCumulant(8*(color-1) + 6 + pred_offset), StateTerminationDiscount(1.0, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD))]
+        new_gvfs = [GVF(FeatureCumulant(color), ConstantDiscount(0.0f0), PersistentPolicy(cwc.FORWARD)),
+                    GVF(FeatureCumulant(color), ConstantDiscount(0.0f0), PersistentPolicy(cwc.LEFT)),
+                    GVF(FeatureCumulant(color), ConstantDiscount(0.0f0), PersistentPolicy(cwc.RIGHT)),
+                    GVF(FeatureCumulant(color), StateTerminationDiscount(1.0f0, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD)),
+                    GVF(PredictionCumulant(8*(color-1) + 4 + pred_offset), ConstantDiscount(0.0f0), PersistentPolicy(cwc.LEFT)),
+                    GVF(PredictionCumulant(8*(color-1) + 4 + pred_offset), ConstantDiscount(0.0f0), PersistentPolicy(cwc.RIGHT)),
+                    GVF(PredictionCumulant(8*(color-1) + 5 + pred_offset), StateTerminationDiscount(1.0f0, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD)),
+                    GVF(PredictionCumulant(8*(color-1) + 6 + pred_offset), StateTerminationDiscount(1.0f0, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD))]
         append!(gvfs, new_gvfs)
     end
     return Horde(gvfs)
@@ -44,7 +44,7 @@ end
 function forward()
     cwc = GVFN.CompassWorldConst
     gvfs = [GVF(FeatureCumulant(color),
-                StateTerminationDiscount(1.0, ((env_state)->env_state[cwc.WHITE] == 0)),
+                StateTerminationDiscount(1.0f0, ((env_state)->env_state[cwc.WHITE] == 0)),
                 PersistentPolicy(cwc.FORWARD)) for color in 1:5]
     return Horde(gvfs)
 end
@@ -52,7 +52,7 @@ end
 function onestep()
     cwc = GVFN.CompassWorldConst
     gvfs = [GVF(FeatureCumulant(color),
-                ConstantDiscount(0.0),
+                ConstantDiscount(0.0f0),
                 PersistentPolicy(cwc.FORWARD)) for color in 1:5]
     return Horde(gvfs)
 end
@@ -63,7 +63,7 @@ function gammas(gammas = [collect(0.0:0.05:0.95); [0.975, 0.99]])
     for color in 1:5
         new_gvfs = [GVF(
             FeatureCumulant(color),
-            ConstantDiscount(γ),
+            ConstantDiscount(Float32(γ)),
             PersistentPolicy(cwc.FORWARD)) for γ in gammas]
         append!(gvfs, new_gvfs)
         # new_gvfs = [GVF(FeatureCumulant(color), StateTerminationDiscount(γ, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD)) for γ in 0.0:0.05:0.95]
@@ -77,7 +77,7 @@ function gammas_term(gammas = [collect(0.0:0.05:0.95); [0.975, 0.99]])
     for color in 1:5
         new_gvfs = [GVF(
             FeatureCumulant(color),
-            StateTerminationDiscount(γ, ((env_state)->env_state[cwc.WHITE] == 0)),
+            StateTerminationDiscount(Float32(γ), ((env_state)->env_state[cwc.WHITE] == 0)),
             PersistentPolicy(cwc.FORWARD)) for γ in gammas]
         append!(gvfs, new_gvfs)
     end
@@ -90,7 +90,7 @@ function gammas_scaled(gammas = [collect(0.0:0.05:0.95); [0.975, 0.99]])
     for color in 1:5
         new_gvfs = [GVF(
             ScaledCumulant(1-γ, FeatureCumulant(color)),
-            ConstantDiscount(γ),
+            ConstantDiscount(Float32(γ)),
             PersistentPolicy(cwc.FORWARD)) for γ in gammas]
         append!(gvfs, new_gvfs)
         # new_gvfs = [GVF(FeatureCumulant(color), StateTerminationDiscount(γ, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD)) for γ in 0.0:0.05:0.95]
@@ -104,14 +104,14 @@ function gammas_with_scaled_white(gammas = [collect(0.0:0.05:0.95); [0.975, 0.99
     for color in 1:5
         new_gvfs = [GVF(
             FeatureCumulant(color),
-            ConstantDiscount(γ),
+            ConstantDiscount(Float32(γ)),
             PersistentPolicy(cwc.FORWARD)) for γ in gammas]
         append!(gvfs, new_gvfs)
         # new_gvfs = [GVF(FeatureCumulant(color), StateTerminationDiscount(γ, ((env_state)->env_state[cwc.WHITE] == 0)), PersistentPolicy(cwc.FORWARD)) for γ in 0.0:0.05:0.95]
     end
     new_gvfs = [GVF(
         ScaledCumulant(1-γ, FeatureCumulant(cwc.WHITE)),
-        ConstantDiscount(γ),
+        ConstantDiscount(Float32(γ)),
         PersistentPolicy(cwc.FORWARD)) for γ in gammas]
     return Horde(gvfs)
 end
@@ -360,16 +360,16 @@ function get_action(state, env_state, rng=Random.GLOBAL_RNG)
         if env_state[cwc.WHITE] == 0.0
             state = "Random"
         else
-            return state, (cwc.FORWARD, 1.0)
+            return state, (cwc.FORWARD, 1.0f0)
         end
     end
     r = rand(rng)
     if r < 0.2
-        return state, (cwc.RIGHT, 0.2)
+        return state, (cwc.RIGHT, 0.2f0)
     elseif r < 0.4
-        return state, (cwc.LEFT, 0.2)
+        return state, (cwc.LEFT, 0.2f0)
     else
-        return state, (cwc.FORWARD, 0.6)
+        return state, (cwc.FORWARD, 0.6f0)
     end
 end
 
@@ -381,7 +381,7 @@ end
 function (π::ActingPolicy)(state_t, rng::Random.AbstractRNG=Random.GLOBAL_RNG)
     s, action = get_action(π.state, state_t, rng)
     π.state = s
-    return action[1], action[1]
+    return action# action[1], action[2]
 end
 
 
