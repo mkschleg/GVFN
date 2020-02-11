@@ -1,6 +1,6 @@
 __precompile__(true)
 
-module CompassWorldActionExperiment
+module CompassWorldLinearExperiment
 
 using GVFN: CompassWorld, step!, start!
 using GVFN
@@ -45,16 +45,19 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings(exc_handler=Reproduce
         default="acting"
         "--size"
         help="The size of the compass world chain"
-        arg_type=Int64
+        arg_type=Int
         default=8
+        "--truncation"
+        arg_type=Int
+        default=1
     end
 
-    cwu.horde_settings!(as)
+    # cwu.horde_settings!(as)
     cwu.horde_settings!(as, "out")
 
     # GVFN
     FLU.opt_settings!(as)
-    GVFN.gvfn_arg_table!(as)
+    # GVFN.gvfn_arg_table!(as)
 
     return as
 end
@@ -63,15 +66,10 @@ function construct_agent(parsed, rng=Random.GLOBAL_RNG)
     out_horde = cwu.get_horde(parsed, "out")
     ap = cwu.get_behavior_policy(parsed["policy"])
     
-    # GVFN horde
-    horde = cwu.get_horde(parsed)
-
-    fc = cwu.NoActionFeatureCreator()
+    fc = cwu.StandardFeatureCreator()
     fs = JuliaRL.FeatureCreators.feature_size(fc)
     
-    chain = Flux.Chain(GVFN.GVFR(horde, GVFN.ARNNCell, fs, 3, length(horde), Flux.sigmoid),
-                       Flux.data,
-                       Dense(length(horde), 32, Flux.relu),
+    chain = Flux.Chain(Dense(fs, 32, Flux.relu),
                        Dense(32, length(out_horde)))
 
     agent = GVFN.FluxAgent(out_horde,

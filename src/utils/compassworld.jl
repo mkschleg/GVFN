@@ -207,14 +207,16 @@ function get_horde(horde_str::AbstractString, pred_offset::Integer=0)
     elseif horde_str == "out_gammas"
         horde = gammas_scaled(0.7)
     elseif horde_str == "gammas"
+        horde = gammas()
+    elseif horde_str == "gammas_term"
         horde = gammas_term()
     elseif horde_str == "gammas_scaled"
         horde = gammas_scaled()
-    elseif horde_str == "aj_gammas"
+    elseif horde_str == "gammas_aj"
         horde = gammas(1.0 .- 2.0 .^ collect(-7:-1))
-    elseif horde_str == "aj_gammas_scaled"
+    elseif horde_str == "gammas_aj_scaled"
         horde = gammas_scaled(1.0 .- 2.0 .^ collect(-7:-1))
-    elseif horde_str == "aj_gammas_term"
+    elseif horde_str == "gammas_aj_term"
         horde = gammas_term(1.0 .- 2.0 .^ collect(-7:-1))
     elseif horde_str == "gammas_with_scaled_white"
         horde = gammas_with_scaled_white(1.0 .- 2.0 .^ collect(-7:-1))
