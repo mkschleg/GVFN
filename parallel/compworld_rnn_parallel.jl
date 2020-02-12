@@ -1,8 +1,8 @@
 #!/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/julia/1.3.0/bin/julia
 #SBATCH --mail-user=mkschleg@ualberta.ca
 #SBATCH --mail-type=ALL
-#SBATCH -o comp_gvfn.out # Standard output
-#SBATCH -e comp_gvfn.err # Standard error
+#SBATCH -o comp_rnn.out # Standard output
+#SBATCH -e comp_rnn.err # Standard error
 #SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
 #SBATCH --time=24:00:00 # Running time of 12 hours
 #SBATCH --ntasks=128
@@ -14,9 +14,9 @@ Pkg.activate(".")
 
 using Reproduce
 
-const save_loc = "/home/mkschleg/scratch/GVFN/compassworld_gvfn"
-const exp_file = "experiment/compassworld_gvfn.jl"
-const exp_module_name = :CompassWorldGVFNExperiment
+const save_loc = "/home/mkschleg/scratch/GVFN/compassworld_rnn"
+const exp_file = "experiment/compassworld_rnn.jl"
+const exp_module_name = :CompassWorldRNNExperiment
 const exp_func_name = :main_experiment
 
 #------ Learning Updates -------#
@@ -29,12 +29,11 @@ const optimizer = "Descent"
 const alphas = clamp.(0.1*1.5.^(-6:4), 0.0, 1.0)
 
 function make_arguments_rtd(args::Dict)
-    horde = args["horde"]
+    cell = args["cell"]
     alpha = args["alpha"]
     truncation = args["truncation"]
     seed = args["seed"]
-    act = args["act"]
-    new_args=["--horde", horde, "--act", act, "--truncation", truncation, "--opt", optimizer, "--optparams", alpha, "--seed", seed]
+    new_args=["--cell", cell, "--truncation", truncation, "--opt", optimizer, "--optparams", alpha, "--seed", seed]
     return new_args
 end
 
@@ -67,15 +66,14 @@ function main()
     arg_list = Array{String, 1}()
 
     arg_dict = Dict([
-        "horde"=>["rafols", "forward", "gammas_aj", "gammas_aj_term"],
+        "cell"=>["ARNN", "RNN", "GRU", "LSTM"],
         "alpha"=>alphas,
         "truncation"=>truncations,
-        "act"=>["relu"],
         "seed"=>collect(parsed["startruns"]:parsed["endruns"])
     ])
-    arg_list = ["act", "horde", "alpha", "truncation", "seed"]
+    arg_list = ["cell", "alpha", "truncation", "seed"]
 
-    static_args = ["--steps", string(parsed["numsteps"]), "--exp_loc", save_loc, "--sweep", "--policy", "rafols", "--outhorde", "forward"]
+    static_args = ["--steps", string(parsed["numsteps"]), "--exp_loc", save_loc, "--sweep", "--policy", "rafols", "--outhorde", "forward", "--numhidden", "40"]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments_rtd)
 
     if parsed["numjobs"]

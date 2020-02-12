@@ -57,10 +57,10 @@ function construct_agent(parsed, rng=Random.GLOBAL_RNG)
     fc = RWU.StandardFeatureCreator()
     fs = JuliaRL.FeatureCreators.feature_size(fc)
     
-    chain = Flux.Chain(GVFN.GVFR(horde, GVFN.ARNNCell, fs, 3, length(horde), Flux.sigmoid),
+    chain = Flux.Chain(GVFN.GVFR(horde, GVFN.ARNNCell, fs, 3, length(horde), Flux.sigmoid; init=initf),
                        Flux.data,
-                       Dense(length(horde), 16, Flux.relu),
-                       Dense(16, length(out_horde)))
+                       Dense(length(horde), 16, Flux.relu; initW=initf),
+                       Dense(16, length(out_horde); initW=initf))
 
     agent = GVFN.FluxAgent(out_horde,
                            chain,

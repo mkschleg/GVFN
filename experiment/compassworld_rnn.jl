@@ -1,6 +1,6 @@
 __precompile__(true)
 
-module CompassWorldGVFNExperiment
+module CompassWorldRNNExperiment
 
 using GVFN: CompassWorld, step!, start!
 using GVFN
@@ -49,12 +49,12 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings(exc_handler=Reproduce
         default=8
     end
 
-    cwu.horde_settings!(as)
+    # cwu.horde_settings!(as)
     cwu.horde_settings!(as, "out")
 
     # GVFN
     FLU.opt_settings!(as)
-    GVFN.gvfn_arg_table!(as)
+    FLU.rnn_settings!(as)
 
     return as
 end
@@ -63,16 +63,24 @@ function construct_agent(parsed, rng=Random.GLOBAL_RNG)
     out_horde = cwu.get_horde(parsed, "out")
     ap = cwu.get_behavior_policy(parsed["policy"])
     
-    # GVFN horde
-    horde = cwu.get_horde(parsed)
-
-    fc = cwu.NoActionFeatureCreator()
+    fc = if parsed["cell"] == "ARNN"
+        cwu.NoActionFeatureCreator()
+    else
+        cwu.StandardFeatureCreator()
+    end
     fs = JuliaRL.FeatureCreators.feature_size(fc)
-    
-    chain = Flux.Chain(GVFN.GVFR(horde, GVFN.ARNNCell, fs, 3, length(horde), Flux.sigmoid; init=initf),
-                       Flux.data,
-                       Dense(length(horde), 32, Flux.relu; initW=initf),
-                       Dense(32, length(out_horde); initW=initf))
+
+    initf=(dims...)->glorot_uniform(rng, dims...)
+    rnntype = getproperty(GVFN, Symbol(parsed["cell"]))
+    chain = if rnntype == GVFN.ARNN
+        Flux.Chain(rnntype(fs, 4, parsed["numhidden"]; init=initf),
+                           Dense(parsed["numhidden"], 32, Flux.relu; initW=initf),
+                           Dense(32, length(out_horde); initW=initf))
+    else
+        Flux.Chain(rnntype(fs, parsed["numhidden"]; init=initf),
+                           Dense(parsed["numhidden"], 32, Flux.relu; initW=initf),
+                           Dense(32, length(out_horde); initW=initf))
+    end
 
     agent = GVFN.FluxAgent(out_horde,
                            chain,

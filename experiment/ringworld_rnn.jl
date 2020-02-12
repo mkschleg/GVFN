@@ -1,8 +1,8 @@
 __precompile__(true)
 
-module CompassWorldGVFNExperiment
+module RingWorldExperiment
 
-using GVFN: CompassWorld, step!, start!
+using GVFN: RingWorld, step!, start!
 using GVFN
 using Flux
 using Flux.Tracker
@@ -18,7 +18,7 @@ using Random
 # using Flux.Tracker: TrackedArray, TrackedReal, track, @grad
 
 using DataStructures: CircularBuffer
-const cwu = GVFN.CompassWorldUtils
+RWU = GVFN.RingWorldUtils
 const FLU = GVFN.FluxUtils
 
 function results_synopsis(results, ::Val{true})
@@ -26,8 +26,8 @@ function results_synopsis(results, ::Val{true})
     Dict([
         "desc"=>"All operations are on the RMSE",
         "all"=>mean(rmse),
-        "end"=>mean(rmse[Int64(floor(length(rmse)*0.8)):end]),
-        "lc"=>mean(reshape(rmse, 1000, Int64(length(rmse)/1000)); dims=1)
+        "end"=>mean(rmse[Int(floor(length(rmse)*0.8)):end]),
+        "lc"=>mean(reshape(rmse, 1000, :); dims=1)[1,:]
     ])
 end
 
@@ -36,43 +36,39 @@ results_synopsis(results, ::Val{false}) = results
 function arg_parse(as::ArgParseSettings = ArgParseSettings(exc_handler=Reproduce.ArgParse.debug_handler))
 
     GVFN.exp_settings!(as)
-
-    #Compass World
-    @add_arg_table as begin
-        "--policy"
-        help="Acting policy of Agent"
-        arg_type=String
-        default="acting"
-        "--size"
-        help="The size of the compass world chain"
-        arg_type=Int64
-        default=8
-    end
-
-    cwu.horde_settings!(as)
-    cwu.horde_settings!(as, "out")
-
-    # GVFN
+    RWU.env_settings!(as)
     FLU.opt_settings!(as)
-    GVFN.gvfn_arg_table!(as)
+    FLU.rnn_settings!(as)
+
+    RWU.horde_settings!(as, "out")
 
     return as
 end
 
 function construct_agent(parsed, rng=Random.GLOBAL_RNG)
-    out_horde = cwu.get_horde(parsed, "out")
-    ap = cwu.get_behavior_policy(parsed["policy"])
+    # out_horde = cwu.get_horde(parsed, "out")
+    out_horde = RWU.get_horde(parsed, "out")
+    ap = GVFN.RandomActingPolicy([0.5f0, 0.5f0])
     
-    # GVFN horde
-    horde = cwu.get_horde(parsed)
-
-    fc = cwu.NoActionFeatureCreator()
+    fc = if parsed["cell"] == "ARNN"
+        RWU.StandardFeatureCreator()
+    else
+        RWU.StandardFeatureCreatorWithAction()
+    end
     fs = JuliaRL.FeatureCreators.feature_size(fc)
+
+    initf=(dims...)->glorot_uniform(rng, dims...)
     
-    chain = Flux.Chain(GVFN.GVFR(horde, GVFN.ARNNCell, fs, 3, length(horde), Flux.sigmoid; init=initf),
-                       Flux.data,
-                       Dense(length(horde), 32, Flux.relu; initW=initf),
-                       Dense(32, length(out_horde); initW=initf))
+    rnntype = getproperty(GVFN, Symbol(parsed["cell"]))
+    chain = if rnntype == GVFN.ARNN
+        Flux.Chain(rnntype(fs, 4, parsed["numhidden"]; init=initf),
+                   Dense(parsed["numhidden"], 16, Flux.relu; initW=initf),
+                   Dense(16, length(out_horde); initW=initf))
+    else
+        Flux.Chain(rnntype(fs, parsed["numhidden"]),
+                   Dense(parsed["numhidden"], 16, Flux.relu; initW=initf),
+                   Dense(16, length(out_horde); initW=initf))
+    end
 
     agent = GVFN.FluxAgent(out_horde,
                            chain,
@@ -80,8 +76,7 @@ function construct_agent(parsed, rng=Random.GLOBAL_RNG)
                            fs,
                            ap,
                            parsed;
-                           rng=rng,
-                           init_func=(dims...)->glorot_uniform(rng, dims...))
+                           rng=rng)
 end
 
 
@@ -100,7 +95,7 @@ function main_experiment(parsed::Dict)
     rng = Random.MersenneTwister(seed)
 
     # Construct Environment
-    env = CompassWorld(parsed["size"], parsed["size"])
+    env = RingWorld(parsed["size"])
 
     agent = construct_agent(parsed, rng)
     # Out Horde
@@ -110,7 +105,7 @@ function main_experiment(parsed::Dict)
 
     callback(env, agent, (rew, term, s_tp1), (out_preds, action), step) = begin
         out_pred_strg[step, :] .= Flux.data(out_preds)
-        out_err_strg[step, :] .= out_pred_strg[step, :] .- cwu.oracle(env, parsed["outhorde"])
+        out_err_strg[step, :] .= out_pred_strg[step, :] .- RWU.oracle(env, parsed["outhorde"], parsed["outgamma"])
     end
 
     GVFN.continuous_experiment(env, agent, num_steps, parsed["verbose"], parsed["progress"], callback; rng=rng)
@@ -118,7 +113,6 @@ function main_experiment(parsed::Dict)
     results = Dict("err"=>out_err_strg, "pred"=>out_pred_strg)
     results = results_synopsis(results, Val(parsed["sweep"]))
     GVFN.save_results(savefile, results, parsed["working"])
-
 end
 
 
