@@ -7,14 +7,6 @@ using DataStructures: CircularBuffer, isfull
 
 import JuliaRL
 
-# function get_action(env_state, rng=Random.GLOBAL_RNG)
-#     rn = rand(rng)
-#     if rn < 0.5
-#         return 1, 0.5
-#     else
-#         return 2, 0.5
-#     end
-# end
 
 
 mutable struct ForecastAgent{O, T, F, H, Φ, Π, M, G} <: JuliaRL.AbstractAgent

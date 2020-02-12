@@ -1,6 +1,6 @@
 __precompile__(true)
 
-module CompassWorldActionExperiment
+module CompassWorldGVFNExperiment
 
 using GVFN: CompassWorld, step!, start!
 using GVFN
@@ -118,9 +118,7 @@ function main_experiment(parsed::Dict)
     results = Dict("err"=>out_err_strg, "pred"=>out_pred_strg)
     results = results_synopsis(results, Val(parsed["sweep"]))
     GVFN.save_results(savefile, results, parsed["working"])
-    # results = results_synopsis(out_err_strg, Val(parsed["sweep"]))
-    # GVFN.save_results(savefile, results, parsed["working"])
-    # return out_err_strg, out_pred_strg
+
 end
 
 

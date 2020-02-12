@@ -15,8 +15,8 @@ JankyGVFLayer(in::Integer, out::Integer; init=(dims...)->zeros(Float32, dims...)
 (layer::JankyGVFLayer)(x,h) = layer.W*x .+ layer.H*h .+ layer.b
 
 
-struct BatchTD <: LearningUpdate
-end
+# struct BatchTD <: LearningUpdate
+# end
 
 function update!(out_model, rnn::Flux.Recur{T},
                  horde::AbstractHorde,
