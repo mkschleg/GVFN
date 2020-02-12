@@ -9,11 +9,8 @@
 #SBATCH --account=rrg-whitem
 
 using Pkg
-
-# cd("..")
 Pkg.activate(".")
-# include("parallel_experiment.jl")
-# println("Hello Wolrd...")
+
 
 using Reproduce
 
