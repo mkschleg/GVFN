@@ -3,7 +3,7 @@
 
 
 
-macro rnn_arg_table(as)
+function rnn_arg_table(as)
     @add_arg_table as begin
         "--truncation", "-t"
         help="Truncation parameter for bptt"

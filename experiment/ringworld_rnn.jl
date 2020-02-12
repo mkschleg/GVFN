@@ -38,7 +38,7 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings(exc_handler=Reproduce
     GVFN.exp_settings!(as)
     RWU.env_settings!(as)
     FLU.opt_settings!(as)
-    GVFN.rnn_arg_table!(as)
+    FLU.rnn_settings!(as)
 
     RWU.horde_settings!(as, "out")
 

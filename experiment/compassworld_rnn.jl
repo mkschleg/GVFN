@@ -54,7 +54,7 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings(exc_handler=Reproduce
 
     # GVFN
     FLU.opt_settings!(as)
-    GVFN.rnn_arg_table!(as)
+    FLU.rnn_settings!(as)
 
     return as
 end
@@ -70,6 +70,7 @@ function construct_agent(parsed, rng=Random.GLOBAL_RNG)
     end
     fs = JuliaRL.FeatureCreators.feature_size(fc)
 
+    initf=(dims...)->glorot_uniform(rng, dims...)
     rnntype = getproperty(GVFN, Symbol(parsed["cell"]))
     chain = if rnntype == GVFN.ARNN
         Flux.Chain(rnntype(fs, 4, parsed["numhidden"]; init=initf),
