@@ -4,7 +4,7 @@
 #SBATCH -o ring_rnn.out # Standard output
 #SBATCH -e ring_rnn.err # Standard error
 #SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
-#SBATCH --time=24:00:00 # Running time of 12 hours
+#SBATCH --time=12:00:00 # Running time of 12 hours
 #SBATCH --ntasks=128
 #SBATCH --account=rrg-whitem
 
@@ -13,7 +13,7 @@ Pkg.activate(".")
 
 using Reproduce
 
-const save_loc = "ringworld_rnn_onestep"
+const save_loc = "/home/mkschleg/scratch/GVFN/ringworld_rnn_onestep"
 const exp_file = "experiment/ringworld_rnn.jl"
 const exp_module_name = :RingWorldExperiment
 const exp_func_name = :main_experiment
@@ -24,14 +24,21 @@ const alphas = clamp.(0.1*1.5.^(-6:1), 0.0, 1.0)
 
 # const learning_update = "RTD"
 const truncations = [1, 2, 3, 4, 6, 8, 12, 16]
-const rw_sizes = [6, 10, 20]
+const rw_sizes = [6, 10]
 
 function make_arguments(args::Dict)
     cell = args["cell"]
     alpha = args["alpha"]
     trunc = args["truncation"]
     seed = args["seed"]
-    new_args=["--cell", cell, "--truncation", trunc, "--opt", optimizer, "--optparams", alpha, "--seed", seed]
+    sze = args["size"]
+    numhidden = if sze == "6"
+        "14"
+    elseif sze == "10"
+        "22"
+    end
+
+    new_args=["--cell", cell, "--truncation", trunc, "--opt", optimizer, "--optparams", alpha, "--seed", seed, "--size", sze, "--numhidden", numhidden]
     return new_args
 end
 
@@ -52,7 +59,7 @@ function main()
         default=1
         "--endruns"
         arg_type=Int
-        default=2
+        default=20
         "--numsteps"
         arg_type=Int
         default=300000
@@ -63,10 +70,11 @@ function main()
     arg_dict = Dict(["cell"=>["ARNN", "RNN", "GRU", "LSTM"],
                      "alpha"=>alphas,
                      "truncation"=>truncations,
+                     "size"=>rw_sizes,
                      "seed"=>collect(parsed["startruns"]:parsed["endruns"])])
-    arg_list = ["cell", "alpha", "truncation", "seed"]
+    arg_list = ["size", "cell", "alpha", "truncation", "seed"]
 
-    static_args = ["--outhorde", "onestep", "--steps", string(parsed["numsteps"]), "--exp_loc", save_loc, "--sweep", "--numhidden", "14"]
+    static_args = ["--outhorde", "onestep", "--steps", string(parsed["numsteps"]), "--exp_loc", save_loc, "--sweep"]
     args_iterator = ArgIterator(arg_dict, static_args; arg_list=arg_list, make_args=make_arguments)
 
     if parsed["numjobs"]

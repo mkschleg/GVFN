@@ -56,7 +56,8 @@ function construct_agent(parsed, rng=Random.GLOBAL_RNG)
 
     fc = RWU.StandardFeatureCreator()
     fs = JuliaRL.FeatureCreators.feature_size(fc)
-    
+
+    initf=(dims...)->glorot_uniform(rng, dims...)
     chain = Flux.Chain(GVFN.GVFR(horde, GVFN.ARNNCell, fs, 3, length(horde), Flux.sigmoid; init=initf),
                        Flux.data,
                        Dense(length(horde), 16, Flux.relu; initW=initf),
