@@ -14,7 +14,7 @@ Pkg.activate(".")
 
 using Reproduce
 
-const save_loc = "compassworld_gvfn"
+const save_loc = "/home/mkschleg/scratch/GVFN/compassworld_gvfn"
 const exp_file = "experiment/compassworld_gvfn.jl"
 const exp_module_name = :CompassWorldGVFNExperiment
 const exp_func_name = :main_experiment
