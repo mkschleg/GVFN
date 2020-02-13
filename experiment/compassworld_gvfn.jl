@@ -94,7 +94,9 @@ end
 function main_experiment(parsed::Dict)
 
     savefile = GVFN.save_setup(parsed)
-    
+    if savefile isa Nothing
+        return
+    end
     num_steps = parsed["steps"]
     seed = parsed["seed"]
     rng = Random.MersenneTwister(seed)
