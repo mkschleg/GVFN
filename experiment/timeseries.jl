@@ -2,7 +2,7 @@ __precompile__(true)
 
 module TimeSeriesExperiment
 
-using GVFN: MackeyGlass, MSO, TimeSeriesAgent, step!, start!
+using GVFN: MackeyGlass, MSO, ACEA, TimeSeriesAgent, step!, start!
 using GVFN
 using Flux
 using Flux.Tracker
