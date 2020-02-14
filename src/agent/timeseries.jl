@@ -269,15 +269,19 @@ mutable struct TimeSeriesRNNAgent{O, C, H, Φ, G} <: JuliaRL.AbstractAgent
     lu::LearningUpdate
     opt::O
     chain::C
-    horde::G
-
+    #horde::G
 
     obs_sequence::DataStructures.CircularBuffer{Φ}
     hidden_state_init::H
 
     s_t::Φ
+
+    h_buff::Vector{Φ}
+    obs_buff::Vector{Φ}
+
     batch_h::Vector{Φ}
     batch_obs::Vector{Φ}
+    batch_target::Vector{Φ}
 
     horizon::Int
     batchsize::Int
@@ -289,101 +293,125 @@ function TimeSeriesRNNAgent(parsed; rng=Random.GLOBAL_RNG)
     batchsize = parsed["batchsize"]
     nhidden=parsed["rnn_nhidden"]
     τ=parsed["rnn_tau"]
-    step=0
 
-    lr = parsed[rnn_lr]
-    opt = getproperty(Flux, parsed["rnn_opt"])(lr)
+    lr = parsed["rnn_lr"]
+    opt = getproperty(Flux, Symbol(parsed["rnn_opt"]))(lr)
 
+    cell = getproperty(Flux, Symbol(parsed["rnn_cell"]))
     chain = Flux.Chain(
-        FluxUtils.construct_rnn(1, parsed; init=(dims...)->glorot_uniform(rng, dims...)),
+        cell(1, nhidden; init=(dims...)->glorot_uniform(rng, dims...)),
         Flux.Dense(parsed["rnn_nhidden"], 1 ; initW=(dims...)->glorot_uniform(rng, dims...))
     )
-    obs_sequence = DataStructures.CircularBuffer{Vector{Float64}}(τ+1)
+    obs_sequence = DataStructures.CircularBuffer{Vector{Float32}}(τ+1)
     hidden_state_init = GVFN.get_initial_hidden_state(chain)
 
-    out_horde = Horde([GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())])
+    #out_horde = Horde([GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())])
 
-    batch_h  = Vector{Float64}[]
-    batch_obs = Vector{Float64}[]
+    h_buff = DataStructures.CircularBuffer{Vector{Float32}}(horizon)
+    obs_buff = DataStructures.CircularBuffer{Vector{Float32}}(horizon)
+
+    batch_h  = Vector{Float32}[]
+    batch_obs = Vector{Float32}[]
+    batch_target = Vector{Float32}[]
 
     TimeSeriesRNNAgent(BatchTD(),
                        opt,
                        chain,
-                       out_horde,
+                       #out_horde,
 
                        obs_sequence,
                        hidden_state_init,
 
-                       zeros(Float64, 1),
+                       zeros(Float32, 1),
+
+                       h_buff,
+                       obs_buff,
+
                        batch_h,
                        batch_obs,
+                       batch_target,
+
 
                        horizon,
-                       batchsize,
-                       step)
+                       batchsize)
 
 end
 
-function JuliaRL.start!(agent::TimeSeriesRNNAgent, env_s_tp1::Vector{Float64}; rng=Random.GLOBAL_RNG, kwargs...)
+function JuliaRL.start!(agent::TimeSeriesRNNAgent, env_s_tp1::Vector{Float32}; rng=Random.GLOBAL_RNG, kwargs...)
 
     # init observation sequence
-    fill!(agent.obs_sequence, zeros(size(env_s_tp1)))
-    push!(agent.obs_sequence, env_s_tp1)
+    fill!(agent.obs_sequence, copy(env_s_tp1))
 
     # init hidden state
     agent.hidden_state_init = FluxUtils.get_initial_hidden_state(agent.chain)
 
-    # Get RNN output/predictions
-    rnn_out = agent.chain.(agent.obs_sequence)
-
-    # update hidden state
-    agent.hidden_state_init =
-        FluxUtils.get_next_hidden_state(agent.chain, agent.hidden_state_init, agent.obs_sequence[1])
-
+    # state s_t
     agent.s_t .= copy(env_s_tp1)
-    agent.step += 1
 end
 
 
 function JuliaRL.step!(agent::TimeSeriesRNNAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
 
-    # append to the observation sequence
-    push!(agent.obs_sequence, env_s_tp1)
+    # Update state seq
+    push!(agent.obs_sequence, copy(env_s_tp1))
 
-    # RNN update function
-    if agent.step>agent.horizon
-        push!(agent.batch_h, copy(agent.hidden_state_init))
-        push!(agent.batch_obs, copy(agent.obs_sequence))
-        if length(agent.batch_h) == agent.batchsize
+    # copy state sequence/hidden state into buffers
+    push!(agent.obs_buff, copy(agent.obs_sequence))
+    push!(agent.h_buff, copy(agent.hidden_state_init))
+
+    # Update =====================================================
+    if isfull(agent.obs_buff)
+
+        # Add target, hidden state, and observation sequence to batch
+        # --- Target = most-recent observation; obs/hidden state = earliest in the buffer
+        push!(agent.batch_target, copy(env_s_tp1))
+        push!(agent.batch_obs, copy(agent.obs_buff[1]))
+        push!(agent.batch_h, copy(agent.h_buff[1]))
+
+        if length(agent.batch_target) == agent.batchsize
             update!(agent.chain,
-                    agent.horde,
+                    #agent.horde,
                     agent.opt,
                     agent.lu,
                     agent.batchsize,
                     agent.batch_h,
                     agent.agent.batch_obs,
-                    env_s_tp1)
+                    agent.batch_target)
 
-            batch_h  = Vector{Float64}[]
-            batch_obs = Vector{Float64}[]
-    # End update function
 
-    # get prediction
-    # Flux.truncate!(agent.rnn) #TODO: Is this still needed?
+            # Reset the batch buffers
+            agent.batch_h  = Vector{Float32}[]
+            agent.batch_obs = Vector{Float32}[]
+            agent.batch_target = Vector{Float32}[]
+        end
+    end
+
+    # Predict ====================================================
+    # Get RNN output/predictions for s_t
     reset!(agent.chain, agent.hidden_state_init)
-    out_preds = agent.chain.(agent.hidden_states)[end]
+    out_preds = agent.chain.(agent.obs_sequence)[end]
 
-    agent.hidden_state_init = FluxUtils.get_next_hidden_state(agent.rnn, agent.hidden_state_init, agent.obs_sequence[1])
+    agent.hidden_state_init =
+        get_next_hidden_state(agent.chain, agent.hidden_state_init, agent.obs_sequence[1])
 
     agent.s_t .= copy(env_s_tp1)
-    agent.step += 1
 
+    # Prediction for time t
     return out_preds.data
 end
 
 function predict!(agent::TimeSeriesRNNAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG,kwargs...)
     # for validation/test; predict, updating hidden states, but don't update models
 
+    # Update the sequence of observations
     push!(agent.obs_sequence, env_s_tp1)
-    return agent.chain.(agent.state_list)[end].data
+
+    # reset the chain's initial hidden state and run through the observation sequence
+    reset!(agent.chain, agent.hidden_state_init)
+    out_preds = agent.chain.(agent.obs_sequence)[end]
+
+    # update the hidden state
+    agent.hidden_state_init = FluxUtils.get_next_hidden_state(agent.rnn, agent.hidden_state_init, agent.obs_sequence[1])
+
+    return out_preds.data
 end

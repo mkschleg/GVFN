@@ -89,15 +89,15 @@ function update!(model::SingleLayer, horde::AbstractHorde, opt, lu::BatchTD, sta
     model.b .-= apply!(opt, model.b, Δ)
 end
 
-# Janky batch update for general Flux Chains
+# Janky batch update for RNN batch n-horizon updates
 function update!(chain,
-                  horde::H,
+                  #horde::H,
                   opt,
                   lu::BatchTD,
                   batchsize::Int,
                   batch_h_init,
                   batch_state_seq,
-                  env_state_tp1,
+                  batch_target
                   ) where {H}
 
     action_t = nothing # Never actions in timeseries experiments
@@ -108,6 +108,7 @@ function update!(chain,
         # Idx into the batch
         h_init = batch_h_init[i]
         state_seq = batch_state_seq[i]
+        target = batch_target[i]
 
         # Update GVFN First
         ℒ_gvfn, preds = begin
@@ -120,7 +121,7 @@ function update!(chain,
                                   lu,
                                   h_init,
                                   state_seq,
-                                  env_state_tp1,
+                                  target,
                                   action_t,
                                   b_prob;)
                 # println(v[end-1])
@@ -131,8 +132,7 @@ function update!(chain,
             end
         end
 
-        cumulants, discounts, π_prob = get(horde, action_t, env_state_tp1, Flux.data(preds[end]))
-        ℒ_out = offpolicy_tdloss(ρ, preds[end-1], cumulants, discounts, Flux.data(preds[end]))
+        ℒ_out = sum(ρ.*((preds[end-1] - target).^2)) * (1//(2*length(ρ)))
 
         grads = Flux.Tracker.gradient(()->ℒ_out + ℒ_gvfn, Flux.params(chain))
         if avg_grads == nothing

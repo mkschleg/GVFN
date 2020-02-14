@@ -50,7 +50,6 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         "--agent"
         help="which agent to use"
         arg_type=String
-        default="GVFN"
     end
 
 
@@ -110,6 +109,8 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         default=0.001
 
         # RNN
+        # --horizon
+        # --batchsize
         "--rnn_opt"
         help="Optimizer"
         default="Adam"
@@ -128,6 +129,11 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         help="number of hidden units"
         arg_type=Int
         default=64
+
+        "--rnn_cell"
+        help="RNN cell to use (e.g. GRU)"
+        arg_type=String
+        default="GRU"
     end
 
     return as
@@ -191,35 +197,38 @@ function main_experiment(args::Vector{String})
     @showprogress 0.1 "Step: " for step in 1:num_steps
         s_tp1 = step!(env)
 
+        pred = step!(agent, s_tp1, 0, false; rng=rng)
+        predictions[step] = pred[1]
+
         if step > horizon
             gt[step-horizon] = s_tp1[1]
         end
-
-        pred = step!(agent, s_tp1, 0, false; rng=rng)
-
-        predictions[step] = pred[1]
     end
 
     valPreds=zeros(Float64,num_val)
     vgt = zeros(Float64, num_val - horizon)
     @showprogress 0.1 "Validation Step: " for step in 1:num_val
         s_tp1= step!(env)
+
+        pred = predict!(agent, s_tp1,0,false;rng=rng)
+        valPreds[step] = Flux.data(pred[1])
+
         if step>horizon
             vgt[step-horizon] = s_tp1[1]
         end
-        pred = predict!(agent, s_tp1,0,false;rng=rng)
-        valPreds[step] = Flux.data(pred[1])
     end
 
     testPreds=zeros(Float64,num_test)
     tgt = zeros(Float64, num_test-horizon)
     @showprogress 0.1 "Test Step: " for step in 1:num_test
         s_tp1= step!(env)
+
+        pred = predict!(agent, s_tp1,0,false;rng=rng)
+        testPreds[step] = Flux.data(pred[1])
+
         if step>horizon
             tgt[step - horizon] = s_tp1[1]
         end
-        pred = predict!(agent, s_tp1,0,false;rng=rng)
-        testPreds[step] = Flux.data(pred[1])
     end
 
     results = Dict("GroundTruth"=>gt,
