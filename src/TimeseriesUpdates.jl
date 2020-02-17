@@ -132,7 +132,8 @@ function update!(chain,
             end
         end
 
-        ℒ_out = sum(ρ.*((preds[end-1] - target).^2)) * (1//(2*length(ρ)))
+        # TODO: preds[end] or preds[end-1]?
+        ℒ_out = sum(ρ.*((preds[end] - target).^2))
 
         grads = Flux.Tracker.gradient(()->ℒ_out + ℒ_gvfn, Flux.params(chain))
         if avg_grads == nothing

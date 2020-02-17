@@ -37,7 +37,7 @@ getArgs(seed) = [
 
     # RNN
     "--rnn_opt", "ADAM",
-    "--rnn_tau", "32",
+    "--rnn_tau", "4",
     "--rnn_lr", "0.001",
     "--rnn_nhidden", "32",
     "--rnn_cell", "GRU",
