@@ -1,6 +1,6 @@
 
 using Random
-# using JuliaRL
+using MinimalRLCore
 
 # import JuliaRL.reset!, JuliaRL.environment_step!, JuliaRL.get_reward
 
@@ -10,7 +10,7 @@ module RingWorldConst
 
 const FORWARD = 1
 const BACKWARD = 2
-const ACTIONS = Set([FORWARD, BACKWARD])
+const ACTIONS = [FORWARD, BACKWARD]
 
 end
 
@@ -26,17 +26,14 @@ actions: Forward of Backward (See RingWorldConst)
 
 """
 mutable struct RingWorld <: AbstractEnvironment
-    ring_size::Int64
-    agent_state::Int64
-    actions::AbstractSet
+    ring_size::Int
+    agent_state::Int
     partially_observable::Bool
-
 end
 
-RingWorld(ring_size::Int64; partially_observable=true) =
+RingWorld(ring_size::Int; partially_observable=true) =
     RingWorld(ring_size,
               1,
-              RingWorldConst.ACTIONS,
               partially_observable)
 
 function env_settings!(as::Reproduce.ArgParseSettings,
@@ -51,19 +48,19 @@ end
 
 Base.size(env::RingWorld) = env.ring_size
 
-function JuliaRL.reset!(env::RingWorld; rng = Random.GLOBAL_RNG, kwargs...)
+function MinimalRLCore.reset!(env::RingWorld, rng = Random.GLOBAL_RNG)
     env.agent_state = rand(rng, 1:size(env))
 end
 
-JuliaRL.get_actions(env::RingWorld) = env.actions
+MinimalRLCore.get_actions(env::RingWorld) = RingWorldConst.ACTIONS
 
-@inline take_forward_step(env::RingWorld, action::Int64) =
+@inline take_forward_step(env::RingWorld, action::Int) =
     env.agent_state == size(env) ? 1 : env.agent_state + 1
 
-@inline take_backward_step(env::RingWorld, action::Int64) =
+@inline take_backward_step(env::RingWorld, action::Int) =
     env.agent_state == 1 ? size(env) : env.agent_state - 1
 
-function JuliaRL.environment_step!(env::RingWorld, action::Int64; rng = Random.GLOBAL_RNG, kwargs...)
+function MinimalRLCore.environment_step!(env::RingWorld, action::Int, rng = Random.GLOBAL_RNG)
 
     rwc = RingWorldConst
     
@@ -77,11 +74,11 @@ function JuliaRL.environment_step!(env::RingWorld, action::Int64; rng = Random.G
 
 end
 
-function JuliaRL.get_reward(env::RingWorld) # -> get the reward of the environment
+function MinimalRLCore.get_reward(env::RingWorld) # -> get the reward of the environment
     return 0
 end
 
-function JuliaRL.get_state(env::RingWorld) # -> get state of agent
+function MinimalRLCore.get_state(env::RingWorld) # -> get state of agent
     if env.partially_observable
         return partially_observable_state(env)
     else
@@ -101,7 +98,7 @@ function partially_observable_state(env::RingWorld)
     return state
 end
 
-function JuliaRL.is_terminal(env::RingWorld) # -> determines if the agent_state is terminal
+function MinimalRLCore.is_terminal(env::RingWorld) # -> determines if the agent_state is terminal
     return false
 end
 

@@ -4,7 +4,7 @@
 
 
 function rnn_arg_table(as)
-    @add_arg_table as begin
+    @add_arg_table! as begin
         "--truncation", "-t"
         help="Truncation parameter for bptt"
         arg_type=Int64
@@ -20,7 +20,7 @@ function rnn_arg_table(as)
 end
 
 function gvfn_arg_table!(as)
-    @add_arg_table as begin
+    @add_arg_table! as begin
         "--truncation", "-t"
         help="Truncation parameter for bptt"
         arg_type=Int64
@@ -42,7 +42,7 @@ end
 
 
 macro opt_arg_table(as)
-    @add_arg_table as begin
+    @add_arg_table! as begin
         "--opt"
         help="Optimizer"
         default="Descent"

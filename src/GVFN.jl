@@ -7,7 +7,7 @@ using Reexport
 
 import Reproduce
 
-@reexport using JuliaRL
+@reexport using MinimalRLCore
 
 import Random
 
@@ -24,7 +24,6 @@ include("Layers.jl")
 
 export
     GVF,
-    # get, get!,
     cumulant,
     discount,
     policy,

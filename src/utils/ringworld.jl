@@ -2,6 +2,7 @@
 module RingWorldUtils
 
 using ..GVFN, Reproduce
+import ..MinimalRLCore
 
 const RWC = GVFN.RingWorldConst
 
@@ -180,27 +181,25 @@ end
 
 mutable struct StandardFeatureCreator end
 
-(fc::StandardFeatureCreator)(s, a) = JuliaRL.FeatureCreators.create_features(fc, s, a)
-JuliaRL.FeatureCreators.create_features(fc::StandardFeatureCreator, s, a) =
+(fc::StandardFeatureCreator)(s, a) = MinimalRLCore.create_features(fc, s, a)
+MinimalRLCore.create_features(fc::StandardFeatureCreator, s, a) =
     Float32[1.0, s[1], 1-s[1]]
-JuliaRL.FeatureCreators.feature_size(fc::StandardFeatureCreator) = 3
+MinimalRLCore.feature_size(fc::StandardFeatureCreator) = 3
 
 
 mutable struct StandardFeatureCreatorWithAction end
 
-(fc::StandardFeatureCreatorWithAction)(s, a) = JuliaRL.FeatureCreators.create_features(fc, s, a)
-JuliaRL.FeatureCreators.create_features(fc::StandardFeatureCreatorWithAction, s, a) =
+(fc::StandardFeatureCreatorWithAction)(s, a) = MinimalRLCore.create_features(fc, s, a)
+MinimalRLCore.create_features(fc::StandardFeatureCreatorWithAction, s, a) =
     Float32[1.0, s[1], 1-s[1], a==1, a==2, 1.0 - a==1, 1.0 - a==2]
-JuliaRL.FeatureCreators.feature_size(fc::StandardFeatureCreatorWithAction) = 7
+MinimalRLCore.feature_size(fc::StandardFeatureCreatorWithAction) = 7
 
 
 mutable struct SansBiasFeatureCreator end
 
-(fc::SansBiasFeatureCreator)(s, a) = JuliaRL.FeatureCreators.create_features(fc, s, a)
-JuliaRL.FeatureCreators.create_features(fc::SansBiasFeatureCreator, s, a) =
+(fc::SansBiasFeatureCreator)(s, a) = MinimalRLCore.create_features(fc, s, a)
+MinimalRLCore.create_features(fc::SansBiasFeatureCreator, s, a) =
     Float32[s[1], 1-s[1], a==1, a==2, 1.0 - a==1, 1.0 - a==2]
-JuliaRL.FeatureCreators.feature_size(fc::SansBiasFeatureCreator) = 6
-
-# build_features_ringworld_sans_bias(s, a) = Float32[s[1], 1-s[1], a==1, a==2, 1.0 - a==1, 1.0 - a==2]
+MinimalRLCore.feature_size(fc::SansBiasFeatureCreator) = 6
 
 end

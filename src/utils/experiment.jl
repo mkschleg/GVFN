@@ -1,5 +1,6 @@
 
 using JLD2
+using MinimalRLCore
 import ProgressMeter
 import Reproduce
 
@@ -17,15 +18,15 @@ function save_setup(parsed, def_save_file="results.jld2")
 end
 
 function continuous_experiment(env, agent, num_steps, verbose=false, progress=false, callback_func=nothing; rng=Random.GLOBAL_RNG)
-    _, s_t = start!(env; rng=rng)
-    action = start!(agent, s_t; rng=rng)
+    s_t = start!(env, rng)
+    action = start!(agent, s_t, rng)
     
     prg_bar = ProgressMeter.Progress(num_steps, "Step: ")
 
     for step in 1:num_steps
 
-        _, s_tp1, rew, term = step!(env, action; rng=rng)
-        out_preds, action = step!(agent, s_tp1, rew, term; rng=rng)
+        s_tp1, rew, term = step!(env, action, rng)
+        out_preds, action = step!(agent, s_tp1, rew, term, rng)
 
         if !(callback_func isa Nothing)
             callback_func(env, agent, (rew, term, s_tp1), (out_preds, action), step)

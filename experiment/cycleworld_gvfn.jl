@@ -32,7 +32,7 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings(exc_handler=Reproduce
     # shared settings
     GVFN.gvfn_arg_table!(as)
 
-    @add_arg_table as begin
+    @add_arg_table! as begin
         "--horde"
         help="The horde used for GVFN training"
         default="gamma_chain"
@@ -42,6 +42,32 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings(exc_handler=Reproduce
         default=0.9
     end
     return as
+end
+
+
+function construct_agent(parsed, rng=RNG.GLOBAL_RNG)
+    #Construct agent
+    horde = CWU.get_horde(parsed)
+    out_horde = Horde([GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())])
+    fc = (state, action)->CWU.build_features_cycleworld(state)
+    fs = 2
+    ap = GVFN.RandomActingPolicy([1.0])
+
+    initf=(dims...)->glorot_uniform(rng, dims...)
+
+    chain = Flux.Chain(GVFN.GVFR(horde, Flux.RNNCell, fs, length(horde), Flux.sigmoid, init=initf),
+                       Flux.data,
+                       Dense(length(horde), length(out_horde), initW=initf))
+
+    τ=parsed["truncation"]
+    opt = FluxUtils.get_optimizer(parsed)
+
+    GVFN.FluxAgent(out_horde,
+                   chain,
+                   opt,
+                   τ, fc, fs, ap;
+                   rng=rng,
+                   init_func=(dims...)->glorot_uniform(rng, dims...))
 end
 
 function main_experiment(args::Vector{String})
@@ -64,32 +90,26 @@ function main_experiment(parsed::Dict)
     out_pred_strg = zeros(num_steps)
     out_err_strg = zeros(num_steps)
 
-    #Construct agent
-    horde = CWU.get_horde(parsed)
-    out_horde = Horde([GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())])
-    fc = (state, action)->CWU.build_features_cycleworld(state)
-    fs = 2
-    ap = GVFN.RandomActingPolicy([1.0])
+    agent = construct_agent(parsed, rng)
 
-    chain = Flux.Chain(GVFN.GVFR(horde, Flux.RNNCell, fs, length(horde), Flux.sigmoid),
-                       Flux.data,
-                       Dense(length(horde), length(out_horde)))
+    # GVFN.continuous_experiment(env, agent, num_steps, parsed["verbose"], parsed["progress"], callback; rng=rng)
+    prg_bar = ProgressMeter.Progress(num_steps, "Step: ")
+    verbose = parsed["verbose"]
+    progress = parsed["progress"]
 
-    agent = GVFN.FluxAgent(out_horde,
-                           chain,
-                           fc,
-                           fs,
-                           ap,
-                           parsed;
-                           rng=rng,
-                           init_func=(dims...)->glorot_uniform(rng, dims...))
+    cur_step = 1
+    
+    run_episode!(env, agent, num_steps, rng) do (s, a, s′, r)
+        out_pred_strg[cur_step] = Flux.data(a.out_preds)[1]
+        out_err_strg[cur_step] = out_pred_strg[cur_step][1] - CWU.oracle(env, "onestep", parsed["gamma"])[1]
 
-    callback(env, agent, (rew, term, s_tp1), (out_preds, action), step) = begin
-        out_pred_strg[step] = Flux.data(out_preds)[1]
-        out_err_strg[step] = out_pred_strg[step][1] - CWU.oracle(env, "onestep", parsed["gamma"])[1]
+        if progress
+           ProgressMeter.next!(prg_bar)
+        end
+
+        cur_step += 1
     end
-
-    GVFN.continuous_experiment(env, agent, num_steps, parsed["verbose"], parsed["progress"], callback; rng=rng)
+    
     results = Dict(["out_pred"=>out_pred_strg, "out_err_strg"=>out_err_strg])
     GVFN.save_results(savefile, results, parsed["working"])
 end

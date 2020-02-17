@@ -1,9 +1,6 @@
 
 using Random
-
-# using JuliaRL
-
-# import JuliaRL.reset!, JuliaRL.environment_step!, JuliaRL.get_reward
+using MinimalRLCore
 
 
 module CompassWorldConst
@@ -29,7 +26,6 @@ const NUM_COLORS = 6
 
 const DIR_CHAR = Dict([NORTH=>'^', SOUTH=>'v', EAST=>'>', WEST=>'<'])
 
-
 end
 
 """
@@ -51,17 +47,15 @@ end
 """
 mutable struct CompassWorld <: AbstractEnvironment
     world_dims::NamedTuple{(:width, :height),
-                           Tuple{Int64, Int64}}
+                           Tuple{Int, Int}}
     agent_state::NamedTuple{(:x, :y, :dir),
-                            Tuple{Int64, Int64, Int64}}
-    actions::AbstractSet
+                            Tuple{Int, Int, Int}}
     partially_observable::Bool
     CompassWorld(width, height;
                  rng=Random.GLOBAL_RNG,
                  partially_observable=true) =
                      new((width=width, height=height),
                          (x=rand(rng, 1:width), y=rand(rng, 1:height), dir=rand(rng, 0:3)),
-                         Set(1:3),
                          partially_observable)
 end
 
@@ -70,34 +64,28 @@ CompassWorld(_size; kwargs...) =
 
 function env_settings!(as::Reproduce.ArgParseSettings,
                        env_type::Type{CompassWorld})
-    Reproduce.@add_arg_table as begin
+    Reproduce.@add_arg_table! as begin
         "--size"
         help="The length of the ring world chain"
-        arg_type=Int64
+        arg_type=Int
         default=8
     end
 end
 
 
 
-function JuliaRL.reset!(env::CompassWorld;
-                        rng = Random.GLOBAL_RNG, kwargs...)
-    
+function MinimalRLCore.reset!(env::CompassWorld, rng=Random.GLOBAL_RNG)
     env.agent_state = (x=rand(rng, 1:env.world_dims.width),
                        y=rand(rng, 1:env.world_dims.height),
                        dir=rand(rng, 0:3))
 end
 
-JuliaRL.get_actions(env::CompassWorld) =
-    env.actions
+MinimalRLCore.get_actions(env::CompassWorld) = [1, 2, 3]
 
 get_num_features(env::CompassWorld) =
     env.partially_observable ? 6 : 3
 
-function JuliaRL.environment_step!(env::CompassWorld,
-                                   action::Int64;
-                                   rng = Random.GLOBAL_RNG,
-                                   kwargs...)
+function MinimalRLCore.environment_step!(env::CompassWorld, action::Int, rng = Random.GLOBAL_RNG)
 
     @boundscheck action in env.actions
     
@@ -128,12 +116,12 @@ function JuliaRL.environment_step!(env::CompassWorld,
 end
 
 
-function JuliaRL.get_reward(env::CompassWorld) # -> get the reward of the environment
-    return 0
+function MinimalRLCore.get_reward(env::CompassWorld) # -> get the reward of the environment
+    return 0.0f0
 end
 
 
-function JuliaRL.get_state(env::CompassWorld) # -> get state of agent
+function MinimalRLCore.get_state(env::CompassWorld) # -> get state of agent
     if env.partially_observable
         return partially_observable_state(env)
     else
@@ -174,7 +162,7 @@ function partially_observable_state(env::CompassWorld)
 end
 
 
-function JuliaRL.is_terminal(env::CompassWorld) # -> determines if the agent_state is terminal
+function MinimalRLCore.is_terminal(env::CompassWorld) # -> determines if the agent_state is terminal
     return false
 end
 

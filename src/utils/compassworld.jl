@@ -2,7 +2,7 @@ module CompassWorldUtils
 
 using ..GVFN, Reproduce
 
-using JuliaRL.FeatureCreators
+import ..MinimalRLCore
 using Random
 
 cwc = GVFN.CompassWorldConst
@@ -415,22 +415,22 @@ end
 mutable struct NoActionFeatureCreator end
 
 (fc::NoActionFeatureCreator)(s, a) = create_features(fc, s, a)
-JuliaRL.FeatureCreators.create_features(fc::NoActionFeatureCreator, state, action) = [state; 1 .- state]
-JuliaRL.FeatureCreators.feature_size(fc::NoActionFeatureCreator) = 12
+MinimalRLCore.create_features(fc::NoActionFeatureCreator, state, action) = [state; 1 .- state]
+MinimalRLCore.feature_size(fc::NoActionFeatureCreator) = 12
 
 mutable struct StandardFeatureCreator end
 
 (fc::StandardFeatureCreator)(s, a) = create_features(fc, s, a)
-JuliaRL.FeatureCreators.create_features(fc::StandardFeatureCreator, state, action) = [[1.0]; state; 1.0.-state; onehot(3, action); 1.0.-onehot(3,action)]
-JuliaRL.FeatureCreators.feature_size(fc::StandardFeatureCreator) = 19
+MinimalRLCore.create_features(fc::StandardFeatureCreator, state, action) = [[1.0]; state; 1.0.-state; onehot(3, action); 1.0.-onehot(3,action)]
+MinimalRLCore.feature_size(fc::StandardFeatureCreator) = 19
 
 mutable struct ActionTileFeatureCreator end
 
 (fc::ActionTileFeatureCreator)(s, a) = create_features(fc, s, a)
-function JuliaRL.FeatureCreators.create_features(fc::ActionTileFeatureCreator, state, action)
+function MinimalRLCore.create_features(fc::ActionTileFeatureCreator, state, action)
     ϕ = [[1.0]; state; 1.0.-state]
     return [action==1 ? ϕ : zero(ϕ); action==2 ? ϕ : zero(ϕ); action==3 ? ϕ : zero(ϕ);]
 end
-JuliaRL.FeatureCreators.feature_size(fc::ActionTileFeatureCreator) = 39
+MinimalRLCore.feature_size(fc::ActionTileFeatureCreator) = 39
 
 end

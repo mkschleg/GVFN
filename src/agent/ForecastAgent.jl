@@ -2,14 +2,11 @@ import Flux
 
 import Random
 using DataStructures: CircularBuffer, isfull
+using MinimalRLCore
 
 
 
-import JuliaRL
-
-
-
-mutable struct ForecastAgent{O, T, F, H, Φ, Π, M, G} <: JuliaRL.AbstractAgent
+mutable struct ForecastAgent{O, T, F, H, Φ, Π, M, G} <: MinimalRLCore.AbstractAgent
     opt::O
     forecast_rnn::Flux.Recur{T}
     k::Array{Int64, 1}
@@ -96,7 +93,7 @@ function agent_settings!(as::Reproduce.ArgParseSettings, agent_type::Type{Foreca
     
 end
 
-function JuliaRL.start!(agent::ForecastAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
+function MinimalRLCore.start!(agent::ForecastAgent, env_s_tp1, rng=Random.GLOBAL_RNG)
 
     agent.action, agent.action_prob = agent.π(env_s_tp1, rng)
 
@@ -110,12 +107,11 @@ function JuliaRL.start!(agent::ForecastAgent, env_s_tp1; rng=Random.GLOBAL_RNG, 
     return agent.action
 end
 
-function JuliaRL.step!(agent::ForecastAgent,
-                       env_s_tp1,
-                       r,
-                       terminal;
-                       rng=Random.GLOBAL_RNG,
-                       kwargs...)
+function MinimalRLCore.step!(agent::ForecastAgent,
+                             env_s_tp1,
+                             r,
+                             terminal,
+                             rng=Random.GLOBAL_RNG)
     
     # Decide Action
     new_action, new_prob = agent.π(env_s_tp1, rng)
@@ -173,7 +169,7 @@ function JuliaRL.step!(agent::ForecastAgent,
     return out_preds, agent.action
 end
 
-JuliaRL.get_action(agent::ForecastAgent, state) = agent.action
+MinimalRLCore.get_action(agent::ForecastAgent, state) = agent.action
 
 
 function Base.print(io::IO, agent::ForecastAgent)

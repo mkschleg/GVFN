@@ -1,9 +1,10 @@
-import Flux
 
+using MinimalRLCore
+import Flux
 import Random
 import DataStructures
 
-mutable struct FluxAgent{LU<:LearningUpdate, O, C, F, H, Φ, Π, G} <: JuliaRL.AbstractAgent
+mutable struct FluxAgent{LU<:LearningUpdate, O, C, F, H, Φ, Π, G} <: MinimalRLCore.AbstractAgent
     lu::LU
     opt::O
     chain::C
@@ -19,18 +20,19 @@ end
 
 function FluxAgent(out_horde,
                    chain,
+                   opt,
+                   τ,
                    feature_creator,
                    feature_size,
-                   acting_policy::Π,
-                   parsed;
+                   acting_policy::Π;
+                   # parsed;
                    rng=Random.GLOBAL_RNG,
                    init_func=(dims...)->glorot_uniform(rng, dims...)) where {Π<:AbstractActingPolicy}
 
     num_gvfs = length(out_horde)
 
-    τ=parsed["truncation"]
-
-    opt = FluxUtils.get_optimizer(parsed)
+    # τ=parsed["truncation"]
+    # opt = FluxUtils.get_optimizer(parsed)
 
     state_list, init_state = begin
         if needs_action_input(chain)
@@ -67,7 +69,7 @@ build_new_feat(agent::FluxAgent{LU, O, C, F, H, Φ, Π, G}, state, action) where
 build_new_feat(agent::FluxAgent{LU, O, C, F, H, Φ, Π, G}, state, action) where {LU<:LearningUpdate, O, C, F, H, Φ<:Tuple, Π, G}= 
     (action, agent.build_features(state, nothing))
 
-function JuliaRL.start!(agent::FluxAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
+function MinimalRLCore.start!(agent::FluxAgent, env_s_tp1, rng=Random.GLOBAL_RNG)
 
     agent.action, agent.action_prob = agent.π(env_s_tp1, rng)
 
@@ -80,7 +82,7 @@ function JuliaRL.start!(agent::FluxAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwar
 end
 
 
-function JuliaRL.step!(agent::FluxAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
+function MinimalRLCore.step!(agent::FluxAgent, env_s_tp1, r, terminal, rng=Random.GLOBAL_RNG)
 
 
     # new_action = sample(rng, agent.π, env_s_tp1)
@@ -111,7 +113,7 @@ function JuliaRL.step!(agent::FluxAgent, env_s_tp1, r, terminal; rng=Random.GLOB
     agent.action_prob = new_prob
     
 
-    return Flux.data(out_preds)::Array{Float32, 1}, agent.action
+    return (out_preds=Flux.data(out_preds)::Array{Float32, 1}, action=agent.action)
 end
 
-JuliaRL.get_action(agent::FluxAgent, state) = agent.action
+# MinimalRLCore.get_action(agent::FluxAgent, state) = agent.action
