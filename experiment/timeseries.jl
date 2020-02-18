@@ -2,7 +2,7 @@ __precompile__(true)
 
 module TimeSeriesExperiment
 
-using GVFN: MackeyGlass, MSO, ACEA, TimeSeriesAgent, step!, start!
+using GVFN: MackeyGlass, MSO, ACEA, step!, start!
 using GVFN
 using Flux
 using Flux.Tracker
@@ -187,7 +187,7 @@ function main_experiment(args::Vector{String})
     if Agent_t == "GVFN"
         agent = GVFN.TimeSeriesFluxAgent(parsed; rng=rng)
     elseif Agent_t == "RNN"
-        agent = TimeSeriesRNNAgent(parsed;rng=rng)
+        agent = GVFN.TimeSeriesRNNAgent(parsed;rng=rng)
     else
         throw(DomainError("Agent $(Agent_t) not implemented!"))
     end
