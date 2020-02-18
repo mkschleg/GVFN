@@ -35,9 +35,9 @@ function opt_settings!(as::ArgParseSettings, prefix::AbstractString="")
                        :nargs=>'+'))
 end
 
-function get_optimizer(opt_string::AbstractString, learning_rate)
+function get_optimizer(opt_string::AbstractString, learning_rate, args...)
     opt_func = getproperty(Flux, Symbol(opt_string))
-    return opt_func(learning_rate)
+    return opt_func(learning_rate, args...)
 end
 
 
