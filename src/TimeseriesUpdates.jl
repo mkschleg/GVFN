@@ -102,6 +102,7 @@ function update!(chain,
 
     action_t = nothing # Never actions in timeseries experiments
     ρ = 1.0            # No off-policy learning in the timeseries stuff
+    b_prob = 1.0f0     #
 
     avg_grads = nothing
     for i=1:batchsize

@@ -9,7 +9,7 @@ using Plots; pyplot()
 includet("experiment/timeseries.jl")
 
 const env = "MackeyGlass"
-const saveDir = "rnn_TEST"
+const saveDir = "GVFN_TEST"
 
 # =============================
 # --- D E B U G   U T I L S ---
@@ -24,6 +24,8 @@ getArgs(seed) = [
     "--exp_loc", saveDir,
     "--env", env,
 
+    # BPTT
+
     # GVFN
     "--horizon", "12",
     "--batchsize", "32",
@@ -31,6 +33,7 @@ getArgs(seed) = [
     "--model_opt", "ADAM",
     "--gvfn_stepsize", "3.0e-3",
     "--gvfn_opt", "Descent",
+    "--gvfn_tau", "4",
     "--gamma_high", "0.95",
     "--gamma_low", "0.2",
     "--num_gvfs", "128",
@@ -42,7 +45,7 @@ getArgs(seed) = [
     "--rnn_nhidden", "32",
     "--rnn_cell", "GRU",
 
-    "--agent", "RNN"
+    "--agent", "GVFN"
 
 ]
 

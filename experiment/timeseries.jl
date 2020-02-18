@@ -99,6 +99,9 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings())
         "--gvfn_stepsize"
         arg_type=Float64
         default=3e-5
+        "--gvfn_tau"
+        arg_type=Int
+        default=1
 
         # Model
         "--model_opt"
@@ -185,7 +188,7 @@ function main_experiment(args::Vector{String})
 
     Agent_t = parsed["agent"]
     if Agent_t == "GVFN"
-        agent = GVFN.TimeSeriesFluxAgent(parsed; rng=rng)
+        agent = GVFN.TimeSeriesGVFNAgent(parsed; rng=rng)
     elseif Agent_t == "RNN"
         agent = GVFN.TimeSeriesRNNAgent(parsed;rng=rng)
     else

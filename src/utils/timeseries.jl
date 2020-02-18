@@ -29,6 +29,11 @@ end
 (u::Unity)(x) = (x.-u.mn) ./ (u.mx.-u.mn)
 
 function getNormalizer(parsed::Dict)
+    kys = keys(parsed)
+    if "normalizer" ∉ kys
+        return Identity()
+    end
+
     n=parsed["normalizer"]
     if n=="Identity"
         return Identity()
@@ -42,7 +47,7 @@ function getNormalizer(parsed::Dict)
 end
 
 function LinSpacing(lo,hi,N)
-    Γ = collect(LinRange(lo,hi,N))
+    Γ = Float32.(collect(LinRange(lo,hi,N)))
     return Horde(
         map(γ->GVF(NormalizedCumulant(1-γ, FeatureCumulant(1)), ConstantDiscount(γ),NullPolicy()), Γ)
     )
