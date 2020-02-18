@@ -6,6 +6,9 @@ import Reproduce
 
 function save_setup(parsed; save_dir_key="exp_loc", working=false, def_save_file="results.jld2")
     savefile = def_save_file
+    if save_dir_key ∉ keys(parsed)
+        save_dir_key = "save_dir"
+    end
     if !working
         Reproduce.create_info!(parsed, parsed[save_dir_key]; filter_keys=["verbose", "working", "progress", save_dir_key])
         savepath = Reproduce.get_save_dir(parsed)

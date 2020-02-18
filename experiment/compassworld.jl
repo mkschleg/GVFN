@@ -30,9 +30,9 @@ function construct_agent(parsed, rng=Random.GLOBAL_RNG)
     ap = CWU.get_behavior_policy(parsed["policy"])
 
     fc = if "cell" ∈ keys(parsed) && parsed["cell"] != "ARNN"
-        cwu.StandardFeatureCreator()
+        CWU.StandardFeatureCreator()
     else
-        cwu.NoActionFeatureCreator()
+        CWU.NoActionFeatureCreator()
     end
     fs = feature_size(fc)
 
@@ -60,7 +60,7 @@ function construct_agent(parsed, rng=Random.GLOBAL_RNG)
     end
     
     τ = parsed["truncation"]
-    opt = FluxUtils.get_optimizer(parsed)
+    opt = FluxUtils.get_optimizer(parsed["opt"], parsed["alpha"])
     
     agent = GVFN.FluxAgent(out_horde,
                            chain,
@@ -86,6 +86,8 @@ function main_experiment(parsed::Dict; progress=false, working=false)
 
     rng = Random.MersenneTwister(seed)
 
+    cw_size = get(parsed, "size", 8)
+    
     env = CompassWorld(parsed["size"], parsed["size"])
     agent = construct_agent(parsed, rng)
 
@@ -122,7 +124,7 @@ function default_arg_dict(rnn=false)
             "policy" => "rafols",
         
             "opt" => "Descent",
-            "optparams" => [0.1],
+            "alpha" => 0.1,
             "truncation" => 1,
         
             "cell" => "ARNN",
@@ -139,7 +141,7 @@ function default_arg_dict(rnn=false)
             "policy" => "rafols",
             
             "opt" => "Descent",
-            "optparams" => [0.1],
+            "alpha" => 0.1,
             "truncation" => 1,
             
             "gvfn-horde"  => "rafols",
