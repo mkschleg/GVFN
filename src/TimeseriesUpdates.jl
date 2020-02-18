@@ -89,3 +89,64 @@ function update!(model::SingleLayer, horde::AbstractHorde, opt, lu::BatchTD, sta
     model.b .-= apply!(opt, model.b, Δ)
 end
 
+# Janky batch update for RNN batch n-horizon updates
+function update!(chain,
+                  #horde::H,
+                  opt,
+                  lu::BatchTD,
+                  batchsize::Int,
+                  batch_h_init,
+                  batch_state_seq,
+                  batch_target
+                  ) where {H}
+
+    action_t = nothing # Never actions in timeseries experiments
+    ρ = 1.0            # No off-policy learning in the timeseries stuff
+
+    avg_grads = nothing
+    for i=1:batchsize
+        # Idx into the batch
+        h_init = batch_h_init[i]
+        state_seq = batch_state_seq[i]
+        target = batch_target[i]
+
+        # Update GVFN First
+        ℒ_gvfn, preds = begin
+            if contains_gvfn(chain)
+                gvfn_idx = find_layers_with_eq(chain, (l)->l isa Flux.Recur && l.cell isa AbstractGVFRCell)
+                if length(gvfn_idx) != 1
+                    throw("Multi-layer GVFN Not available")
+                end
+                ℒ, v = _gvfn_loss!(chain[1:gvfn_idx[1]],
+                                  lu,
+                                  h_init,
+                                  state_seq,
+                                  target,
+                                  action_t,
+                                  b_prob;)
+                # println(v[end-1])
+                ℒ, chain[gvfn_idx[1]+1:end].(v[end-1:end])
+            else
+                reset!(chain, h_init)
+                param(0.0f0), chain.(state_seq)
+            end
+        end
+
+        # TODO: preds[end] or preds[end-1]?
+        ℒ_out = 0.5*(sum(preds[end] - target).^2)
+
+        grads = Flux.Tracker.gradient(()->ℒ_out + ℒ_gvfn, Flux.params(chain))
+        if avg_grads == nothing
+            avg_grads = grads
+        else
+            for weights in Flux.params(chain)
+                avg_grads[weights] += grads[weights] ./ batchsize
+            end
+        end
+        reset!(chain, h_init)
+    end
+
+    for weights in Flux.params(chain)
+        Flux.Tracker.update!(opt, weights, avg_grads[weights])
+    end
+end

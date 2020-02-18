@@ -7,13 +7,24 @@ using Statistics
 using Plots; pyplot()
 
 includet("experiment/timeseries.jl")
-saveDir = "mso_bestGVFN"
+
+const env = "MackeyGlass"
+const saveDir = "rnn_TEST"
 
 # =============================
 # --- D E B U G   U T I L S ---
 # =============================
 
 getArgs(seed) = [
+    "--seed", string(seed),
+    "--alg", "BatchTD",
+    "--steps", "600000",
+    "--valSteps", "200000",
+    "--testSteps", "200000",
+    "--exp_loc", saveDir,
+    "--env", env,
+
+    # GVFN
     "--horizon", "12",
     "--batchsize", "32",
     "--model_stepsize", "0.001",
@@ -23,13 +34,16 @@ getArgs(seed) = [
     "--gamma_high", "0.95",
     "--gamma_low", "0.2",
     "--num_gvfs", "128",
-    "--seed", string(seed),
-    "--alg", "BatchTD",
-    "--steps", "600000",
-    "--valSteps", "200000",
-    "--testSteps", "200000",
-    "--exp_loc", saveDir,
-    "--env", "MSO"
+
+    # RNN
+    "--rnn_opt", "ADAM",
+    "--rnn_tau", "4",
+    "--rnn_lr", "0.001",
+    "--rnn_nhidden", "32",
+    "--rnn_cell", "GRU",
+
+    "--agent", "RNN"
+
 ]
 
 exp() = exp(4)
