@@ -237,7 +237,7 @@ function main_experiment(args::Vector{String})
                    "TestPredictions"=>testPreds,
                    "TestGroundTruth"=>tgt,
                    "ValidationGroundTruth"=>vgt)
-    # JLD2.@save savefile results
+    JLD2.@save savefile results
     return results
 end
 
