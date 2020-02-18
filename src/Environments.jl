@@ -1,9 +1,7 @@
 
 
 
-
-
-env_settings!(as::Reproduce.ArgParseSettings, env_type::Type{<:JuliaRL.AbstractEnvironment}) =
+env_settings!(as::Reproduce.ArgParseSettings, env_type::Type{<:MinimalRLCore.AbstractEnvironment}) =
     throw("Set settings function for $(typeof(env_type))")
 
 

@@ -1,14 +1,18 @@
 
 using JLD2
+using MinimalRLCore
 import ProgressMeter
 import Reproduce
 
-function save_setup(parsed, def_save_file="results.jld2")
+function save_setup(parsed; save_dir_key="exp_loc", working=false, def_save_file="results.jld2")
     savefile = def_save_file
-    if !(parsed["working"])
-        Reproduce.create_info!(parsed, parsed["exp_loc"]; filter_keys=["verbose", "working", "exp_loc"])
+    if save_dir_key ∉ keys(parsed)
+        save_dir_key = "save_dir"
+    end
+    if !working
+        Reproduce.create_info!(parsed, parsed[save_dir_key]; filter_keys=["verbose", "working", "progress", save_dir_key])
         savepath = Reproduce.get_save_dir(parsed)
-        savefile = joinpath(savepath, "results.jld2")
+        savefile = joinpath(savepath, savefile)
         if isfile(savefile)
             return nothing
         end
@@ -17,15 +21,15 @@ function save_setup(parsed, def_save_file="results.jld2")
 end
 
 function continuous_experiment(env, agent, num_steps, verbose=false, progress=false, callback_func=nothing; rng=Random.GLOBAL_RNG)
-    _, s_t = start!(env; rng=rng)
-    action = start!(agent, s_t; rng=rng)
+    s_t = start!(env, rng)
+    action = start!(agent, s_t, rng)
     
     prg_bar = ProgressMeter.Progress(num_steps, "Step: ")
 
     for step in 1:num_steps
 
-        _, s_tp1, rew, term = step!(env, action; rng=rng)
-        out_preds, action = step!(agent, s_tp1, rew, term; rng=rng)
+        s_tp1, rew, term = step!(env, action, rng)
+        out_preds, action = step!(agent, s_tp1, rew, term, rng)
 
         if !(callback_func isa Nothing)
             callback_func(env, agent, (rew, term, s_tp1), (out_preds, action), step)

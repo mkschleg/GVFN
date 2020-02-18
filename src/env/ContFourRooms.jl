@@ -1,9 +1,6 @@
 # module FourRooms
-
+using MinimalRLCore
 import Random, Base.size
-
-# import IWER.GeneralValueFunction
-
 
 module ContFourRoomsParams
 
@@ -60,7 +57,7 @@ end
 """
     ContFourRooms
 
-    Four Rooms environment using JuliaRL abstract environment.
+    Four Rooms environment using MinimalRLCore abstract environment.
 
     - state: [y, x]
 
@@ -96,9 +93,9 @@ function ContFourRooms(size::Int, wall_list::Array{CartesianIndex{2}}, max_actio
     ContFourRooms([0.0,0.0], walls, max_noise, drift_noise, false)
 end
 
-JuliaRL.is_terminal(env::ContFourRooms) = false
-JuliaRL.get_reward(env::ContFourRooms) = 0
-function JuliaRL.get_state(env::ContFourRooms)
+MinimalRLCore.is_terminal(env::ContFourRooms) = false
+MinimalRLCore.get_reward(env::ContFourRooms) = 0
+function MinimalRLCore.get_state(env::ContFourRooms)
     if env.partial
         (Float64.(env.collision_check), env.state, env.collision)
     else
@@ -130,7 +127,7 @@ end
 Base.size(env::ContFourRooms) = size(env.walls)
 num_actions(env::ContFourRooms) = 4
 get_states(env::ContFourRooms) = findall(x->x==false, env.walls)
-JuliaRL.get_actions(env::ContFourRooms) = ContFourRoomsParams.ACTIONS
+MinimalRLCore.get_actions(env::ContFourRooms) = ContFourRoomsParams.ACTIONS
 
 
 function handle_collision(env::ContFourRooms, state, action)
@@ -143,9 +140,6 @@ function handle_collision(env::ContFourRooms, state, action)
     new_state[2] = clamp(new_state[2], frp.BODY_RADIUS, size(env.walls)[2] - frp.BODY_RADIUS)
 
     # Really basic collision detection for 2-d plane worlds.
-
-    # collided = new_state[1] != state[1] || new_state[2] != state[2]
-
     for i in 1:4
         project(env::ContFourRooms, new_state .+ frp.AGENT_BOUNDRIES[i], env.edge_locs[i])
         env.collision_check[i] = is_wall(env, env.edge_locs[i])
@@ -233,7 +227,7 @@ function which_room(env::ContFourRooms, state)
     return room
 end
 
-function JuliaRL.reset!(env::ContFourRooms; rng=Random.GLOBAL_RNG, kwargs...)
+function MinimalRLCore.reset!(env::ContFourRooms, rng=Random.GLOBAL_RNG)
     state = random_state(env, rng)
 
     while is_wall(env, state)
@@ -257,7 +251,7 @@ function mini_step(env::ContFourRooms, state, step, action)
     return new_state, collision
 end
 
-function JuliaRL.environment_step!(env::ContFourRooms, action; rng=Random.GLOBAL_RNG, kwargs...)
+function MinimalRLCore.environment_step!(env::ContFourRooms, action, rng=Random.GLOBAL_RNG)
 
 
     frp = ContFourRoomsParams
@@ -293,7 +287,7 @@ function JuliaRL.environment_step!(env::ContFourRooms, action; rng=Random.GLOBAL
     env.collision = collision
 end
 
-function _step(env::ContFourRooms, state, action; rng=Random.GLOBAL_RNG, kwargs...)
+function _step(env::ContFourRooms, state, action, rng=Random.GLOBAL_RNG)
 
     frp = ContFourRoomsParams
     next_step = zeros(2)
@@ -326,7 +320,7 @@ function _step(env::ContFourRooms, state, action; rng=Random.GLOBAL_RNG, kwargs.
         end
     end
     # next_state = handle_collision(env, next_state, action)
-    return env.state,  JuliaRL.get_state(env), 0.0, false
+    return env.state,  MinimalRLCore.get_state(env), 0.0, false
 end
 
 function MonteCarloReturn(env::ContFourRooms, gvf::GVF, start_state::Array{Float64, 1},
@@ -340,7 +334,7 @@ function MonteCarloReturn(env::ContFourRooms, gvf::GVF, start_state::Array{Float
         cumulative_gamma = 1.0
         while cumulative_gamma > γ_thresh && step < max_steps
             action = StatsBase.sample(rng, gvf.policy, cur_state)
-            _, next_state, _, _ = step!(env, cur_state, action; rng=rng)
+            _, next_state, _, _ = step!(env, cur_state, action, rng)
             println(st)
             c, γ, pi_prob = get(gvf, st[1], action, stp1, nothing, nothing)
             returns[ret] += cumulative_gamma*c
