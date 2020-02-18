@@ -421,7 +421,8 @@ function predict!(agent::TimeSeriesRNNAgent, env_s_tp1, r, terminal; rng=Random.
     out_preds = agent.chain.(agent.obs_sequence)[end]
 
     # update the hidden state
-    agent.hidden_state_init = get_next_hidden_state(agent.rnn, agent.hidden_state_init, agent.obs_sequence[1])
+    agent.hidden_state_init =
+        get_next_hidden_state(agent.chain, agent.hidden_state_init, agent.obs_sequence[1])
 
     return out_preds.data
 end
