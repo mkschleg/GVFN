@@ -3,8 +3,9 @@ export TimeSeriesAgent, TimeSeriesRNNAgent, predict!
 import Flux
 import Random
 import DataStructures
+import MinimalRLCore
 
-mutable struct TimeSeriesFluxAgent{O1, O2, C, F, H, Φ} <: JuliaRL.AbstractAgent
+mutable struct TimeSeriesFluxAgent{O1, O2, C, F, H, Φ} <: MinimalRLCore.AbstractAgent
     lu::LearningUpdate
     model_opt::O1
     gvfn_opt::O2
@@ -76,7 +77,7 @@ function TimeSeriesFluxAgent(parsed; rng=Random.GLOBAL_RNG)
     )
 end
 
-function JuliaRL.start!(agent::TimeSeriesFluxAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
+function MinimalRLCore.start!(agent::TimeSeriesFluxAgent, env_s_tp1, rng=Random.GLOBAL_RNG)
 
 
     agent.s_t .= agent.build_features(env_s_tp1)
@@ -87,7 +88,7 @@ function JuliaRL.start!(agent::TimeSeriesFluxAgent, env_s_tp1; rng=Random.GLOBAL
     agent.step+=1
 end
 
-function JuliaRL.step!(agent::TimeSeriesFluxAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
+function MinimalRLCore.step!(agent::TimeSeriesFluxAgent, env_s_tp1, r, terminal, rng=Random.GLOBAL_RNG)
 
     horizon = agent.horizon
     batchsize = agent.batchsize
@@ -143,7 +144,7 @@ end
 # --- GVFN AGENT ---
 # ==================
 
-mutable struct TimeSeriesAgent{GVFNOpt,ModelOpt, J, H, Φ, M, G1, G2, N} <: JuliaRL.AbstractAgent
+mutable struct TimeSeriesAgent{GVFNOpt,ModelOpt, J, H, Φ, M, G1, G2, N} <: MinimalRLCore.AbstractAgent
     lu::LearningUpdate
     gvfn_opt::GVFNOpt
     model_opt::ModelOpt
@@ -214,7 +215,7 @@ function TimeSeriesAgent(parsed; rng=Random.GLOBAL_RNG)
     return TimeSeriesAgent(lu, gvfn_opt, model_opt, gvfn, normalizer, batch_phi, batch_target, batch_hidden, batch_h, batch_obs, hidden_states, hidden_state_init, zeros(Float64, 1), model, horde, out_horde, horizon, 0, batchsize)
 end
 
-function JuliaRL.start!(agent::TimeSeriesAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
+function MinimalRLCore.start!(agent::TimeSeriesAgent, env_s_tp1, rng=Random.GLOBAL_RNG)
 
     stp1 = agent.normalizer(env_s_tp1)
 
@@ -225,7 +226,7 @@ function JuliaRL.start!(agent::TimeSeriesAgent, env_s_tp1; rng=Random.GLOBAL_RNG
     agent.step+=1
 end
 
-function JuliaRL.step!(agent::TimeSeriesAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
+function MinimalRLCore.step!(agent::TimeSeriesAgent, env_s_tp1, r, terminal, rng=Random.GLOBAL_RNG)
     push!(agent.hidden_states, copy(agent.h))
 
     if agent.step>=agent.horizon
@@ -273,7 +274,7 @@ end
 # --- RNN AGENT ---
 # =================
 
-mutable struct TimeSeriesRNNAgent{L,O, C, H, Φ} <: JuliaRL.AbstractAgent where {L<:LearningUpdate}
+mutable struct TimeSeriesRNNAgent{L,O, C, H, Φ} <: MinimalRLCore.AbstractAgent where {L<:LearningUpdate}
     lu::L
     opt::O
     chain::C
@@ -355,7 +356,7 @@ function resetBatch!(agent::TimeSeriesRNNAgent)
     agent.batch_obs, agent.batch_h, agent.batch_target = newBatch()
 end
 
-function JuliaRL.start!(agent::TimeSeriesRNNAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
+function MinimalRLCore.start!(agent::TimeSeriesRNNAgent, env_s_tp1, rng=Random.GLOBAL_RNG)
 
     # init observation sequence
     fill!(agent.obs_sequence, copy(env_s_tp1))
@@ -365,7 +366,7 @@ function JuliaRL.start!(agent::TimeSeriesRNNAgent, env_s_tp1; rng=Random.GLOBAL_
 end
 
 
-function JuliaRL.step!(agent::TimeSeriesRNNAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
+function MinimalRLCore.step!(agent::TimeSeriesRNNAgent, env_s_tp1, r, terminal, rng=Random.GLOBAL_RNG)
 
     # Update state seq
     push!(agent.obs_sequence, copy(env_s_tp1))
@@ -375,7 +376,7 @@ function JuliaRL.step!(agent::TimeSeriesRNNAgent, env_s_tp1, r, terminal; rng=Ra
     push!(agent.h_buff, copy(agent.hidden_state_init))
 
     # Update =====================================================
-    if isfull(agent.obs_buff)
+    if DataStructures.isfull(agent.obs_buff)
 
         # Add target, hidden state, and observation sequence to batch
         # ---| Target = most-recent observation; obs/hidden state = earliest in the buffer

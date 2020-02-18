@@ -192,12 +192,12 @@ function main_experiment(args::Vector{String})
         throw(DomainError("Agent $(Agent_t) not implemented!"))
     end
 
-    start!(agent, s_t; rng=rng)
+    start!(agent, s_t, rng)
 
     @showprogress 0.1 "Step: " for step in 1:num_steps
         s_tp1 = step!(env)
 
-        pred = step!(agent, s_tp1, 0, false; rng=rng)
+        pred = step!(agent, s_tp1, 0, false, rng)
         predictions[step] = pred[1]
 
         if step > horizon
@@ -210,7 +210,7 @@ function main_experiment(args::Vector{String})
     @showprogress 0.1 "Validation Step: " for step in 1:num_val
         s_tp1= step!(env)
 
-        pred = predict!(agent, s_tp1,0,false;rng=rng)
+        pred = predict!(agent, s_tp1,0,false; rng=rng)
         valPreds[step] = Flux.data(pred[1])
 
         if step>horizon
@@ -223,7 +223,7 @@ function main_experiment(args::Vector{String})
     @showprogress 0.1 "Test Step: " for step in 1:num_test
         s_tp1= step!(env)
 
-        pred = predict!(agent, s_tp1,0,false;rng=rng)
+        pred = predict!(agent, s_tp1, 0, false, rng)
         testPreds[step] = Flux.data(pred[1])
 
         if step>horizon

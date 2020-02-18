@@ -5,7 +5,7 @@ agent_settings!(as::Reproduce.ArgParseSettings, agent::Type{<:MinimalRLCore.Abst
     throw("Set settings function for $(typeof(agent))")
 
 # Specialized Agents
-# include("agent/timeseries.jl")
+include("agent/timeseries.jl")
 
 # (Mostly) General Agents.
 include("agent/FluxAgent.jl")
