@@ -426,10 +426,10 @@ uuid = "189a3867-3050-52da-a836-e630ba90ab69"
 version = "0.2.0"
 
 [[Reproduce]]
-deps = ["ArgParse", "CodeTracking", "Config", "Dates", "Distributed", "FileIO", "Git", "Glob", "JLD2", "Logging", "Pkg", "ProgressMeter", "Random", "Reexport", "SharedArrays", "Sockets"]
-git-tree-sha1 = "42ec1a10f76e72a284f36dca26c93dffe3cf65b6"
+deps = ["ArgParse", "CodeTracking", "Config", "Dates", "Distributed", "FileIO", "Git", "Glob", "JLD2", "JSON", "Logging", "Pkg", "ProgressMeter", "Random", "Reexport", "SharedArrays", "Sockets"]
+git-tree-sha1 = "ed5da4fe6f2e6b8ec44091327d276d56d34ac346"
 uuid = "560a9c3a-0b8c-11e9-0329-d39dfcb85ed2"
-version = "0.5.1"
+version = "0.5.2"
 
 [[Requires]]
 deps = ["Test"]
@@ -484,12 +484,6 @@ git-tree-sha1 = "5a3bcb6233adabde68ebc97be66e95dcb787424c"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
 version = "0.12.1"
 
-[[StaticLint]]
-deps = ["CSTParser", "SymbolServer", "Test"]
-git-tree-sha1 = "38d9e6cbb3fcb22dd3756c11a12f679e546acd95"
-uuid = "b3cc710f-9c33-5bdb-a03d-a94903873e97"
-version = "0.1.1"
-
 [[Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]
 uuid = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
@@ -509,12 +503,6 @@ version = "0.9.4"
 [[SuiteSparse]]
 deps = ["Libdl", "LinearAlgebra", "Serialization", "SparseArrays"]
 uuid = "4607b0f0-06f3-5cda-b6b1-a6196a1729e9"
-
-[[SymbolServer]]
-deps = ["LibGit2", "Pkg", "SHA", "Serialization"]
-git-tree-sha1 = "ff612877cdd98fa141bba75796c9d4894bd2e465"
-uuid = "cf896787-08d5-524d-9de7-132aaa0cb996"
-version = "0.2.5"
 
 [[Test]]
 deps = ["Distributed", "InteractiveUtils", "Logging", "Random"]
