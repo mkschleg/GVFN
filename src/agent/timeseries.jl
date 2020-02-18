@@ -132,7 +132,7 @@ function MinimalRLCore.step!(agent::TimeSeriesFluxAgent, env_s_tp1, r, terminal,
     return agent.model(v_tp1).data
 end
 
-function predict!(agent::TimeSeriesFluxAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG,kwargs...)
+function predict!(agent::TimeSeriesFluxAgent, env_s_tp1, r, terminal, rng=Random.GLOBAL_RNG)
     # for validation/test; predict, updating hidden states, but don't update models
 
     push!(agent.state_list, agent.build_features(env_s_tp1))
@@ -262,7 +262,7 @@ function MinimalRLCore.step!(agent::TimeSeriesAgent, env_s_tp1, r, terminal, rng
     return agent.model(v_tp1).data
 end
 
-function predict!(agent::TimeSeriesAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG,kwargs...)
+function predict!(agent::TimeSeriesAgent, env_s_tp1, r, terminal, rng=Random.GLOBAL_RNG)
     # for validation/test; predict, updating hidden states, but don't update models
 
     agent.h .= agent.gvfn(env_s_tp1, agent.h).data
@@ -411,7 +411,7 @@ function MinimalRLCore.step!(agent::TimeSeriesRNNAgent, env_s_tp1, r, terminal, 
     return out_preds.data
 end
 
-function predict!(agent::TimeSeriesRNNAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG,kwargs...)
+function predict!(agent::TimeSeriesRNNAgent, env_s_tp1, r, terminal, rng=Random.GLOBAL_RNG)
     # for validation/test; predict, updating hidden states, but don't update models
 
     # Update the sequence of observations
