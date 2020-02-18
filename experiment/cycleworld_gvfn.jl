@@ -1,5 +1,3 @@
-__precompile__(true)
-
 module CycleWorldExperiment
 
 import Flux.Tracker
@@ -44,6 +42,26 @@ function arg_parse(as::ArgParseSettings = ArgParseSettings(exc_handler=Reproduce
     return as
 end
 
+function default_arg_dict()
+    Dict{String,Any}(
+        "seed" => 1,
+        "steps" => 100000,
+        "chain" => 6,
+        "opt" => "Descent",
+        "optparams" => [0.1],
+        "truncation" => 4,
+        
+        "act" => "sigmoid",
+        "horde" => "gamma_chain",
+        "gamma" => 0.9,
+
+        "exp_loc" => "cycleworld_gvfn_sweep_sgd_lin",
+        "verbose" => false,
+        "working" => true,
+        "progress" => true,
+        "sweep" => false)
+end
+
 
 function construct_agent(parsed, rng=RNG.GLOBAL_RNG)
     #Construct agent
@@ -54,8 +72,9 @@ function construct_agent(parsed, rng=RNG.GLOBAL_RNG)
     ap = GVFN.RandomActingPolicy([1.0])
 
     initf=(dims...)->glorot_uniform(rng, dims...)
-
-    chain = Flux.Chain(GVFN.GVFR(horde, Flux.RNNCell, fs, length(horde), Flux.sigmoid, init=initf),
+    act = FLU.get_activation(get(parsed, "act", "sigmoid"))
+    
+    chain = Flux.Chain(GVFN.GVFR(horde, Flux.RNNCell, fs, length(horde), act, init=initf),
                        Flux.data,
                        Dense(length(horde), length(out_horde), initW=initf))
 
@@ -79,24 +98,19 @@ end
 function main_experiment(parsed::Dict)
 
     savefile = GVFN.save_setup(parsed)
-
     num_steps = parsed["steps"]
     seed = parsed["seed"]
 
     rng = Random.MersenneTwister(seed)
 
     env = CycleWorld(parsed["chain"])
-
-    out_pred_strg = zeros(num_steps)
-    out_err_strg = zeros(num_steps)
-
     agent = construct_agent(parsed, rng)
 
-    # GVFN.continuous_experiment(env, agent, num_steps, parsed["verbose"], parsed["progress"], callback; rng=rng)
     prg_bar = ProgressMeter.Progress(num_steps, "Step: ")
-    verbose = parsed["verbose"]
     progress = parsed["progress"]
-
+    
+    out_pred_strg = zeros(num_steps)
+    out_err_strg = zeros(num_steps)
     cur_step = 1
     
     run_episode!(env, agent, num_steps, rng) do (s, a, s′, r)
@@ -112,11 +126,6 @@ function main_experiment(parsed::Dict)
     
     results = Dict(["out_pred"=>out_pred_strg, "out_err_strg"=>out_err_strg])
     GVFN.save_results(savefile, results, parsed["working"])
-end
-
-Base.@ccallable function julia_main(ARGS::Vector{String})::Cint
-    main_experiment(ARGS)
-    return 0
 end
 
 end

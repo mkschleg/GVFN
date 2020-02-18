@@ -25,14 +25,9 @@ function FluxAgent(out_horde,
                    feature_creator,
                    feature_size,
                    acting_policy::Π;
-                   # parsed;
-                   rng=Random.GLOBAL_RNG,
-                   init_func=(dims...)->glorot_uniform(rng, dims...)) where {Π<:AbstractActingPolicy}
+                   rng=Random.GLOBAL_RNG) where {Π<:AbstractActingPolicy}
 
     num_gvfs = length(out_horde)
-
-    # τ=parsed["truncation"]
-    # opt = FluxUtils.get_optimizer(parsed)
 
     state_list, init_state = begin
         if needs_action_input(chain)

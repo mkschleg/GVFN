@@ -1,0 +1,21 @@
+[config]
+save_dir="cycleworld_gvfn_onestep"
+exp_file="experiment/cycleworld.jl"
+exp_module_name = "CycleWorldExperiment"
+exp_func_name = "main_experiment"
+arg_iter_type = "iter"
+
+[static_args]
+"chain" = 6
+"steps" = 100000
+"opt" = "Descent"
+"outhorde" = "onestep"
+"gamma" = 0.9
+"sweep" = false
+
+[sweep_args]
+"activation" = ["sigmoid"]
+"horde" = ["gamma_chain", "chain", "gammas_aj"]
+"alpha" = [0.008779149519890261, 0.013168724279835392, 0.019753086419753086, 0.02962962962962963, 0.044444444444444446, 0.06666666666666667, 0.1, 0.15]
+"truncation" = [1, 2, 3, 4, 6, 8, 12, 16]
+"seed" = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]

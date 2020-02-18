@@ -35,14 +35,9 @@ function opt_settings!(as::ArgParseSettings, prefix::AbstractString="")
                        :nargs=>'+'))
 end
 
-function get_optimizer(parsed::Dict)
-    kt = keytype(parsed)
-    get_optimizer(parsed[kt("opt")], parsed[kt("optparams")])
-end
-
-function get_optimizer(opt_string::AbstractString, params)
+function get_optimizer(opt_string::AbstractString, learning_rate)
     opt_func = getproperty(Flux, Symbol(opt_string))
-    return opt_func(params...)
+    return opt_func(learning_rate)
 end
 
 

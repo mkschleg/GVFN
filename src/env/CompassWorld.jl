@@ -87,7 +87,7 @@ get_num_features(env::CompassWorld) =
 
 function MinimalRLCore.environment_step!(env::CompassWorld, action::Int, rng = Random.GLOBAL_RNG)
 
-    @boundscheck action in env.actions
+    @boundscheck action in get_actions(env)
     
     CWC = CompassWorldConst
     x = env.agent_state.x

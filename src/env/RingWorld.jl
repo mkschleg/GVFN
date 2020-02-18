@@ -75,7 +75,7 @@ function MinimalRLCore.environment_step!(env::RingWorld, action::Int, rng = Rand
 end
 
 function MinimalRLCore.get_reward(env::RingWorld) # -> get the reward of the environment
-    return 0
+    return 0.0f0
 end
 
 function MinimalRLCore.get_state(env::RingWorld) # -> get state of agent
