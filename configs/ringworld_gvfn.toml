@@ -1,5 +1,5 @@
 [config]
-save_dir="ringworld_gvfn"
+save_dir="/home/mkschleg/scratch/GVFN/ringworld_config_test"
 exp_file="experiment/ringworld.jl"
 exp_module_name = "RingWorldExperiment"
 exp_func_name = "main_experiment"
@@ -10,7 +10,7 @@ arg_iter_type = "iter"
 "steps" = 300
 "opt" = "Descent"
 "outhorde" = "gammas_term"
-"outgamma" => 0.9
+"outgamma" = 0.9
 "gamma" = 0.95
 "sweep" = false
 
