@@ -210,7 +210,7 @@ function main_experiment(args::Vector{String})
     @showprogress 0.1 "Validation Step: " for step in 1:num_val
         s_tp1= step!(env)
 
-        pred = predict!(agent, s_tp1,0,false; rng=rng)
+        pred = predict!(agent, s_tp1,0,false, rng)
         valPreds[step] = Flux.data(pred[1])
 
         if step>horizon
