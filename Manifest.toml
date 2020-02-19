@@ -486,9 +486,9 @@ version = "0.2.0"
 
 [[Reproduce]]
 deps = ["ArgParse", "CodeTracking", "Config", "Dates", "Distributed", "FileIO", "Git", "Glob", "JLD2", "JSON", "Logging", "Pkg", "ProgressMeter", "Random", "Reexport", "SharedArrays", "Sockets"]
-git-tree-sha1 = "aa760a27954bfb1c15905fafc99f2ca35c6d3529"
+git-tree-sha1 = "43f8f37f803889c5f0b50cb548f8e0614efd79a5"
 uuid = "560a9c3a-0b8c-11e9-0329-d39dfcb85ed2"
-version = "0.5.3"
+version = "0.5.4"
 
 [[Requires]]
 deps = ["Test"]
