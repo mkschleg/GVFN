@@ -97,14 +97,22 @@ function main_experiment(parsed::Dict; progress=false, working=false)
     prg_bar = ProgressMeter.Progress(num_steps, "Step: ")
     
     cur_step = 1
-    run_episode!(env, agent, num_steps, rng) do (s, a, s′, r)
-        out_pred_strg[cur_step, :] .= Flux.data(a.out_preds)
-        out_oracle_strg[cur_step, :] .= CWU.oracle(env, parsed["out-horde"])
-
-        if progress
-           ProgressMeter.next!(prg_bar)
+    try
+        run_episode!(env, agent, num_steps, rng) do (s, a, s′, r)
+            out_pred_strg[cur_step, :] .= Flux.data(a.out_preds)
+            out_oracle_strg[cur_step, :] .= CWU.oracle(env, parsed["out-horde"])
+            
+            if progress
+                ProgressMeter.next!(prg_bar)
+            end
+            cur_step += 1
+    end
+        catch exc
+        if exc isa ErrorException && (exc.msg == "Loss is infinite" || exc.msg == "Loss is NaN" || exc.msg == "Loss is Inf")
+            out_pred_strg[cur_step:end, :] .= Inf
+        else
+            rethrow()
         end
-        cur_step += 1
     end
 
     sweep = get(parsed, "sweep", false)

@@ -76,6 +76,11 @@ function main_experiment(parsed::Dict; working=false, progress=false)
     seed = parsed["seed"]
     progress = get(parsed, "progress", progress)
     working = get(parsed, "working", working)
+
+    # default arguments
+    if "horde" ∉ keys(parsed)
+        num_hidden = get!(parsed, "hidden", parsed["size"]*2 + 2)
+    end
     
     savefile = GVFN.save_setup(parsed; save_dir_key="save_dir", working=working)
     if savefile isa Nothing
@@ -94,14 +99,22 @@ function main_experiment(parsed::Dict; working=false, progress=false)
     prg_bar = ProgressMeter.Progress(num_steps, "Step: ")
     
     cur_step = 1
-    run_episode!(env, agent, num_steps, rng) do (s, a, s′, r)
-        out_pred_strg[cur_step, :] .= Flux.data(a.out_preds)
-        out_oracle_strg[cur_step, :] .= RWU.oracle(env, parsed["outhorde"], get(parsed, "outgamma", 0.9f0))
+    try
+        run_episode!(env, agent, num_steps, rng) do (s, a, s′, r)
+            out_pred_strg[cur_step, :] .= Flux.data(a.out_preds)
+            out_oracle_strg[cur_step, :] .= RWU.oracle(env, parsed["outhorde"], get(parsed, "outgamma", 0.9f0))
 
-        if progress
-           ProgressMeter.next!(prg_bar)
+            if progress
+                ProgressMeter.next!(prg_bar)
+            end
+            cur_step += 1
         end
-        cur_step += 1
+    catch exc
+        if exc isa ErrorException && (exc.msg == "Loss is infinite" || exc.msg == "Loss is NaN" || exc.msg == "Loss is Inf")
+            out_pred_strg[cur_step:end, :] .= Inf
+        else
+            rethrow()
+        end
     end
 
     sweep = get(parsed, "sweep", false)    
