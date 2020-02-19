@@ -30,7 +30,6 @@ const seeds = collect(1:10).+20437
 #------ Model ----------#
 
 const batchsize = [32]
-const model_opt = ["ADAM"]
 const model_stepsize = [0.00001,0.0001, 0.001,0.01,0.1]
 
 const gvfn_stepsize = [0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005]

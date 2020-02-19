@@ -29,10 +29,8 @@ getArgs(seed) = [
     # GVFN
     "--horizon", "12",
     "--batchsize", "32",
-    "--model_stepsize", "0.001",
-    "--model_opt", "ADAM",
     "--gvfn_stepsize", "3.0e-3",
-    "--gvfn_opt", "Descent",
+    "--gvfn_opt", "ADAM",
     "--gvfn_tau", "4",
     "--gamma_high", "0.95",
     "--gamma_low", "0.2",
