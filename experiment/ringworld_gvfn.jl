@@ -63,14 +63,17 @@ function construct_agent(parsed, rng=Random.GLOBAL_RNG)
                        Dense(length(horde), 16, Flux.relu; initW=initf),
                        Dense(16, length(out_horde); initW=initf))
 
+    τ = parsed["truncation"]
+    opt = FluxUtils.get_optimizer(parsed["opt"], parsed["alpha"])
+
     agent = GVFN.FluxAgent(out_horde,
                            chain,
+                           opt,
+                           τ,
                            fc,
                            fs,
-                           ap,
-                           parsed;
-                           rng=rng,
-                           init_func=(dims...)->glorot_uniform(rng, dims...))
+                           ap; rng=rng)
+                           
 end
 
 
@@ -82,7 +85,7 @@ end
 
 function main_experiment(parsed::Dict)
 
-    savefile = GVFN.save_setup(parsed)
+    savefile = GVFN.save_setup(parsed;working=true)
     if savefile isa Nothing
         return
     end

@@ -3,12 +3,13 @@ export TimeSeriesGVFNAgent, TimeSeriesRNNAgent, predict!
 import Flux
 import Random
 import DataStructures
+import MinimalRLCore
 
 # ==================
 # --- GVFN AGENT ---
 # ==================
 
-mutable struct OriginalTimeSeriesAgent{GVFNOpt,ModelOpt, J, H, Φ, M, G1, G2, N} <: JuliaRL.AbstractAgent
+mutable struct OriginalTimeSeriesAgent{GVFNOpt,ModelOpt, J, H, Φ, M, G1, G2, N} <: MinimalRLCore.AbstractAgent
     lu::LearningUpdate
     gvfn_opt::GVFNOpt
     model_opt::ModelOpt
@@ -37,7 +38,7 @@ end
 
 function OriginalTimeSeriesAgent(parsed; rng=Random.GLOBAL_RNG)
 
-    horde = OriginalTimeSeriesUtils.get_horde(parsed)
+    horde = TimeSeriesUtils.get_horde(parsed)
     num_gvfs = length(horde)
 
     alg_string = parsed["alg"]
@@ -53,7 +54,7 @@ function OriginalTimeSeriesAgent(parsed; rng=Random.GLOBAL_RNG)
     model_opt_func = getproperty(Flux, Symbol(model_opt_string))
     model_opt = model_opt_func(parsed["model_stepsize"])
 
-    normalizer = OriginalTimeSeriesUtils.getNormalizer(parsed)
+    normalizer = TimeSeriesUtils.getNormalizer(parsed)
 
     init_func = (dims...)->glorot_uniform(rng, dims...)
     gvfn = JankyGVFLayer(1, num_gvfs; init=init_func)
@@ -79,7 +80,7 @@ function OriginalTimeSeriesAgent(parsed; rng=Random.GLOBAL_RNG)
     return OriginalTimeSeriesAgent(lu, gvfn_opt, model_opt, gvfn, normalizer, batch_phi, batch_target, batch_hidden, batch_h, batch_obs, hidden_states, hidden_state_init, zeros(Float32, 1), model, horde, out_horde, horizon, 0, batchsize)
 end
 
-function JuliaRL.start!(agent::OriginalTimeSeriesAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
+function MinimalRLCore.start!(agent::OriginalTimeSeriesAgent, env_s_tp1, rng=Random.GLOBAL_RNG)
 
     stp1 = agent.normalizer(env_s_tp1)
 
@@ -90,7 +91,7 @@ function JuliaRL.start!(agent::OriginalTimeSeriesAgent, env_s_tp1; rng=Random.GL
     agent.step+=1
 end
 
-function JuliaRL.step!(agent::OriginalTimeSeriesAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
+function MinimalRLCore.step!(agent::OriginalTimeSeriesAgent, env_s_tp1, r, terminal, rng=Random.GLOBAL_RNG)
     push!(agent.hidden_states, copy(agent.h))
 
     if agent.step>=agent.horizon
@@ -126,20 +127,19 @@ function JuliaRL.step!(agent::OriginalTimeSeriesAgent, env_s_tp1, r, terminal; r
     return agent.model(v_tp1).data
 end
 
-function predict!(agent::OriginalTimeSeriesAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG,kwargs...)
+function predict!(agent::OriginalTimeSeriesAgent, env_s_tp1, r, terminal, rng=Random.GLOBAL_RNG)
     # for validation/test; predict, updating hidden states, but don't update models
 
     agent.h .= agent.gvfn(env_s_tp1, agent.h).data
     return agent.model(agent.h).data
-
 end
 
 # =================
 # --- FLUX AGENT ---
 # =================
 
-mutable struct TimeSeriesAgent{O, C, N, H, Φ} <: JuliaRL.AbstractAgent
-    lu::LearningUpdate
+mutable struct TimeSeriesAgent{L, O, C, N, H, Φ} <: MinimalRLCore.AbstractAgent where {L<:LearningUpdate}
+    lu::L
     opt::O
     chain::C
     normalizer::N
@@ -305,7 +305,7 @@ function getTemporalBuffers(horizon::Int)
     return obs_buff, h_buff
 end
 
-function JuliaRL.start!(agent::TimeSeriesAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
+function MinimalRLCore.start!(agent::TimeSeriesAgent, env_s_tp1, rng=Random.GLOBAL_RNG)
 
     # init observation sequence
     fill!(agent.obs_sequence, copy(env_s_tp1))
@@ -315,7 +315,7 @@ function JuliaRL.start!(agent::TimeSeriesAgent, env_s_tp1; rng=Random.GLOBAL_RNG
 end
 
 
-function JuliaRL.step!(agent::TimeSeriesAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
+function MinimalRLCore.step!(agent::TimeSeriesAgent, env_s_tp1, r, terminal, rng=Random.GLOBAL_RNG)
 
     # Update state seq
     push!(agent.obs_sequence, copy(env_s_tp1))
@@ -325,7 +325,7 @@ function JuliaRL.step!(agent::TimeSeriesAgent, env_s_tp1, r, terminal; rng=Rando
     push!(agent.h_buff, copy(agent.hidden_state_init))
 
     # Update =====================================================
-    if isfull(agent.obs_buff)
+    if DataStructures.isfull(agent.obs_buff)
 
         # Add target, hidden state, and observation sequence to batch
         # ---| Target = most-recent observation; obs/hidden state = earliest in the buffer
@@ -360,7 +360,7 @@ function JuliaRL.step!(agent::TimeSeriesAgent, env_s_tp1, r, terminal; rng=Rando
     return out_preds.data
 end
 
-function predict!(agent::TimeSeriesAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG,kwargs...)
+function predict!(agent::TimeSeriesAgent, env_s_tp1, r, terminal, rng=Random.GLOBAL_RNG)
     # for validation/test; predict, updating hidden states, but don't update models
 
     # Update the sequence of observations

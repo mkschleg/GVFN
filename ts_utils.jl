@@ -4,7 +4,7 @@ using Reproduce
 using FileIO
 using JLD2
 using Statistics
-using Plots; pyplot()
+using Plots; gr()
 
 includet("experiment/timeseries.jl")
 
