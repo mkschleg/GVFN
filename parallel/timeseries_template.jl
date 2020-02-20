@@ -23,16 +23,14 @@ const cfg_file = TODO
 const num_workers = TODO
 # =================
 
-
 const save_loc = joinpath(string(@__DIR__),"..")
 
-cfg = ConfigManager(cfg_file, save_loc)
-parse!(cfg, 1)
+nruns = parse!(ConfigManager(cfg_file, save_loc),1)["args"]["nruns"]
 
 create_experiment_dir(save_loc; org_file=true)
 config_job(cfg_file,
            save_loc,
-           cfg["args"]["nruns"],
+           nruns,
            num_workers=num_workers,
            extra_args=[save_loc]
            )
