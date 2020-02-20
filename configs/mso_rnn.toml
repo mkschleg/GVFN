@@ -1,14 +1,17 @@
 save_path="mso/rnn"
 
+[config]
 exp_file="experiment/timeseries.jl"
 exp_module_name = "TimeSeriesExperiment"
 exp_func_name = "main_experiment"
 
+[args]
 env = "MSO"
 horizon = 12
 steps = 600000
 valSteps = 200000
 testSteps = 200000
+nruns=10
 
 agent = "RNN"
 rnn_cell = "GRU"

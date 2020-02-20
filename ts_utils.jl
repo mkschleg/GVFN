@@ -10,7 +10,7 @@ using Reproduce.Config
 includet("experiment/timeseries.jl")
 
 const default_config = "configs/test_gvfn.toml"
-const saveDir = string(split(split(default_config,"/")[2],".")[1]) # e.g. mackeyglass_rnn
+const saveDir = joinpath(string(@__DIR__),"..")
 
 # =============================
 # --- D E B U G   U T I L S ---
@@ -19,7 +19,7 @@ const saveDir = string(split(split(default_config,"/")[2],".")[1]) # e.g. mackey
 function exp(cfg, idx)
     cfg = ConfigManager(cfg, saveDir)
     parse!(cfg, idx)
-    TimeSeriesExperiment.main_experiment(cfg.spec)
+    TimeSeriesExperiment.main_experiment(cfg)
 end
 
 exp() = exp(default_config, 1)
@@ -29,9 +29,9 @@ exp() = exp(default_config, 1)
 # ===============
 
 function getResults()
-    ic = ItemCollection(saveDir)
-    _,hashes,_ = search(ic, Dict())
-    return load(joinpath(hashes[1], "results.jld2"), "results")
+    cfg = ConfigManager(default_config, saveDir)
+    parse!(cfg,1,1)
+    return get_run_data(cfg,1,1)
 end
 
 function getData()

@@ -17,37 +17,20 @@ using Flux.Tracker: TrackedArray, TrackedReal, track, @grad
 
 using DataStructures: CircularBuffer
 
+function main_experiment(cfg::ConfigManager, save_loc::String=string(@__DIR__))
 
-function main_experiment(args::Vector{String})
-    as = arg_parse()
-
-    @add_arg_table! as begin
-        "--config-file"
-        arg_type=String
-        "--idx"
-        arg_type=Int
-        default=1
-    end
-    parsed = parse_args(args, as)
-
-    cfg = ConfigManager(parsed["config-file"], ".")
-    parse!(cfg, parsed["idx"])
-    main_experiment(cfg.spec)
-end
-
-function main_experiment(parsed::Dict)
+    parsed = cfg["args"]
+    seed = cfg["run"]+203857
 
     num_steps = parsed["steps"]
     num_val = parsed["valSteps"]
     num_test = parsed["testSteps"]
-    seed = parsed["run"]+20458
     rng = Random.MersenneTwister(seed)
 
     horizon = parsed["horizon"]
 
     predictions = zeros(Float64,num_steps)
     gt = zeros(Float64, num_steps-horizon)
-
 
     env_t = parsed["env"]
     if env_t == "MackeyGlass"
@@ -117,7 +100,7 @@ function main_experiment(parsed::Dict)
                    "TestPredictions"=>testPreds,
                    "TestGroundTruth"=>tgt,
                    "ValidationGroundTruth"=>vgt)
-    JLD2.@save savefile results
+    save(cfg, results)
     return results
 end
 

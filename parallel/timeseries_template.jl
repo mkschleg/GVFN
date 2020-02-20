@@ -11,16 +11,28 @@ using Pkg
 Pkg.activate(".")
 
 using Reproduce
+using Reproduce.Config
 
-# This is just a template for a throwaway entry point.
-# Copy to new file and fill in TODO's
+# This is just a template for a
+# throwaway entry point on the cluster
+# don't use
 @assert false
 
-const cfg = #TODO
-const save_loc = joinpath(ENV["SLURM_SUBMIT_DIR"])
-const nruns = 10
+# === SET THESE ===
+const cfg_file = TODO
+const num_workers = TODO
+# =================
 
-create_experiment_dir(save_loc; org_file=false)
-config_job(cfg,
+
+const save_loc = joinpath(string(@__DIR__),"..")
+
+cfg = ConfigManager(cfg_file, save_loc)
+parse!(cfg, 1)
+
+create_experiment_dir(save_loc; org_file=true)
+config_job(cfg_file,
            save_loc,
-           nruns)
+           cfg["args"]["nruns"],
+           num_workers=num_workers,
+           extra_args=[save_loc]
+           )
