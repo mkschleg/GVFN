@@ -10,7 +10,7 @@ arg_iter_type = "iter"
 "opt" = "Descent"
 "outgamma" = 0.0
 "gamma" = 0.95
-"sweep" = false
+"sweep" = true
 
 [sweep_args]
 "size" = [6, 10]
