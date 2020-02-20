@@ -424,7 +424,7 @@ uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
 version = "0.3.11"
 
 [[Pkg]]
-deps = ["Dates", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "UUIDs"]
+deps = ["Dates", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Test", "UUIDs"]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 
 [[PlotThemes]]
@@ -486,9 +486,9 @@ version = "0.2.0"
 
 [[Reproduce]]
 deps = ["ArgParse", "CodeTracking", "Config", "Dates", "Distributed", "FileIO", "Git", "Glob", "JLD2", "JSON", "Logging", "Pkg", "ProgressMeter", "Random", "Reexport", "SharedArrays", "Sockets"]
-git-tree-sha1 = "43f8f37f803889c5f0b50cb548f8e0614efd79a5"
+git-tree-sha1 = "b7769571b1239b5259147a2e1867264f0a6376b5"
 uuid = "560a9c3a-0b8c-11e9-0329-d39dfcb85ed2"
-version = "0.5.4"
+version = "0.5.5"
 
 [[Requires]]
 deps = ["Test"]
