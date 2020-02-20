@@ -9,7 +9,7 @@ include("agent/timeseries.jl")
 
 # (Mostly) General Agents.
 include("agent/FluxAgent.jl")
-# include("agent/ForecastAgent.jl")
+include("agent/ForecastAgent.jl")
 # include("agent/ForecastActionAgent.jl")
 
 

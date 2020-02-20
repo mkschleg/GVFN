@@ -1,79 +1,45 @@
 
 
 
-mutable struct TargetCell{F, A, V} <: AbstractGVFRCell
-    σ::F
-    Wx::A
-    Wh::A
-    b::V
-    h::V
+mutable struct TargetCell{R}
+    rnn::R
 end
 
-TargetCell(in, out, σ=tanh; init=Flux.glorot_uniform) =
-    TargetCell(
-        σ,
-        param(init(out, in)),
-        param(init(out, out)),
-        param(Flux.zeros(out)),
-        param(Flux.zeros(out)))
+TargetR(rnn_cell, args...; kwargs...) = 
+    Flux.Recur(TargetCell(rnn_cell(args...; kwargs...)))
 
-function (m::TargetCell)(h, x)
-    new_h = m.σ.(m.Wx*x .+ m.Wh*h .+ m.b)
-    return new_h, new_h
-end
+TargetR_RNN(in, out, activation=tanh; kwargs...) =
+    Flux.Recur(TargetCell(
+        Flux.RNNCell(in, out, activation; kwargs...)))
 
+TargetR_GRU(in, out; kwargs...) =
+    Flux.Recur(TargetCell(
+        Flux.GRUCell(in, out; kwargs...)))
 
-Flux.hidden(m::TargetCell) = m.h
+TargetR_ARNN(in, num_actions, horde, activation=σ; init=Flux.glorot_uniform) =
+    Flux.Recur(GVFRCell(
+        ARNNCell(in, num_actions, length(horde), activation; init=init),
+        horde))
+
+Flux.hidden(m::TargetCell) = Flux.hidden(m.rnn)
 Flux.@treelike TargetCell
-TargetNetwork(args...; kwargs...) = Flux.Recur(TargetCell(args...; kwargs...))
+(m::TargetCell)(h, x) = m.rnn(h, x)
 
-initial_hidden_state(m::Flux.Recur{T}) where {T<:TargetCell} = Flux.zeros(length(m.cell.b))
+get_hidden_state(rnn::Flux.Recur{TargetCell{T}}) where {T<:Flux.LSTMCell} = deepcopy(Flux.data.(rnn.state))
+get_initial_hidden_state(rnn::Flux.Recur{TargetCell{T}}) where {T<:Flux.LSTMCell} = deepcopy(Flux.data.(rnn.init))
 
-function update!(frnn::Flux.Recur{T}, opt, h_init, hist_state_seq, targets) where {T<:TargetCell}
-    reset!(frnn, h_init)
-    ps = Flux.params(frnn)
-    grads = Flux.Tracker.gradient(ps) do
-        Flux.mse(frnn.(hist_state_seq)[end], targets)
-    end
-    reset!(frnn, h_init)
-    Flux.Tracker.update!(opt, ps, grads)
+
+
+
+function _target_cell_loss(chain,
+                           h_init,
+                           hist_state_seq,
+                           τ,
+                           targets)
+    reset!(chain, h_init)
+    preds = chain.(hist_state_seq)
+    Flux.mse(preds[τ], targets), preds
 end
 
-
-mutable struct TargetActionCell{F, A, B, V} <: AbstractGVFRCell
-    σ::F
-    Wx::A
-    Wh::A
-    b::B
-    h::V
+function _target_cell_batch_loss(chain, h_init, hist_state_seq, targets)
 end
-
-TargetActionCell(num_actions, in, out, σ=tanh; init=Flux.glorot_uniform) =
-    TargetActionCell(
-        σ,
-        param(init(num_actions, out, in)),
-        param(init(num_actions, out, out)),
-        param(Flux.zeros(num_actions, out)),
-        param(Flux.zeros(out)))
-
-function (m::TargetActionCell)(h, x::Tuple{Int64, Array{<:Number, 1}})
-    new_h = m.σ.(m.Wx[x[1], :, :]*x[2] .+ m.Wh[x[1], :, :]*h .+ m.b[x[1], :])
-    return new_h, new_h
-end
-
-Flux.hidden(m::TargetActionCell) = m.h
-Flux.@treelike TargetActionCell
-TargetActionNetwork(args...; kwargs...) = Flux.Recur(TargetActionCell(args...; kwargs...))
-
-initial_hidden_state(m::Flux.Recur{T}) where {T<:TargetActionCell} = Flux.zeros(length(m.cell.h))
-
-function update!(frnn::Flux.Recur{T}, opt, h_init, hist_state_seq, targets) where {T<:TargetActionCell}
-    reset!(frnn, h_init)
-    ps = Flux.params(frnn)
-    grads = Flux.Tracker.gradient(ps) do
-        Flux.mse(frnn.(hist_state_seq)[end], targets)
-    end
-    reset!(frnn, h_init)
-    Flux.Tracker.update!(opt, ps, grads)
-end
-
