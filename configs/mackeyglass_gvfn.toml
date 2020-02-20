@@ -1,0 +1,22 @@
+save_path="mackeyglass/gvfn"
+
+exp_file="experiment/timeseries.jl"
+exp_module_name = "TimeSeriesExperiment"
+exp_func_name = "main_experiment"
+
+env = "MackeyGlass"
+horizon = 12
+steps = 600000
+valSteps = 200000
+testSteps = 200000
+
+agent = "GVFN"
+update_fn = "BatchTD"
+batchsize = 32
+gamma_low = 0.1
+gamma_high = 0.95
+
+gvfn_opt = ["Descent","RMSProp"]
+gvfn_stepsize = [0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005]
+gvfn_tau = [1, 4, 16]
+num_gvfs = [32,64,128]

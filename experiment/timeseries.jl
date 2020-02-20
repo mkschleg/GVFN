@@ -7,155 +7,40 @@ using GVFN
 using Flux
 using Flux.Tracker
 using Statistics
-import LinearAlgebra.Diagonal
 using Random
 using ProgressMeter
-# using FileIO
 using JLD2
 using Reproduce
+using Reproduce.Config
 using Random
 using Flux.Tracker: TrackedArray, TrackedReal, track, @grad
 
 using DataStructures: CircularBuffer
 
-function arg_parse(as::ArgParseSettings = ArgParseSettings())
-
-    #Experiment
-    @add_arg_table as begin
-        "--exp_loc"
-        help="Location of experiment"
-        arg_type=String
-        default="tmp"
-        "--env"
-        help="Name of the time series dataset to use"
-        arg_type=String
-        "--seed"
-        help="Seed of rng"
-        arg_type=Int64
-        default=0
-        "--steps"
-        help="number of steps"
-        arg_type=Int64
-        default=600000
-        "--valSteps"
-        help="number of validation steps"
-        arg_type=Int64
-        default=200000
-        "--testSteps"
-        help="number of test steps"
-        arg_type=Int64
-        default=200000
-        "--working"
-        action=:store_true
-        "--agent"
-        help="which agent to use"
-        arg_type=String
-    end
-
-
-    @add_arg_table as begin
-        "--horizon"
-        help="prediction horizon"
-        default=12
-        arg_type=Int64
-        "--batchsize"
-        help="batchsize for models"
-        arg_type=Int64
-        default=32
-        "--alg"
-        help="Algorithm"
-        default="BatchTD"
-
-        "--normalizer"
-        help="input normalizer"
-        arg_type=String
-        default="Identity"
-        "--max"
-        help="max normalizing constant"
-        arg_type=Float64
-        default=1.0
-        "--min"
-        help="min normalizing constant"
-        arg_type=Float64
-        default=0.0
-
-        # GVFN
-        "--gvfn_opt"
-        help="Optimizer"
-        default="Descent"
-        "--act"
-        help="The activation used for the GVFN"
-        arg_type=String
-        default="linear"
-        "--gamma_low"
-        arg_type=Float64
-        default=0.2
-        "--gamma_high"
-        arg_type=Float64
-        default=0.9
-        "--num_gvfs"
-        arg_type=Int
-        default=128
-        "--gvfn_stepsize"
-        arg_type=Float64
-        default=3e-5
-        "--gvfn_tau"
-        arg_type=Int
-        default=1
-
-        # RNN
-        # --horizon
-        # --batchsize
-        "--rnn_opt"
-        help="Optimizer"
-        default="Adam"
-
-        "--rnn_tau"
-        help="BPTT truncation length"
-        arg_type=Int
-        default=1
-
-        "--rnn_lr"
-        help="learning rate"
-        arg_type=Float64
-        default=0.0001
-
-        "--rnn_nhidden"
-        help="number of hidden units"
-        arg_type=Int
-        default=64
-
-        "--rnn_cell"
-        help="RNN cell to use (e.g. GRU)"
-        arg_type=String
-        default="GRU"
-    end
-
-    return as
-end
-
 
 function main_experiment(args::Vector{String})
-
     as = arg_parse()
+
+    @add_arg_table! as begin
+        "--config-file"
+        arg_type=String
+        "--idx"
+        arg_type=Int
+        default=1
+    end
     parsed = parse_args(args, as)
 
+    cfg = ConfigManager(parsed["config-file"], ".")
+    parse!(cfg, parsed["idx"])
+    main_experiment(cfg.spec)
+end
 
-    savepath = ""
-    savefile = ""
-    if !parsed["working"]
-        create_info!(parsed, parsed["exp_loc"]; filter_keys=["verbose", "working", "exp_loc"])
-        savepath = Reproduce.get_save_dir(parsed)
-        savefile = joinpath(savepath, "results.jld2")
-        if isfile(savefile)
-            return
-        end
-    end
+function main_experiment(parsed::Dict)
 
     num_steps = parsed["steps"]
     num_val = parsed["valSteps"]
     num_test = parsed["testSteps"]
-    seed = parsed["seed"]
+    seed = parsed["run"]+20458
     rng = Random.MersenneTwister(seed)
 
     horizon = parsed["horizon"]

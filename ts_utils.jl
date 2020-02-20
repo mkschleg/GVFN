@@ -5,51 +5,24 @@ using FileIO
 using JLD2
 using Statistics
 using Plots; gr()
+using Reproduce.Config
 
 includet("experiment/timeseries.jl")
 
-const env = "MackeyGlass"
-const saveDir = "GVFN_TEST"
+const default_config = "configs/test_gvfn.toml"
+const saveDir = string(split(split(default_config,"/")[2],".")[1]) # e.g. mackeyglass_rnn
 
 # =============================
 # --- D E B U G   U T I L S ---
 # =============================
 
-getArgs(seed) = [
-    "--seed", string(seed),
-    "--alg", "BatchTD",
-    "--steps", "600000",
-    "--valSteps", "200000",
-    "--testSteps", "200000",
-    "--exp_loc", saveDir,
-    "--env", env,
+function exp(cfg, idx)
+    cfg = ConfigManager(cfg, saveDir)
+    parse!(cfg, idx)
+    TimeSeriesExperiment.main_experiment(cfg.spec)
+end
 
-    # BPTT
-
-    # GVFN
-    "--horizon", "12",
-    "--batchsize", "32",
-    "--gvfn_stepsize", "3.0e-3",
-    "--gvfn_opt", "ADAM",
-    "--gvfn_tau", "4",
-    "--gamma_high", "0.95",
-    "--gamma_low", "0.2",
-    "--num_gvfs", "128",
-
-    # RNN
-    "--rnn_opt", "ADAM",
-    "--rnn_tau", "4",
-    "--rnn_lr", "0.001",
-    "--rnn_nhidden", "32",
-    "--rnn_cell", "GRU",
-
-    "--agent", "GVFN"
-
-]
-
-exp() = exp(4)
-exp(seed::Int) = exp(getArgs(seed))
-exp(args) = TimeSeriesExperiment.main_experiment(args)
+exp() = exp(default_config, 1)
 
 # ===============
 # --- D A T A ---

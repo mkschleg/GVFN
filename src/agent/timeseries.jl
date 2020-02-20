@@ -168,7 +168,7 @@ function TimeSeriesGVFNAgent(parsed; rng=Random.GLOBAL_RNG)
     # ==========================================
     # hyperparameters
     # ==========================================
-    alg_string = parsed["alg"]
+    alg_string = parsed["update_fn"]
     horizon = Int(parsed["horizon"])
     batchsize=parsed["batchsize"]
 
@@ -240,11 +240,15 @@ end
 function TimeSeriesRNNAgent(parsed; rng=Random.GLOBAL_RNG)
 
     # hyperparameters
+    alg_string = parsed["update_fn"]
     horizon=parsed["horizon"]
     batchsize = parsed["batchsize"]
     nhidden=parsed["rnn_nhidden"]
     τ=parsed["rnn_tau"]
     lr = parsed["rnn_lr"]
+
+    lu_func = getproperty(GVFN, Symbol(alg_string))
+    lu = lu_func()
 
     # get normalizer
     normalizer = TimeSeriesUtils.getNormalizer(parsed)
@@ -266,23 +270,23 @@ function TimeSeriesRNNAgent(parsed; rng=Random.GLOBAL_RNG)
     # buffers for batches
     batch_obs, batch_h, batch_target = getNewBatch()
 
-    TimeSeriesAgent(BatchTD(),
-                       opt,
-                       chain,
-                       normalizer,
+    TimeSeriesAgent(lu,
+                    opt,
+                    chain,
+                    normalizer,
 
-                       obs_sequence,
-                       hidden_state_init,
+                    obs_sequence,
+                    hidden_state_init,
 
-                       h_buff,
-                       obs_buff,
+                    h_buff,
+                    obs_buff,
 
-                       batch_h,
-                       batch_obs,
-                       batch_target,
+                    batch_h,
+                    batch_obs,
+                    batch_target,
 
-                       horizon,
-                       batchsize)
+                    horizon,
+                    batchsize)
 
 end
 
