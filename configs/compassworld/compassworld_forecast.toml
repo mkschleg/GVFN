@@ -1,5 +1,5 @@
 [config]
-save_dir="compassworld_gvfn"
+save_dir="compassworld_forecast"
 exp_file="experiment/compassworld.jl"
 exp_module_name = "CompassWorldExperiment"
 exp_func_name = "main_experiment"
@@ -14,8 +14,8 @@ arg_iter_type = "iter"
 "policy" = "rafols"
 
 [sweep_args]
-"activation" = ["sigmoid"]
-"gvfn-horde" = ["rafols", "forward", "gammas_aj", "gammas_aj_term"]
+"cell" = ["ARNNCell", "GRUCell", "LSTMCell"]
+"klength" = [8, 22]
 "alpha" = "clamp.(0.1*1.5.^(-6:4), 0.0, 1.0)"
 "truncation" = [1, 4, 8, 12, 16, 24, 32]
 "seed" = "1:10"

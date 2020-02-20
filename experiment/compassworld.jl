@@ -29,27 +29,70 @@ function construct_agent(parsed, rng=Random.GLOBAL_RNG)
     out_horde = CWU.get_horde(parsed, "out-")
     ap = CWU.get_behavior_policy(parsed["policy"])
 
-    fc = if "cell" ∈ keys(parsed) && parsed["cell"] != "ARNN"
+    fc = if "cell" ∈ keys(parsed) && parsed["cell"] ∉ ["ARNN", "ARNNCell"]
         CWU.StandardFeatureCreator()
     else
         CWU.NoActionFeatureCreator()
     end
     fs = feature_size(fc)
-
+    
+    τ = parsed["truncation"]
+    opt = FluxUtils.get_optimizer(parsed["opt"], parsed["alpha"])
+    
     initf=(dims...)->glorot_uniform(rng, dims...)
-    chain = if "gvfn-horde" ∈ keys(parsed)
+    if "gvfn-horde" ∈ keys(parsed)
         # Construct GVFN Chain
         horde = CWU.get_horde(parsed["gvfn-horde"])
         act = FLU.get_activation(get(parsed, "act", "sigmoid"))
-        Flux.Chain(GVFN.GVFR(horde, GVFN.ARNNCell, fs, 3, length(horde), act; init=initf),
-                   Flux.data,
-                   Dense(length(horde), 32, Flux.relu; initW=initf),
-                   Dense(32, length(out_horde); initW=initf))
+        chain = Flux.Chain(GVFN.GVFR(horde, GVFN.ARNNCell, fs, 3, length(horde), act; init=initf),
+                           Flux.data,
+                           Dense(length(horde), 32, Flux.relu; initW=initf),
+                           Dense(32, length(out_horde); initW=initf))
+        GVFN.FluxAgent(out_horde,
+                       chain,
+                       opt,
+                       τ,
+                       fc,
+                       fs,
+                       ap; rng=rng)
+    elseif "klength" ∈ keys(parsed)
+        rnntype = parsed["cell"]
+        if findfirst("Cell", rnntype) == nothing
+            rnntype *= "Cell"
+        end
+        
+        forecast_obj = vcat(collect(collect(1:parsed["klength"]) for i in 1:5)...)
+        forecast_obj_idx = vcat(collect(fill(i, parsed["klength"]) for i in 1:5)...)
+
+        rnn_func = if rnntype == "ARNNCell"
+            GVFN.ARNNCell
+        else
+            getproperty(Flux, Symbol(rnntype))
+        end
+        chain = if rnn_func == GVFN.ARNNCell
+            Flux.Chain(GVFN.TargetR(rnn_func, fs, 3, length(forecast_obj), init=initf),
+                       Flux.data,
+                       Dense(length(forecast_obj), 32, Flux.relu; initW=initf),
+                       Dense(32, length(out_horde), initW=initf))
+        else
+            Flux.Chain(GVFN.TargetR(rnn_func, fs, length(forecast_obj), init=initf),
+                       Flux.data,
+                       Dense(length(forecast_obj), 32, Flux.relu; initW=initf),
+                       Dense(32, length(out_horde), initW=initf))
+        end
+
+        GVFN.ForecastAgent(out_horde,
+                           forecast_obj,
+                           forecast_obj_idx,
+                           chain,
+                           opt,
+                           τ, fc, fs, ap;
+                           rng=rng)
     else
         # Construct RNN Chain
         rnntype = getproperty(GVFN, Symbol(parsed["cell"]))
         chain = if rnntype == GVFN.ARNN
-            Flux.Chain(rnntype(fs, 4, parsed["hidden"]; init=initf),
+            Flux.Chain(rnntype(fs, 3, parsed["hidden"]; init=initf),
                        Dense(parsed["hidden"], 32, Flux.relu; initW=initf),
                        Dense(32, length(out_horde); initW=initf))
         else
@@ -57,18 +100,17 @@ function construct_agent(parsed, rng=Random.GLOBAL_RNG)
                        Dense(parsed["hidden"], 32, Flux.relu; initW=initf),
                        Dense(32, length(out_horde); initW=initf))
         end
+        GVFN.FluxAgent(out_horde,
+                       chain,
+                       opt,
+                       τ,
+                       fc,
+                       fs,
+                       ap; rng=rng)
     end
     
-    τ = parsed["truncation"]
-    opt = FluxUtils.get_optimizer(parsed["opt"], parsed["alpha"])
     
-    agent = GVFN.FluxAgent(out_horde,
-                           chain,
-                           opt,
-                           τ,
-                           fc,
-                           fs,
-                           ap; rng=rng)
+
 end
 
 function main_experiment(parsed::Dict; progress=false, working=false)
@@ -121,8 +163,8 @@ function main_experiment(parsed::Dict; progress=false, working=false)
     GVFN.save_results(savefile, results, working)
 end
 
-function default_arg_dict(rnn=false)
-    if rnn
+function default_arg_dict(agent_type)
+    if agent_type == :rnn
         Dict{String, Any}(
             "seed" => 4,
             "size" => 8,
@@ -137,9 +179,9 @@ function default_arg_dict(rnn=false)
         
             "cell" => "ARNN",
             "hidden" => 45,
-            "exp_loc" => "compassworld_rnn_sgd"
+            "save_dir" => "compassworld_rnn_sgd"
         )
-    else
+    elseif agent_type == :gvfn
         Dict{String, Any}(
             "seed" => 4,
             "size" => 8,
@@ -154,8 +196,26 @@ function default_arg_dict(rnn=false)
             
             "gvfn-horde"  => "rafols",
             "act" => "sigmoid",
-            "exp_loc" => "compassworld_gvfn_sgd"
+            "save_dir" => "compassworld_gvfn_sgd"
         )
+    elseif agent_type == :forecast
+        Dict{String,Any}(
+            "seed" => 4,
+            "size" => 8,
+            "steps" => 1000000,
+            "size" => 6,
+
+            "out-horde" => "forward",
+            "policy" => "rafols",
+            
+            "opt" => "Descent",
+            "alpha" => 0.1,
+            "truncation" => 1,
+            
+            "cell" => "RNNCell",            
+            "klength" => 8,
+            
+            "save_dir" => "compassworld_forecast")
     end
 end
 
