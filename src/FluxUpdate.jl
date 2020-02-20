@@ -38,18 +38,19 @@ end
 
 # For General Chains. 
 function update!(chain,
-                  horde::H,
-                  opt,
-                  lu::TD,
-                  h_init,
-                  state_seq,
-                  env_state_tp1,
-                  action_t=nothing,
-                  b_prob=1.0f0) where {H}
+                 horde::H,
+                 opt,
+                 lu::TD,
+                 h_init,
+                 state_seq,
+                 env_state_tp1,
+                 action_t=nothing,
+                 b_prob=1.0f0;
+                 kwargs...) where {H}
 
     
     # Update GVFN First
-    ℒ_gvfn, preds = begin
+    ℒ_rnn, preds = begin
         if contains_gvfn(chain)
             gvfn_idx = find_layers_with_eq(chain, (l)->l isa Flux.Recur && l.cell isa AbstractGVFRCell)
             if length(gvfn_idx) != 1
@@ -64,6 +65,17 @@ function update!(chain,
                                b_prob;)
             # println(v[end-1])
             ℒ, chain[gvfn_idx[1]+1:end].(v[end-1:end])
+        elseif contains_rnntype(chain, TargetCell)
+            target_idx = find_layers_with_eq(chain, (l)->l isa Flux.Recur && l.cell isa TargetCell)
+            if !(:targets ∈ keys(kwargs) && :τ ∈ keys(kwargs))
+                throw("To use TargetCells you need to include the truncation value (τ) and targets for the cell (targets)")
+            end
+            ℒ, forecast = _target_cell_loss(chain[1:target_idx[1]],
+                                            h_init,
+                                            state_seq,
+                                            kwargs[:τ],
+                                            kwargs[:targets])
+            ℒ, chain[target_idx[1]+1:end].(forecast[end-1:end])
         else
             reset!(chain, h_init)
             param(0.0f0), chain.(state_seq)
@@ -74,7 +86,7 @@ function update!(chain,
     ρ = π_prob./b_prob
     ℒ_out = offpolicy_tdloss(ρ, preds[end-1], cumulants, discounts, Flux.data(preds[end]))
 
-    grads = Flux.Tracker.gradient(()->ℒ_out + ℒ_gvfn, Flux.params(chain))
+    grads = Flux.Tracker.gradient(()->ℒ_out + ℒ_rnn, Flux.params(chain))
     reset!(chain, h_init)
     for weights in Flux.params(chain)
         Flux.Tracker.update!(opt, weights, grads[weights])

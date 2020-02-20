@@ -28,7 +28,7 @@ function construct_agent(parsed, rng=Random.GLOBAL_RNG)
     ap = GVFN.RandomActingPolicy([0.5f0, 0.5f0])
     
     # GVFN horde
-    fc = if "cell" ∈ keys(parsed) && parsed["cell"] != "ARNN"
+    fc = if "cell" ∈ keys(parsed) && parsed["cell"] ∉ ["ARNN", "ARNNCell"]
         RWU.StandardFeatureCreatorWithAction()
     else
         RWU.StandardFeatureCreator()    
@@ -37,16 +37,60 @@ function construct_agent(parsed, rng=Random.GLOBAL_RNG)
 
     initf=(dims...)->glorot_uniform(rng, dims...)
 
-    chain = if "horde" ∈ keys(parsed)
+    τ = parsed["truncation"]
+    opt = FluxUtils.get_optimizer(parsed["opt"], parsed["alpha"])
+
+    if "horde" ∈ keys(parsed)
         horde = RWU.get_horde(parsed)
-        chain = Flux.Chain(GVFN.GVFR(horde, GVFN.ARNNCell, fs, 3, length(horde), Flux.sigmoid; init=initf),
+        chain = Flux.Chain(GVFN.GVFR(horde, GVFN.ARNNCell, fs, 2, length(horde), Flux.sigmoid; init=initf),
                            Flux.data,
                            Dense(length(horde), 16, Flux.relu; initW=initf),
                            Dense(16, length(out_horde); initW=initf))
+        GVFN.FluxAgent(out_horde,
+                       chain,
+                       opt,
+                       τ,
+                       fc,
+                       fs,
+                       ap; rng=rng)
+    elseif "klength" ∈ keys(parsed)
+        rnntype = parsed["cell"]
+        if findfirst("Cell", rnntype) == nothing
+            rnntype *= "Cell"
+        end
+        
+        forecast_obj = collect(1:parsed["klength"])
+        forecast_obj_idx = fill(2, length(forecast_obj))
+
+        rnn_func = if rnntype == "ARNNCell"
+            GVFN.ARNNCell
+        else
+            getproperty(Flux, Symbol(rnntype))
+        end
+        chain = if rnn_func == GVFN.ARNNCell
+            Flux.Chain(GVFN.TargetR(rnn_func, fs, 2, length(forecast_obj), init=initf),
+                       Flux.data,
+                       Dense(length(forecast_obj), 16, Flux.relu; initW=initf),
+                       Dense(16, length(out_horde), initW=initf))
+        else
+            Flux.Chain(GVFN.TargetR(rnn_func, fs, length(forecast_obj), init=initf),
+                       Flux.data,
+                       Dense(length(forecast_obj), 16, Flux.relu; initW=initf),
+                       Dense(16, length(out_horde), initW=initf))
+        end
+
+        GVFN.ForecastAgent(out_horde,
+                           forecast_obj,
+                           forecast_obj_idx,
+                           chain,
+                           opt,
+                           τ, fc, fs, ap;
+                           rng=rng)
+
     else
         rnntype = getproperty(GVFN, Symbol(parsed["cell"]))
         chain = if rnntype == GVFN.ARNN
-            Flux.Chain(rnntype(fs, 4, parsed["hidden"]; init=initf),
+            Flux.Chain(rnntype(fs, 2, parsed["hidden"]; init=initf),
                        Dense(parsed["hidden"], 16, Flux.relu; initW=initf),
                        Dense(16, length(out_horde); initW=initf))
         else
@@ -54,18 +98,16 @@ function construct_agent(parsed, rng=Random.GLOBAL_RNG)
                        Dense(parsed["hidden"], 16, Flux.relu; initW=initf),
                        Dense(16, length(out_horde); initW=initf))
         end
+        GVFN.FluxAgent(out_horde,
+                       chain,
+                       opt,
+                       τ,
+                       fc,
+                       fs,
+                       ap; rng=rng)
     end
 
-    τ = parsed["truncation"]
-    opt = FluxUtils.get_optimizer(parsed["opt"], parsed["alpha"])
 
-    agent = GVFN.FluxAgent(out_horde,
-                           chain,
-                           opt,
-                           τ,
-                           fc,
-                           fs,
-                           ap; rng=rng)
 end
 
 
@@ -124,8 +166,8 @@ function main_experiment(parsed::Dict; working=false, progress=false)
 end
 
 
-function default_arg_dict(rnn=false)
-    if rnn
+function default_arg_dict(agent_type)
+    if agent_type == :rnn
         Dict{String,Any}(
             "seed" => 2,
             "size" => 6,
@@ -142,7 +184,7 @@ function default_arg_dict(rnn=false)
             "hidden"=>14,
 
             "save_dir" => "ringworld_rnn")
-    else
+    elseif agent_type == :gvfn
         Dict{String,Any}(
             "seed" => 2,
             "size" => 6,
@@ -160,6 +202,23 @@ function default_arg_dict(rnn=false)
             "gamma" => 0.95,
 
             "save_dir" => "ringworld_gvfn")
+    elseif agent_type == :forecast
+        Dict{String,Any}(
+            "seed" => 2,
+            "steps" => 300000,
+            "size" => 6,
+            
+            "outhorde" => "gammas_term",
+            "outgamma" => 0.9,
+            
+            "opt" => "Descent",
+            "alpha" => 0.1,
+            "truncation" => 2,
+            
+            "cell" => "RNNCell",            
+            "klength" => 14,
+            
+            "save_dir" => "ringworld_forecast")
     end
 end
 

@@ -20,7 +20,12 @@ reset!(m, h_init::IdDict) =
 
 function _reset!(m, h_init)
     Flux.reset!(m)
-    m.state.data .= Flux.data(h_init)
+    if m.state isa Tuple
+        m.state[1].data .= Flux.data(h_init[1])
+        m.state[2].data .= Flux.data(h_init[2])
+    else
+        m.state.data .= Flux.data(h_init)
+    end
 end
 
 function _reset!(m::Flux.Recur{T}, h_init) where {T<:Flux.LSTMCell}

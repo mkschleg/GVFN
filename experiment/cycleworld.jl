@@ -18,28 +18,60 @@ function construct_agent(parsed, rng=RNG.GLOBAL_RNG)
     ap = GVFN.RandomActingPolicy([1.0])
     initf=(dims...)->glorot_uniform(rng, dims...)
 
-    chain = if "horde" ∈ keys(parsed)
-        # GVFN Initialization
-        horde = CWU.get_horde(parsed)
-        act = FLU.get_activation(get(parsed, "act", "sigmoid")) # activation w/ default as sigmoid
-        Flux.Chain(GVFN.GVFR(horde, Flux.RNNCell, fs, length(horde), act, init=initf),
-                   Flux.data,
-                   Dense(length(horde), length(out_horde), initW=initf))
-    else
-        # RNN Initialization
-        rnntype = getproperty(Flux, Symbol(parsed["cell"]))
-        Flux.Chain(rnntype(fs, parsed["hidden"], init=initf),
-                   Dense(parsed["hidden"], length(out_horde), initW=initf))
-    end
-
     τ = parsed["truncation"]
     opt = FluxUtils.get_optimizer(parsed["opt"], parsed["alpha"])
 
-    GVFN.FluxAgent(out_horde,
-                   chain,
-                   opt,
-                   τ, fc, fs, ap;
-                   rng=rng)
+    if "horde" ∈ keys(parsed)
+        # GVFN Initialization
+        horde = CWU.get_horde(parsed)
+        act = FLU.get_activation(get(parsed, "act", "sigmoid")) # activation w/ default as sigmoid
+        chain = Flux.Chain(GVFN.GVFR(horde, Flux.RNNCell, fs, length(horde), act, init=initf),
+                           Flux.data,
+                           Dense(length(horde), length(out_horde), initW=initf))
+        GVFN.FluxAgent(out_horde,
+                       chain,
+                       opt,
+                       τ, fc, fs, ap;
+                       rng=rng)
+    elseif "klength" ∈ keys(parsed)
+        rnntype = get(parsed, "cell", "RNNCell")
+        if findfirst("Cell", rnntype) == nothing
+            rnntype *= "Cell"
+        end
+        
+        forecast_obj = collect(1:parsed["klength"])
+        forecast_obj_idx = fill(1, length(forecast_obj))
+
+        rnn_func = getproperty(Flux, Symbol(rnntype))
+        chain = Flux.Chain(GVFN.TargetR(rnn_func, fs, length(forecast_obj), init=initf),
+                           Flux.data,
+                           Dense(length(forecast_obj), length(out_horde), initW=initf))
+        τ = parsed["truncation"]
+        opt = FluxUtils.get_optimizer(parsed["opt"], parsed["alpha"])
+
+        GVFN.ForecastAgent(out_horde,
+                           forecast_obj,
+                           forecast_obj_idx,
+                           chain,
+                           opt,
+                           τ, fc, fs, ap;
+                           rng=rng)
+        
+    else
+        # RNN Initialization
+        rnntype = getproperty(Flux, Symbol(parsed["cell"]))
+        chain = Flux.Chain(rnntype(fs, parsed["hidden"], init=initf),
+                           Dense(parsed["hidden"], length(out_horde), initW=initf))
+        
+        GVFN.FluxAgent(out_horde,
+                       chain,
+                       opt,
+                       τ, fc, fs, ap;
+                       rng=rng)
+    end
+
+
+
 end
 
 function main_experiment(parsed::Dict; progress=false, working=false)
@@ -77,8 +109,8 @@ function main_experiment(parsed::Dict; progress=false, working=false)
 end
 
 
-function default_arg_dict(rnn=false)
-    if rnn
+function default_arg_dict(agent_type)
+    if agent_type==:rnn
         Dict{String,Any}(
             "seed" => 1,
             "steps" => 100000,
@@ -90,8 +122,8 @@ function default_arg_dict(rnn=false)
             "cell" => "RNN",
             "numhidden" => 7,
 
-            "exp_loc" => "cycleworld_rnn_sweep_sgd_lin")
-    else
+            "save_dir" => "cycleworld_rnn_sweep_sgd_lin")
+    elseif agent_type==:gvfn
         Dict{String,Any}(
             "seed" => 1,
             "steps" => 100000,
@@ -104,7 +136,17 @@ function default_arg_dict(rnn=false)
             "horde" => "gamma_chain",
             "gamma" => 0.9,
 
-            "exp_loc" => "cycleworld_gvfn_sweep_sgd_lin")
+            "save_dir" => "cycleworld_gvfn_sweep_sgd_lin")
+    elseif agent_type==:forecast
+        Dict{String,Any}(
+            "seed" => 1,
+            "steps" => 100000,
+            "chain" => 6,
+            "opt" => "Descent",
+            "alpha" => 0.1,
+            "truncation" => 1,
+            "klength" => 6,
+            "save_dir" => "cycleworld_forecast")
     end
 end
 
