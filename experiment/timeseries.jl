@@ -73,7 +73,10 @@ label_results(predictions, gt, valPreds, vgt, testPreds, tgt) = Dict("Prediction
 # --- EXPERIMENT ---
 # ==================
 
+checkConfig(cfg) = Config.get_checklist(cfg)[cfg["param_setting"]] == 1
+
 function main_experiment(cfg::ConfigManager, save_loc::String=string(@__DIR__), progress=false)
+
 
     # dict specifying parameters of the experiment
     parsed = cfg["args"]
@@ -91,6 +94,12 @@ function main_experiment(cfg::ConfigManager, save_loc::String=string(@__DIR__), 
 
     # init data buffers
     predictions, gt, valPreds, vgt, testPreds, tgt = init_data(num_steps, num_val, num_test, horizon)
+
+    # Check if we ran this experiment already
+    if checkConfig(cfg)
+        println("Config already in checklist. skipping...")
+        return nothing
+    end
 
     # get environment
     env = get_env(parsed)
@@ -134,13 +143,14 @@ function main_experiment(cfg::ConfigManager, save_loc::String=string(@__DIR__), 
 
             results = label_results(predictions, gt, valPreds, vgt, testPreds, tgt)
             save(cfg, results)
+            mark_config(cfg)
         else
             rethrow()
         end
         return results
     end
 
-    # progress bar
+    # Re-init progress bar for validation phase
     prg_bar = ProgressMeter.Progress(num_val, "Validation Step: ")
 
     # predict on the validation data
@@ -159,6 +169,7 @@ function main_experiment(cfg::ConfigManager, save_loc::String=string(@__DIR__), 
         end
     end
 
+    # re-init progress bar for test phase
     prg_bar = ProgressMeter.Progress(num_test, "Test Step: ")
 
     # predict on the test data
@@ -182,6 +193,9 @@ function main_experiment(cfg::ConfigManager, save_loc::String=string(@__DIR__), 
 
     # save results
     save(cfg, results)
+
+    # mark this config off the checklist
+    mark_config(cfg)
 
     return results
 end
