@@ -26,7 +26,7 @@ const user = "ajjacobs"
 
 # paths
 const project_root = "/home/$(user)/GVFN"
-const cfg_path = joinpath(project_roof,"configs/$(cfg_file)")
+const cfg_path = joinpath(project_root,"configs/$(cfg_file)")
 const data_path = joinpath(project_root,"data")
 
 function configJob(cfg::ConfigManager, dir::AbstractString, num_runs::Int; kwargs...)
