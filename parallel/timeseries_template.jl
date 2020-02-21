@@ -21,13 +21,45 @@ using Reproduce.Config
 
 # === SET THIS ===
 const cfg_file = TODO
+const data_root = TODO
+const save_loc = TODO
 # =================
 
-const save_loc = joinpath(string(@__DIR__),"..")
+function configJob(cfg::ConfigManager, dir::AbstractString, num_runs::Int; kwargs...)
+    exp_module_name = cfg.config_dict["config"]["exp_module_name"]
+    exp_file = cfg.config_dict["config"]["exp_file"]
+    exp_func_name = cfg.config_dict["config"]["exp_func_name"]
+    if Reproduce.IN_SLURM()
+        if !isdir(joinpath(dir, "jobs"))
+            mkdir(joinpath(dir, "jobs"))
+        end
+        if !isdir(joinpath(dir, "jobs", cfg.config_dict["save_path"]))
+            mkdir(joinpath(dir, "jobs", cfg.config_dict["save_path"]))
+        end
+    end
+    job(exp_file, dir, Config.iterator(cfg, num_runs);
+        exp_module_name=Symbol(exp_module_name),
+        exp_func_name=Symbol(exp_func_name),
+        exception_dir = joinpath("except", cfg.config_dict["save_path"]),
+        job_file_dir = joinpath(dir, "jobs", cfg.config_dict["save_path"]),
+        kwargs...)
+end
 
-nruns = parse!(ConfigManager(cfg_file, save_loc),1)["args"]["nruns"]
+function main()
+    cfg = ConfigManager(cfg_file, data_root)
+    parse!(cfg,1)
 
-create_experiment_dir(save_loc; org_file=false)
-config_job(cfg_file,
-           save_loc,
-           nruns)
+    # setup the data directories
+    nruns=cfg["args"]["nruns"]
+    nparams=total_combinations(cfg)
+    for idx=1:nparams
+        for r=1:nruns
+            parse!(cfg,idx,r)
+        end
+    end
+
+    create_experiment_dir(save_loc; org_file=false)
+    configJob(cfg, save_loc, nruns)
+end
+
+main()

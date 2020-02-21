@@ -113,14 +113,3 @@ function plotData(b::Dict)
     plot(p, ylim=[0,2])
 end
 
-# Reproduce.jl can't make the data directories on ComputeCanada
-function initDirs(cfg)
-    parse!(cfg,1)
-    nruns=cfg["args"]["nruns"]
-    nparams=total_combinations(cfg)
-    for idx=1:nparams
-        for r=1:nruns
-            parse!(cfg,idx,r)
-        end
-    end
-end
