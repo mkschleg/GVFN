@@ -9,7 +9,7 @@ using Reproduce.Config
 
 includet("experiment/timeseries.jl")
 
-const default_config = "configs/test_gvfn.toml"
+const default_config = "configs/test_rnn.toml"
 const saveDir = string(@__DIR__)
 
 # =============================
@@ -111,4 +111,16 @@ function plotData(b::Dict)
     plot!(b["Predictions"])
     plot!(b["GroundTruth"])
     plot(p, ylim=[0,2])
+end
+
+# Reproduce.jl can't make the data directories on ComputeCanada
+function initDirs(cfg)
+    parse!(cfg,1)
+    nruns=cfg["args"]["nruns"]
+    nparams=total_combinations(cfg)
+    for idx=1:nparams
+        for r=1:nruns
+            parse!(cfg,idx,r)
+        end
+    end
 end
