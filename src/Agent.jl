@@ -6,6 +6,8 @@ agent_settings!(as::Reproduce.ArgParseSettings, agent::Type{<:MinimalRLCore.Abst
 
 # Specialized Agents
 include("agent/timeseries.jl")
+include("agent/RGTDAgent.jl")
+
 
 # (Mostly) General Agents.
 include("agent/FluxAgent.jl")

@@ -3,19 +3,9 @@ import Flux
 import Random
 import DataStructures
 
-import JuliaRL
+import MinimalRLCore
 
-# function get_action(env_state, rng=Random.GLOBAL_RNG)
-#     rn = rand(rng)
-#     if rn < 0.5
-#         return 1, 0.5
-#     else
-#         return 2, 0.5
-#     end
-# end
-
-
-mutable struct RGTDAgent{O, GVFN<:GradientGVFN, F, H, Φ, Π, M, G} <: JuliaRL.AbstractAgent
+mutable struct RGTDAgent{O, GVFN<:GradientGVFN, F, H, Φ, Π, M, G} <: MinimalRLCore.AbstractAgent
     lu::RGTD
     opt::O
     gvfn::GVFN
@@ -25,7 +15,7 @@ mutable struct RGTDAgent{O, GVFN<:GradientGVFN, F, H, Φ, Π, M, G} <: JuliaRL.A
     s_t::Φ
     π::Π
     action::Int64
-    action_prob::Float64
+    action_prob::Float32
     model::M
     out_horde::Horde{G}
     preds_tp1::Array{Float64, 1}
@@ -50,7 +40,7 @@ function RGTDAgent(horde, out_horde,
 
     opt_string = parsed["opt"]
     opt_func = getproperty(Flux, Symbol(opt_string))
-    opt = opt_func(Float64.(parsed["optparams"])...)
+    opt = opt_func(parsed["optparams"]...)
 
     act = FluxUtils.get_activation(parsed["act"])
 
@@ -70,57 +60,55 @@ function RGTDAgent(horde, out_horde,
               hidden_state_init,
               zeros(Float32, 1),
               acting_policy,
-              -1, 0.0, model,
+              -1, 0.0f0, model,
               out_horde, zeros(length(horde)),
               prev_action_or_not)
 
 end
 
-function JuliaRL.start!(agent::RGTDAgent, env_s_tp1; rng=Random.GLOBAL_RNG, kwargs...)
+function MinimalRLCore.start!(agent::RGTDAgent, env_s_tp1, rng=Random.GLOBAL_RNG)
 
     agent.action, agent.action_prob = agent.π(env_s_tp1, rng)
 
-    fill!(agent.state_list, zeros(length(agent.build_features(env_s_tp1, agent.action))))
+    # fill!(agent.state_list, zeros(length(agent.build_features(env_s_tp1, agent.action))))
     push!(agent.state_list, agent.build_features(env_s_tp1, agent.action))
     agent.hidden_state_init .= zero(agent.hidden_state_init)
     agent.s_t = copy(env_s_tp1)
     return agent.action
 end
 
-function JuliaRL.step!(agent::RGTDAgent, env_s_tp1, r, terminal; rng=Random.GLOBAL_RNG, kwargs...)
+function MinimalRLCore.step!(agent::RGTDAgent, env_s_tp1, r, terminal, rng=Random.GLOBAL_RNG)
 
     # Decide Action
     new_action, new_prob = agent.π(env_s_tp1, rng)
+    push!(agent.state_list, agent.build_features(env_s_tp1, agent.action))
 
-    if agent.prev_action_or_not
-        push!(agent.state_list, agent.build_features(env_s_tp1, agent.action))
-    else
-        push!(agent.state_list, agent.build_features(env_s_tp1, new_action))
+
+    if DataStructures.isfull(agent.state_list)
+        update_full_hessian_fast!(agent.gvfn,
+                                  agent.opt,
+                                  agent.lu,
+                                  agent.hidden_state_init,
+                                  agent.state_list,
+                                  env_s_tp1,
+                                  agent.action,
+                                  agent.action_prob)
     end
-
-    update_full_hessian!(agent.gvfn,
-            agent.opt,
-            agent.lu,
-            agent.hidden_state_init,
-            agent.state_list,
-            env_s_tp1,
-            agent.action,
-            agent.action_prob)
-
-    preds = GVFN.roll(agent.gvfn,
-                      agent.state_list,
-                      agent.hidden_state_init,
-                      GVFN.Prediction)
+        preds = GVFN.roll(agent.gvfn,
+                          agent.state_list,
+                          agent.hidden_state_init,
+                          GVFN.Prediction)
     
-    agent.preds_tp1 .= preds[end]
-    update!(agent.model,
-            agent.out_horde,
-            agent.opt,
-            agent.lu,
-            Flux.data.(preds),
-            env_s_tp1,
-            agent.action,
-            agent.action_prob)
+        agent.preds_tp1 .= preds[end]
+        update!(agent.model,
+                agent.out_horde,
+                agent.opt,
+                agent.lu,
+                Flux.data.(preds),
+                env_s_tp1,
+                agent.action,
+                agent.action_prob)
+
 
     out_preds = agent.model(preds[end])
 
@@ -132,8 +120,6 @@ function JuliaRL.step!(agent::RGTDAgent, env_s_tp1, r, terminal; rng=Random.GLOB
 
     return Flux.data.(out_preds), agent.action, preds[end]
 end
-
-JuliaRL.get_action(agent::RGTDAgent, state) = agent.action
 
 
 function Base.print(io::IO, agent::RGTDAgent)

@@ -88,7 +88,7 @@ function main_experiment(args::Vector{String})
                            fc, fs, ap, parsed;
                            rng=rng,
                            init_func=(dims...)->0.00005f0.*glorot_normal(rng, dims...))
-                           # init_func=(dims...)->Flux.zeros(dims...).+(1//2))
+
     start!(agent, s_t; rng=rng)
 
     prg_bar = ProgressMeter.Progress(num_steps, "Step: ")
