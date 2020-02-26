@@ -75,7 +75,7 @@ label_results(predictions, gt, valPreds, vgt, testPreds, tgt) = Dict("Prediction
 
 checkConfig(cfg) = Config.get_checklist(cfg)[cfg["param_setting"]] == 1
 
-function main_experiment(cfg::ConfigManager, save_loc::String=string(@__DIR__), progress=false)
+function main_experiment(cfg::ConfigManager, save_loc::String=string(@__DIR__); progress=false)
 
 
     # dict specifying parameters of the experiment

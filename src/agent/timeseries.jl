@@ -186,9 +186,22 @@ function TimeSeriesGVFNAgent(parsed; rng=Random.GLOBAL_RNG)
     gvfn_lu_func = getproperty(GVFN, Symbol(alg_string))
     lu = gvfn_lu_func()
 
-    # GVFN optimizer
-    gvfn_opt_func = getproperty(Flux, Symbol(gvfn_opt_string))
-    opt = gvfn_opt_func(gvfn_stepsize)
+    # Optimizers
+    opt = begin
+        gvfn_opt_func = getproperty(Flux, Symbol(gvfn_opt_string))
+        gvfn_opt = gvfn_opt_func(gvfn_stepsize)
+
+        if "model_opt" ∈ keys(parsed)
+            model_opt_string = parsed["model_opt"]
+            model_stepsize = parsed["model_stepsize"]
+
+            model_opt_func = getproperty(Flux, Symbol(model_opt_string))
+            model_opt = model_opt_func(model_stepsize)
+            (gvfn=gvfn_opt, model=model_opt)
+        else
+            gvfn_opt
+        end
+    end
     # =============================================================
 
     # get horde

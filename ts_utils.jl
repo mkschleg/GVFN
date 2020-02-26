@@ -18,7 +18,7 @@ const saveDir = string(@__DIR__)
 function exp(cfg, idx, run=1)
     cfg = ConfigManager(cfg, saveDir)
     parse!(cfg, idx, run)
-    TimeSeriesExperiment.main_experiment(cfg)
+    TimeSeriesExperiment.main_experiment(cfg; progress=true)
 end
 
 exp(run) = exp(default_config, 1, run)
@@ -53,7 +53,7 @@ function NRMSE(cfg, idx)
     for r=1:nruns
         results = get_run_data(cfg, idx, r)
 
-        g,p = results["ValidationGroundTruth"], results["ValidationPredictions"]
+        g,p = results["GroundTruth"], results["Predictions"]
 
         p = p[1:length(g)]
 
@@ -103,7 +103,7 @@ function plotNRMSE()
     values = getBestNRMSE()
     av = mean(values, dims=1)
     σ = std(values, dims=1, corrected=true) / sqrt(size(values,1))
-    plot(av', ribbon=σ', grid=false, label="NRMSE")
+    plot(av', ribbon=σ', grid=false, label="NRMSE",ylim=[0,2])
 end
 
 function plotData(b::Dict)
