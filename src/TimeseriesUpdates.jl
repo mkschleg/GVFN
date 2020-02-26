@@ -123,8 +123,7 @@ function update!(chain,
                                   h_init,
                                   state_seq,
                                   target,
-                                  action_t,
-                                  b_prob;)
+                                  action_t)
                 # println(v[end-1])
                 ℒ, chain[gvfn_idx[1]+1:end].(v[end-1:end])
             else
