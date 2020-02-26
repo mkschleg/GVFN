@@ -3,12 +3,12 @@ using Reproduce
 using FileIO
 using JLD2
 using Statistics
-using Plots; gr()
+using Plots; pyplot()
 using Reproduce.Config
 
 includet("experiment/timeseries.jl")
 
-const default_config = "configs/test_gvfn.toml"
+const default_config = "configs/test_separateOpt.toml"
 const saveDir = string(@__DIR__)
 
 # =============================
