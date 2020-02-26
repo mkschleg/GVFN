@@ -1,4 +1,3 @@
-import Pkg; Pkg.activate(".")
 using Revise
 using Reproduce
 using FileIO
@@ -9,19 +8,20 @@ using Reproduce.Config
 
 includet("experiment/timeseries.jl")
 
-const default_config = "configs/test_rnn.toml"
+const default_config = "configs/test_gvfn.toml"
 const saveDir = string(@__DIR__)
 
 # =============================
 # --- D E B U G   U T I L S ---
 # =============================
 
-function exp(cfg, idx)
+function exp(cfg, idx, run=1)
     cfg = ConfigManager(cfg, saveDir)
-    parse!(cfg, idx)
+    parse!(cfg, idx, run)
     TimeSeriesExperiment.main_experiment(cfg)
 end
 
+exp(run) = exp(default_config, 1, run)
 exp() = exp(default_config, 1)
 
 # ===============
