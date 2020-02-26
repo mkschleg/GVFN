@@ -325,7 +325,7 @@ end
 function MinimalRLCore.start!(agent::TimeSeriesAgent, env_s_tp1, rng=Random.GLOBAL_RNG)
 
     # init observation sequence
-    fill!(agent.obs_sequence, copy(env_s_tp1))
+    fill!(agent.obs_sequence, agent.normalizer(env_s_tp1))
 
     # init hidden state
     agent.hidden_state_init = get_initial_hidden_state(agent.chain)
@@ -335,7 +335,7 @@ end
 function MinimalRLCore.step!(agent::TimeSeriesAgent, env_s_tp1, r, terminal, rng=Random.GLOBAL_RNG)
 
     # Update state seq
-    push!(agent.obs_sequence, copy(env_s_tp1))
+    push!(agent.obs_sequence, agent.normalizer(env_s_tp1))
 
     # copy state sequence/hidden state into temporal offset buffers
     push!(agent.obs_buff, copy(agent.obs_sequence))
@@ -381,7 +381,7 @@ function predict!(agent::TimeSeriesAgent, env_s_tp1, r, terminal, rng=Random.GLO
     # for validation/test; predict, updating hidden states, but don't update models
 
     # Update the sequence of observations
-    push!(agent.obs_sequence, env_s_tp1)
+    push!(agent.obs_sequence, agent.normalizer(env_s_tp1))
 
     # reset the chain's initial hidden state and run through the observation sequence
     reset!(agent.chain, agent.hidden_state_init)
