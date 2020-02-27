@@ -18,7 +18,6 @@ using Random
 using DataStructures: CircularBuffer
 
 
-# include("utils/util.jl")
 CWU = GVFN.CycleWorldUtils
 FLU = GVFN.FluxUtils
 
@@ -48,24 +47,21 @@ end
 
 function main_experiment(args::Vector{String})
 
+
     as = arg_parse()
     parsed = parse_args(args, as)
-
-    savepath = ""
-    savefile = ""
-    if !parsed["working"]
-        create_info!(parsed, parsed["exp_loc"]; filter_keys=["verbose", "working", "exp_loc"])
-        savepath = Reproduce.get_save_dir(parsed)
-        savefile = joinpath(savepath, "results.jld2")
-        if isfile(savefile)
-            return
-        end
-    end
-
+    
     num_steps = parsed["steps"]
     seed = parsed["seed"]
     verbose = parsed["verbose"]
     progress = parsed["progress"]
+    
+    savefile = GVFN.save_setup(parsed; save_dir_key="save_dir", working=working)
+    if savefile isa Nothing
+        return
+    end
+
+
     rng = Random.MersenneTwister(seed)
 
     env = CycleWorld(parsed["chain"])
@@ -74,45 +70,39 @@ function main_experiment(args::Vector{String})
     out_err_strg = zeros(num_steps)
 
 
-    _, s_t = start!(env)
+    s_t = start!(env)
 
     horde = CWU.get_horde(parsed)
     pred_err_strg = zeros(num_steps, length(horde))
     
     out_horde = Horde([GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())])
-    fc = (state, action)->CWU.build_features_cycleworld(state)
+    fc = (state, action)->[1.0f0, Float32(state[1]), 1.0f0 - Float32(state[1])]
     fs = 3
     ap = GVFN.RandomActingPolicy([1.0])
     
+    initf=(dims...)->glorot_uniform(rng, dims...)
     agent = GVFN.RGTDAgent(horde, out_horde,
                            fc, fs, ap, parsed;
                            rng=rng,
-                           init_func=(dims...)->0.00005f0.*glorot_normal(rng, dims...))
+                           init_func=initf)
 
-    start!(agent, s_t; rng=rng)
+    println(GVFN.is_cumulant_mat(agent.gvfn))
+    
+    start!(agent, s_t, rng)
 
     prg_bar = ProgressMeter.Progress(num_steps, "Step: ")
 
-    for step in 1:num_steps
- 
-        _, s_tp1, _, _ = step!(env, 1)
-        out_preds, action, preds = step!(agent, s_tp1, 0, false; rng=rng)
-
-        out_pred_strg[step] = Flux.data(out_preds)[1]
-        out_err_strg[step] = out_pred_strg[step][1] - CWU.oracle(env, "onestep", parsed["gamma"])[1]
-
-        pred_err_strg[step, :] .= preds - CWU.oracle(env, parsed["horde"], parsed["gamma"])
+    cur_step = 1
+    run_episode!(env, agent, num_steps, rng) do (s, a, s′, r)
         
-        if verbose
-            println("step: $(step)")
-            println(env)
-            println(preds)
-            println(out_preds)
-        end
-
+        out_pred_strg[cur_step] = Flux.data(a.out_preds)[1]
+        out_err_strg[cur_step] = out_pred_strg[cur_step][1] - CWU.oracle(env, "onestep", 0.0)[1]
+        
+        pred_err_strg[cur_step, :] .= a.preds - CWU.oracle(env, parsed["horde"], parsed["gamma"])
         if progress
-           next!(prg_bar)
+            next!(prg_bar, showvalues=[(:err, mean(out_err_strg[1:cur_step].^2)), (:preds, mean(sqrt.(mean(pred_err_strg[(cur_step-100<1 ? 1 : cur_step-100):cur_step, :].^2; dims=2)))), (:step, cur_step)])
         end
+        cur_step += 1
     end
 
     results = Dict(["out_pred"=>out_pred_strg, "out_err_strg"=>out_err_strg, "pred_err_strg"=>pred_err_strg])
