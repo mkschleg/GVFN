@@ -149,7 +149,10 @@ function oracle(env::CycleWorld, horde_str, γ=0.9)
         tmp = zeros(chain_length + 1)
         tmp[chain_length - state] = 1
         ret = [tmp[1]]
-    elseif horde_str == "gammas"
+    # elseif horde_str == "gammas"
+        # ret = collect(0.0:0.1:0.9).^(chain_length - state - 1)
+        
+    elseif horde_str == "gammas_term"
         ret = collect(0.0:0.1:0.9).^(chain_length - state - 1)
     else
         throw("Bug Found")

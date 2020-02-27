@@ -5,8 +5,8 @@ import DataStructures
 
 import MinimalRLCore
 
-mutable struct RGTDAgent{O, GVFN<:GradientGVFN, F, H, Φ, Π, M, G} <: MinimalRLCore.AbstractAgent
-    lu::RGTD
+mutable struct RGTDAgent{LU<:AbstractGradUpdate, O, GVFN<:GradientGVFN, F, H, Φ, Π, M, G} <: MinimalRLCore.AbstractAgent
+    lu::LU
     opt::O
     gvfn::GVFN
     build_features::F
@@ -54,7 +54,9 @@ function RGTDAgent(horde, out_horde,
     state_list = DataStructures.CircularBuffer{Array{Float32, 1}}(τ+1)
     hidden_state_init = zeros(Float32, num_gvfs)
 
-    RGTDAgent(lu, opt, gvfn,
+    RGTDAgent(lu,
+              opt,
+              gvfn,
               feature_creator,
               state_list,
               hidden_state_init,
@@ -85,14 +87,14 @@ function MinimalRLCore.step!(agent::RGTDAgent, env_s_tp1, r, terminal, rng=Rando
 
 
     if DataStructures.isfull(agent.state_list)
-        update_full_hessian_fast!(agent.gvfn,
-                                  agent.opt,
-                                  agent.lu,
-                                  agent.hidden_state_init,
-                                  agent.state_list,
-                                  env_s_tp1,
-                                  agent.action,
-                                  agent.action_prob)
+        update!(agent.gvfn,
+                agent.opt,
+                agent.lu,
+                agent.hidden_state_init,
+                agent.state_list,
+                env_s_tp1,
+                agent.action,
+                agent.action_prob)
     end
         preds = GVFN.roll(agent.gvfn,
                           agent.state_list,
@@ -118,7 +120,7 @@ function MinimalRLCore.step!(agent::RGTDAgent, env_s_tp1, r, terminal, rng=Rando
     agent.s_t .= env_s_tp1
     agent.hidden_state_init .= Flux.data(preds[1])
 
-    return Flux.data.(out_preds), agent.action, preds[end]
+    return (out_preds=Flux.data.(out_preds), action=agent.action, preds=preds[end])
 end
 
 
