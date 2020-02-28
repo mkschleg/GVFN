@@ -1,4 +1,4 @@
-save_path="mackeyglass/gvfn_separate2"
+save_path="mackeyglass/gvfn_separateOpt2"
 
 [config]
 exp_file="experiment/timeseries.jl"
