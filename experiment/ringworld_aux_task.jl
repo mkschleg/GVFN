@@ -1,4 +1,5 @@
-module RingWorldExperiment
+
+module RingWorldAuxTaskExperiment
 
 using GVFN
 using Flux
@@ -25,39 +26,34 @@ results_synopsis(results, ::Val{false}) = results
 function construct_agent(parsed, rng=Random.GLOBAL_RNG)
 
     out_horde = RWU.get_horde(parsed["outhorde"], parsed["size"], get(parsed, "outgamma", 0.9f0))
+    at_horde = RWU.get_horde(parsed["at-horde"], parsed["size"], get(parsed, "at-horde", 0.9f0), length(out_horde))
+
+    horde = GVFN.merge(out_horde, at_horde)
+    
     ap = GVFN.RandomActingPolicy([0.5f0, 0.5f0])
     
     # GVFN horde
-    fc = if "cell" ∈ keys(parsed) && parsed["cell"] != "ARNN"
+    fc = if parsed["cell"] ∉ ["ARNN", "ARNNCell"]
         RWU.StandardFeatureCreatorWithAction()
     else
         RWU.StandardFeatureCreator()    
     end
     fs = feature_size(fc)
 
-    initf=(dims...)->glorot_uniform(rng, dims...)
-
-    chain = if "horde" ∈ keys(parsed)
-        horde = RWU.get_horde(parsed)
-        chain = Flux.Chain(GVFN.GVFR(horde, GVFN.ARNNCell, fs, 3, length(horde), Flux.sigmoid; init=initf),
-                           Flux.data,
-                           Dense(length(horde), 16, Flux.relu; initW=initf),
-                           Dense(16, length(out_horde); initW=initf))
-    else
-        rnntype = getproperty(GVFN, Symbol(parsed["cell"]))
-        chain = if rnntype == GVFN.ARNN
-            Flux.Chain(rnntype(fs, 4, parsed["hidden"]; init=initf),
-                       Dense(parsed["hidden"], 16, Flux.relu; initW=initf),
-                       Dense(16, length(out_horde); initW=initf))
-        else
-            Flux.Chain(rnntype(fs, parsed["hidden"]),
-                       Dense(parsed["hidden"], 16, Flux.relu; initW=initf),
-                       Dense(16, length(out_horde); initW=initf))
-        end
-    end
-
     τ = parsed["truncation"]
     opt = FluxUtils.get_optimizer(parsed["opt"], parsed["alpha"])
+
+    initf=(dims...)->glorot_uniform(rng, dims...)
+    rnntype = getproperty(GVFN, Symbol(parsed["cell"]))
+    chain = if rnntype == GVFN.ARNN
+        Flux.Chain(rnntype(fs, 2, parsed["hidden"]; init=initf),
+                   Dense(parsed["hidden"], 16, Flux.relu; initW=initf),
+                   Dense(16, length(horde); initW=initf))
+    else
+        Flux.Chain(rnntype(fs, parsed["hidden"]),
+                   Dense(parsed["hidden"], 16, Flux.relu; initW=initf),
+                   Dense(16, length(horde); initW=initf))
+    end
 
     agent = GVFN.FluxAgent(out_horde,
                            chain,
@@ -66,9 +62,8 @@ function construct_agent(parsed, rng=Random.GLOBAL_RNG)
                            fc,
                            fs,
                            ap; rng=rng)
+    agent, out_horde, at_horde
 end
-
-
 
 function main_experiment(parsed::Dict; working=false, progress=false)
 
@@ -78,9 +73,7 @@ function main_experiment(parsed::Dict; working=false, progress=false)
     working = get(parsed, "working", working)
 
     # default arguments
-    if "horde" ∉ keys(parsed)
-        num_hidden = get!(parsed, "hidden", parsed["size"]*2 + 2)
-    end
+    num_hidden = get!(parsed, "hidden", parsed["size"]*2 + 2)
     
     savefile = GVFN.save_setup(parsed; save_dir_key="save_dir", working=working)
     if savefile isa Nothing
@@ -91,18 +84,25 @@ function main_experiment(parsed::Dict; working=false, progress=false)
 
     # Construct Environment
     env = RingWorld(parsed["size"])
-    agent = construct_agent(parsed, rng)
+    agent, out_horde, at_horde = construct_agent(parsed, rng)
 
-    out_pred_strg = zeros(num_steps, length(agent.horde))
-    out_oracle_strg = zeros(num_steps, length(agent.horde))
+    eval_pred_strg = zeros(num_steps, length(out_horde))
+    eval_oracle_strg = zeros(num_steps, length(out_horde))
+
+    at_pred_strg = zeros(num_steps, length(at_horde))
+    at_oracle_strg = zeros(num_steps, length(at_horde))
+
 
     prg_bar = ProgressMeter.Progress(num_steps, "Step: ")
     
     cur_step = 1
     try
         run_episode!(env, agent, num_steps, rng) do (s, a, s′, r)
-            out_pred_strg[cur_step, :] .= Flux.data(a.out_preds)
-            out_oracle_strg[cur_step, :] .= RWU.oracle(env, parsed["outhorde"], get(parsed, "outgamma", 0.9f0))
+            eval_pred_strg[cur_step, :] .= Flux.data(a.out_preds)[1:length(out_horde)]
+            eval_oracle_strg[cur_step, :] .= RWU.oracle(env, parsed["outhorde"], get(parsed, "outgamma", 0.9f0))
+
+            at_pred_strg[cur_step, :] .= Flux.data(a.out_preds)[length(out_horde)+1:end]
+            at_oracle_strg[cur_step, :] .= RWU.oracle(env, parsed["at-horde"], get(parsed, "outgamma", 0.9f0))
 
             if progress
                 ProgressMeter.next!(prg_bar)
@@ -124,43 +124,25 @@ function main_experiment(parsed::Dict; working=false, progress=false)
 end
 
 
-function default_arg_dict(rnn=false)
-    if rnn
-        Dict{String,Any}(
-            "seed" => 2,
-            "size" => 6,
-            "steps" => 300000,
-            
-            "outhorde" => "gammas_term",
-            "outgamma" => 0.9,
-            
-            "opt" => "Descent",
-            "alpha" => 0.1,
-            "truncation" => 2,
+function default_arg_dict(agent_type)
+    Dict{String,Any}(
+        "seed" => 2,
+        "size" => 6,
+        "steps" => 300000,
+        
+        "outhorde" => "onestep",
+        "outgamma" => 0.9,
 
-            "cell"=>"ARNN",
-            "hidden"=>14,
+        "outhorde" => "chain",
+        "outgamma" => 0.9,
+        
+        "opt" => "Descent",
+        "alpha" => 0.1,
+        "truncation" => 2,
+        
+        "cell"=>"ARNN",
+        "hidden"=>14,
 
-            "save_dir" => "ringworld_rnn")
-    else
-        Dict{String,Any}(
-            "seed" => 2,
-            "size" => 6,
-            "steps" => 300000,
-
-            "outhorde" => "gammas_term",
-            "outgamma" => 0.9,
-            
-            "opt" => "Descent",
-            "alpha" => 0.1,
-            "truncation" => 2,
-
-            "act" => "sigmoid",
-            "horde" => "gamma_chain",
-            "gamma" => 0.95,
-
-            "save_dir" => "ringworld_gvfn")
-    end
+        "save_dir" => "ringworld_rnn")
 end
 
-end

@@ -26,7 +26,7 @@ function horde_settings!(as::ArgParseSettings, prefix::AbstractString="")
 end
 
 
-function onestep(chain_length::Integer)
+function onestep(chain_length::Integer=0)
     gvfs = [GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())]
     return Horde(gvfs)
 end

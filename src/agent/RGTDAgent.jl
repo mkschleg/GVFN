@@ -14,43 +14,25 @@ mutable struct RGTDAgent{LU<:AbstractGradUpdate, O, GVFN<:GradientGVFN, F, H, Φ
     hidden_state_init::H
     s_t::Φ
     π::Π
-    action::Int64
+    action::Int
     action_prob::Float32
     model::M
     out_horde::Horde{G}
-    preds_tp1::Array{Float64, 1}
-    prev_action_or_not::Bool
+    preds_tp1::Array{Float32, 1}
 end
 
 
-function RGTDAgent(horde, out_horde,
+function RGTDAgent(out_horde,
+                   gvfn,
+                   out_model,
+                   lu,
+                   opt,
+                   τ,
                    feature_creator,
                    feature_size,
-                   acting_policy::Π,
-                   parsed;
-                   rng=Random.GLOBAL_RNG,
-                   init_func=(dims...)->glorot_uniform(dims...)) where {Π<:AbstractActingPolicy}
+                   acting_policy)
 
-    # horde = RingWorldUtils.get_horde(parsed)
-    num_gvfs = length(horde)
-
-    alg_string = parsed["alg"]
-    lu = RGTD(Float64.(parsed["params"])...)
-    τ=parsed["truncation"]
-
-    opt_string = parsed["opt"]
-    opt_func = getproperty(Flux, Symbol(opt_string))
-    opt = opt_func(parsed["optparams"]...)
-
-    act = FluxUtils.get_activation(parsed["act"])
-
-    prev_action_or_not = get(parsed, "prev_action_or_not", false)
-    
-    gvfn = GradientGVFN(feature_size, horde, act; initθ=init_func)
-
-    num_out_gvfs = length(out_horde)
-    model = Linear(num_gvfs, num_out_gvfs; init=init_func)
-
+    num_gvfs = length(gvfn.horde)
     state_list = DataStructures.CircularBuffer{Array{Float32, 1}}(τ+1)
     hidden_state_init = zeros(Float32, num_gvfs)
 
@@ -62,9 +44,8 @@ function RGTDAgent(horde, out_horde,
               hidden_state_init,
               zeros(Float32, 1),
               acting_policy,
-              -1, 0.0f0, model,
-              out_horde, zeros(length(horde)),
-              prev_action_or_not)
+              -1, 0.0f0, out_model,
+              out_horde, zeros(Float32, num_gvfs))
 
 end
 

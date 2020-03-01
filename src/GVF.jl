@@ -170,6 +170,8 @@ struct Horde{T<:AbstractGVF} <: AbstractHorde
     gvfs::Vector{T}
 end
 
+merge(horde1::Horde, horde2::Horde) = Horde([horde1.gvfs; horde2.gvfs])
+
 
 # combine(gvfh_1::Horde, gvfh_2::Horde) = Horde([gvfh_1.gvfs; ])
 
