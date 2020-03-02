@@ -154,6 +154,9 @@ function oracle(env::CycleWorld, horde_str, γ=0.9)
         
     elseif horde_str == "gammas_term"
         ret = collect(0.0:0.1:0.9).^(chain_length - state - 1)
+    elseif horde_str == "gammas_aj_term"
+        gammas = 1.0 .- 2.0 .^ collect(-7:-1)
+        ret = gammas.^(chain_length - state - 1)
     else
         throw("Bug Found")
     end
