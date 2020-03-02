@@ -14,6 +14,7 @@ testSteps = 200000
 nruns = 10
 
 agent = "GVFN"
+activation = "identity"
 update_fn = "BatchTD"
 batchsize = 32
 gamma_low = [0.1, 0.2, 0.3]
