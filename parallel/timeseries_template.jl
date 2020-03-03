@@ -20,16 +20,18 @@ using Reproduce.Config
 @assert false #TODO
 
 # === SET THESE ===
-const cfg_file = TODO
-const user = "ajjacobs"
+const cfg_file = "TODO"
+const user = "TODO"
+const project_root = "/home/$(user)/TODO"
 # =================
 
 # paths
-const project_root = "/home/$(user)/GVFN"
 const cfg_path = joinpath(project_root,"configs/$(cfg_file)")
 const data_path = joinpath(project_root,"data")
 
 function configJob(cfg::ConfigManager, dir::AbstractString, num_runs::Int; kwargs...)
+    create_experiment_dir(data_path; org_file=false)
+
     exp_module_name = cfg.config_dict["config"]["exp_module_name"]
     exp_file = cfg.config_dict["config"]["exp_file"]
     exp_func_name = cfg.config_dict["config"]["exp_func_name"]
@@ -62,7 +64,6 @@ function main()
         end
     end
 
-    create_experiment_dir(data_path; org_file=false)
     configJob(cfg, data_path, nruns)
 end
 

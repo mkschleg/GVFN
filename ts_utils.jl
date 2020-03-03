@@ -8,7 +8,7 @@ using Reproduce.Config
 
 includet("experiment/timeseries.jl")
 
-const default_config = "configs/test_separateOpt.toml"
+const default_config = "configs/test_gvfn.toml"
 const saveDir = string(@__DIR__)
 
 # =============================
@@ -58,7 +58,7 @@ function NRMSE(cfg, idx)
         p = p[1:length(g)]
 
         values = Float64[]
-        start = 10000
+        start = 1000
         for i=start+1:10:length(p)
             ĝ = g[i-start:i]
             P̂ = p[i-start:i]
@@ -78,8 +78,8 @@ function NRMSE(cfg, idx)
     return vals
 end
 
-function getBestNRMSE()
-    cfg = ConfigManager(default_config, saveDir)
+function getBestNRMSE(cfgFile)
+    cfg = ConfigManager(cfgFile, saveDir)
 
     best = Inf
     bestData = nothing
@@ -99,12 +99,21 @@ function getBestNRMSE()
     return bestData
 end
 
-function plotNRMSE()
-    values = getBestNRMSE()
-    av = mean(values, dims=1)
-    σ = std(values, dims=1, corrected=true) / sqrt(size(values,1))
-    plot(av', ribbon=σ', grid=false, label="NRMSE",ylim=[0,2])
+getBestNRMSE() = getBestNRMSE(default_config)
+
+function plotNRMSE(cfgFiles::Vector{String})
+    p = plot()
+    for cfgFile in cfgFiles
+        values = getBestNRMSE(cfgFile)
+        av = mean(values, dims=1)
+        σ = std(values, dims=1, corrected=true) / sqrt(size(values,1))
+        plot!(av', ribbon=σ', grid=false, label="NRMSE",ylim=[0,2])
+    end
+    return p
 end
+
+plotNRMSE(cfgFile::String) = plotNRMSE([cfgFile])
+plotNRMSE() = plotNRMSE(default_config)
 
 function plotData(b::Dict)
     p=plot()

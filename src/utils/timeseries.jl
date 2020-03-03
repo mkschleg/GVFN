@@ -46,14 +46,25 @@ function getNormalizer(parsed::Dict)
     end
 end
 
-function LinSpacing(lo,hi,N)
-    Γ = Float32.(collect(LinRange(lo,hi,N)))
-    return Horde(
-        map(γ->GVF(NormalizedCumulant(1-γ, FeatureCumulant(1)), ConstantDiscount(γ),NullPolicy()), Γ)
-    )
+function get_horde(parsed::Dict)
+    horde_t = parsed["horde"]
+    if horde_t == "LinSpacing"
+        lo, hi, N = parsed["gamma_low"], parsed["gamma_high"], parsed["num_gvfs"]
+
+        Γ = Float32.(collect(LinRange(lo,hi,N)))
+        return Horde(
+            map(γ->GVF(NormalizedCumulant(1-γ, FeatureCumulant(1)), ConstantDiscount(γ),NullPolicy()), Γ)
+        )
+    elseif horde_t == "Exponential"
+        N = parsed["num_gvfs"]
+
+        Γ = Float32.([1.0-2.0^-i for i=1:N])
+        return Horde(
+            map(γ->GVF(NormalizedCumulant(1-γ, FeatureCumulant(1)), ConstantDiscount(γ),NullPolicy()), Γ)
+        )
+    else
+        throw(DomainError("Invalid horde type: $(horde_t)"))
+    end
 end
 
-get_horde(lo,hi,N) = LinSpacing(lo,hi,N)
-get_horde(parsed::Dict)=get_horde(parsed["gamma_low"],parsed["gamma_high"], parsed["num_gvfs"])
-
-end
+end # END TimeSeriesUtils

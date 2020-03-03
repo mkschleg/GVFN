@@ -17,13 +17,15 @@ agent = "GVFN"
 activation = "relu"
 update_fn = "BatchTD"
 batchsize = 32
+
+horde = "LinSpacing"
 gamma_low = 0.1
 gamma_high = 0.97
+num_gvfs = 128
 
 gvfn_opt = "Descent"
 gvfn_stepsize = [0.00001,0.00005,0.0001,0.0005,0.001,0.005]
 gvfn_tau = [1,4,8,16]
 model_opt = "ADAM"
 model_stepsize = [0.00001,0.00005,0.0001,0.0005,0.001,0.005]
-num_gvfs = 128
 
