@@ -77,6 +77,9 @@ label_results(predictions, gt, valPreds, vgt, testPreds, tgt) = Dict("Prediction
 function main_experiment(parsed::Dict; working = false, progress=false)
 
     savefile = GVFN.save_setup(parsed; save_dir_key="save_dir", working=working)
+    if savefile == nothing
+        return
+    end
 
     # get parsed args
     seed = parsed["seed"]
