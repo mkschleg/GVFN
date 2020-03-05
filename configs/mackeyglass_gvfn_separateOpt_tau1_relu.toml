@@ -24,10 +24,10 @@ arg_iter_type = "iter"
 
 "gvfn_opt" = "Descent"
 "model_opt" = "ADAM"
-"gvfn_tau" = 1
 
 [sweep_args]
 "gvfn_stepsize" = [0.00001,0.00005,0.0001,0.0005,0.001,0.005]
+"gvfn_tau" = [1]
 "model_stepsize" = [0.00001,0.00005,0.0001,0.0005,0.001,0.005]
 "seed" = "1:10"
 
