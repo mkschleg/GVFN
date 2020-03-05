@@ -1,24 +1,25 @@
-save_path="mso/rnn"
-
 [config]
+save_dir="mso_rnn"
 exp_file="experiment/timeseries.jl"
 exp_module_name = "TimeSeriesExperiment"
 exp_func_name = "main_experiment"
+arg_iter_type = "iter"
 
-[args]
-env = "MSO"
-horizon = 12
-steps = 600000
-valSteps = 200000
-testSteps = 200000
-nruns=10
+[static_args]
+"env" = "MSO"
+"horizon" = 12
+"steps" = 600000
+"valSteps" = 200000
+"testSteps" = 200000
 
-agent = "RNN"
-rnn_cell = "GRU"
-rnn_opt = "ADAM"
-update_fn = "BatchTD"
-batchsize = 32
+"agent" = "RNN"
+"rnn_cell" = "GRU"
+"rnn_opt" = "ADAM"
+"update_fn" = "BatchTD"
+"batchsize" = 32
 
-rnn_lr = [0.01,0.005,0.001,0.0005,0.0001]
-rnn_nhidden = [32,64,128]
-rnn_tau = [1,2,4,8,16,32]
+[sweep_args]
+"rnn_lr" = [0.01,0.005,0.001,0.0005,0.0001]
+"rnn_nhidden" = [32,64,128]
+"rnn_tau" = [1,2,4,8,16,32]
+"seed" = "1:10"

@@ -1,31 +1,33 @@
-save_path="mackeyglass/gvfn_separateOpt2_relu"
-
 [config]
+save_dir="mackeyglass_gvfn_separateOpt2_relu"
 exp_file="experiment/timeseries.jl"
 exp_module_name = "TimeSeriesExperiment"
 exp_func_name = "main_experiment"
+arg_iter_type = "iter"
 
-[args]
-env = "MackeyGlass"
-horizon = 12
-steps = 600000
-valSteps = 200000
-testSteps = 200000
-nruns = 10
+[static_args]
+"env" = "MackeyGlass"
+"horizon" = 12
+"steps" = 600000
+"valSteps" = 200000
+"testSteps" = 200000
 
-agent = "GVFN"
-activation = "relu"
-update_fn = "BatchTD"
-batchsize = 32
+"agent" = "GVFN"
+"activation" = "relu"
+"update_fn" = "BatchTD"
+"batchsize" = 32
 
-horde = "LinSpacing"
-gamma_low = 0.1
-gamma_high = 0.97
-num_gvfs = 128
+"horde" = "LinSpacing"
+"gamma_low" = 0.1
+"gamma_high" = 0.97
+"num_gvfs" = 128
 
-gvfn_opt = "Descent"
-gvfn_stepsize = [0.00001,0.00005,0.0001,0.0005,0.001,0.005]
-gvfn_tau = [1,4,8,16]
-model_opt = "ADAM"
-model_stepsize = [0.00001,0.00005,0.0001,0.0005,0.001,0.005]
+"gvfn_opt" = "Descent"
+"model_opt" = "ADAM"
+
+[sweep_args]
+"gvfn_stepsize" = [0.00001,0.00005,0.0001,0.0005,0.001,0.005]
+"gvfn_tau" = [1,4,8,16]
+"model_stepsize" = [0.00001,0.00005,0.0001,0.0005,0.001,0.005]
+"seed" = "1:10"
 

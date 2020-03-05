@@ -1,31 +1,32 @@
-save_path="mackeyglass/gvfn_separateOpt"
-
 [config]
+save_dir="mackeyglass_gvfn_separateOpt"
 exp_file="experiment/timeseries.jl"
 exp_module_name = "TimeSeriesExperiment"
 exp_func_name = "main_experiment"
+arg_iter_type = "iter"
 
-[args]
-env = "MackeyGlass"
-horizon = 12
-steps = 600000
-valSteps = 200000
-testSteps = 200000
-nruns = 10
+[static_args]
+"env" = "MackeyGlass"
+"horizon" = 12
+"steps" = 600000
+"valSteps" = 200000
+"testSteps" = 200000
 
-agent = "GVFN"
-activation = "identity"
-update_fn = "BatchTD"
-batchsize = 32
+"agent" = "GVFN"
+"activation" = "identity"
+"update_fn" = "BatchTD"
+"batchsize" = 32
 
-horde = "LinSpacing"
-gamma_low = [0.1, 0.2, 0.3]
-gamma_high = [0.97, 0.95, 0.9]
-num_gvfs = 128
+"horde" = "LinSpacing"
+"model_stepsize" = 0.001
+"model_opt" = "ADAM"
+"gvfn_opt" = "Descent"
+"num_gvfs" = 128
 
-gvfn_opt = "Descent"
-gvfn_stepsize = [0.00001, 0.00003, 0.0001, 0.0003]
-gvfn_tau = [1,4,8]
-model_opt = "ADAM"
-model_stepsize = 0.001
+[sweep_args]
+"gamma_low" = [0.1, 0.2, 0.3]
+"gamma_high" = [0.97, 0.95, 0.9]
+"gvfn_stepsize" = [0.00001, 0.00003, 0.0001, 0.0003]
+"gvfn_tau" = [1,4,8]
+"seed" = "1:10"
 

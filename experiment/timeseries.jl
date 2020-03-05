@@ -8,7 +8,6 @@ using Statistics
 using Random
 using ProgressMeter
 using Reproduce
-using Reproduce.Config
 using Random
 using Flux.Tracker: TrackedArray, TrackedReal, track, @grad
 using DataStructures: CircularBuffer
@@ -69,20 +68,18 @@ label_results(predictions, gt, valPreds, vgt, testPreds, tgt) = Dict("Prediction
                                                                      "ValidationGroundTruth"=>vgt,
                                                                      "TestPredictions"=>testPreds,
                                                                      "TestGroundTruth"=>tgt)
+
 # ==================
 # --- EXPERIMENT ---
 # ==================
 
-checkConfig(cfg) = Config.get_checklist(cfg)[cfg["param_setting"]] == 1
 
-function main_experiment(cfg::ConfigManager, save_loc::String=string(@__DIR__); progress=false)
+function main_experiment(parsed::Dict; working = false, progress=false)
 
-
-    # dict specifying parameters of the experiment
-    parsed = cfg["args"]
+    savefile = GVFN.save_setup(parsed; save_dir_key="save_dir", working=working)
 
     # get parsed args
-    seed = cfg["run"]+203857
+    seed = parsed["seed"]
 
     horizon = parsed["horizon"]
     num_steps = parsed["steps"]
@@ -94,12 +91,6 @@ function main_experiment(cfg::ConfigManager, save_loc::String=string(@__DIR__); 
 
     # init data buffers
     predictions, gt, valPreds, vgt, testPreds, tgt = init_data(num_steps, num_val, num_test, horizon)
-
-    # Check if we ran this experiment already
-    if checkConfig(cfg)
-        println("Config already in checklist. skipping...")
-        return nothing
-    end
 
     # get environment
     env = get_env(parsed)
@@ -142,8 +133,7 @@ function main_experiment(cfg::ConfigManager, save_loc::String=string(@__DIR__); 
             testPreds .= Inf
 
             results = label_results(predictions, gt, valPreds, vgt, testPreds, tgt)
-            save(cfg, results)
-            mark_config(cfg)
+            GVFN.save_results(savefile, results, working)
         else
             rethrow()
         end
@@ -192,10 +182,7 @@ function main_experiment(cfg::ConfigManager, save_loc::String=string(@__DIR__); 
     results = label_results(predictions, gt, valPreds, vgt, testPreds, tgt)
 
     # save results
-    save(cfg, results)
-
-    # mark this config off the checklist
-    mark_config(cfg)
+    GVFN.save_results(savefile, results, working)
 
     return results
 end
