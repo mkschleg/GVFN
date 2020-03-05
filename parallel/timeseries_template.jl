@@ -6,16 +6,25 @@
 #SBATCH --ntasks=128
 #SBATCH --account=rrg-whitem
 
-using Pkg
-Pkg.activate(".")
+using Pkg; Pkg.activate(".")
+using Reproduce
 
 # This is a template file; fill out all the
 # missing values and the assert before using
 @assert false #TODO
 
+# ===== SET THESE ======
 const cfg_file = "TODO"
 const user = "TODO"
-const save_path = "TODO"
+const save_dir = "TODO"
+# ======================
 
-include(joinpath(ENV["SLURM_SUBMIT_DIR"], "parallel/parallel_config.jl"))
-reproduce_config_experiment("configs/$(cfg_file)"; save_path="/home/$(user)/$(save_path)")
+function run(config_file::AbstractString; save_path="", num_workers=Inf)
+    experiment = Experiment(config_file, save_path)
+    create_experiment_dir(experiment)
+    add_experiment(experiment; settings_dir="settings")
+    ret = num_workers == Inf ? job(experiment) : job(experiment; num_workers=num_workers)
+    post_experiment(experiment, ret)
+end
+
+run("configs/$(cfg_file)"; save_path="/home/$(user)/$(save_dir)")

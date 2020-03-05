@@ -6,8 +6,8 @@ using JLD2
 using Statistics
 using Plots; gr()
 
-const default_config = "configs/test_mackeyglass.toml"
-const saveDir = "./mackeyglass_gvfn_separateOpt2/data"
+const default_config = "configs/test_mackeyglass_best.toml"
+const saveDir = "./mackeyglass_gvfn_separateOpt2_test/data"
 
 function NRMSE(hashes)
     all_values = Vector{Float64}[]
@@ -78,7 +78,7 @@ end
 function plotNRMSE()
     values = getBestNRMSE()
     av = mean(values, dims=2)
-    σ = std(values, dims=2, corrected=true) / sqrt(size(values,1))
+    σ = std(values, dims=2, corrected=true) / sqrt(size(values,2))
     plot(av, ribbon=σ, grid=false, label="NRMSE")
 end
 
