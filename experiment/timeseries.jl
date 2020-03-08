@@ -53,8 +53,12 @@ function get_agent(parsed, rng)
     Agent_t = parsed["agent"]
     if Agent_t == "GVFN"
         agent = GVFN.TimeSeriesGVFNAgent(parsed; rng=rng)
+    elseif Agent_t == "FluxGVFN"
+        agent = GVFN.TimeSeriesFluxGVFNAgent(parsed; rng=rng)
     elseif Agent_t == "RNN"
         agent = GVFN.TimeSeriesRNNAgent(parsed;rng=rng)
+    elseif Agent_t == "FluxRNN"
+        agent = GVFN.TimeSeriesFluxRNNAgent(parsed; rng=rng)
     else
         throw(DomainError("Agent $(Agent_t) not implemented!"))
     end
