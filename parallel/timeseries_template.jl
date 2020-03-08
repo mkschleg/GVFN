@@ -4,22 +4,26 @@
 #SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
 #SBATCH --time=24:00:00 # Running time of 12 hours
 #SBATCH --ntasks=128
+#SBATCH --account=rrg-whitem
 #SBATCH --mail-user=ajjacobs@ualberta.ca
 #SBATCH --mail-type=ALL
-#SBATCH --account=rrg-whitem
-
-using Pkg; Pkg.activate(".")
-using Reproduce
 
 # This is a template file; fill out all the
 # missing values and the assert before using
 @assert false #TODO
 
-# ===== SET THESE ======
-const cfg_file = "TODO"
+# ================== SET THESE ===================
 const user = "TODO"
-const save_dir = "TODO"
-# ======================
+const home = "/home/$(user)/"
+
+const project_root = "/home/$(user)/TODO"
+const save_dir = "/home/$(user)/TODO"
+
+const cfg_path = "$(project_root)/configs/TODO"
+# ================================================
+
+using Pkg; Pkg.activate(project_root)
+using Reproduce
 
 function run(config_file::AbstractString; save_path="", num_workers=Inf)
     experiment = Experiment(config_file, save_path)
@@ -29,4 +33,4 @@ function run(config_file::AbstractString; save_path="", num_workers=Inf)
     post_experiment(experiment, ret)
 end
 
-run("configs/$(cfg_file)"; save_path="/home/$(user)/$(save_dir)")
+run(cfg_path; save_path=save_dir)
