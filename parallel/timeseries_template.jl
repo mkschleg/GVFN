@@ -16,8 +16,8 @@
 const user = "TODO"
 const home = "/home/$(user)/"
 
-const project_root = "/home/$(user)/TODO"
-const save_dir = "/home/$(user)/TODO"
+const project_root = "$(home)/TODO"
+const save_dir = "$(home)/TODO"
 
 const cfg_path = "$(project_root)/configs/TODO"
 # ================================================
