@@ -1,0 +1,29 @@
+[config]
+save_dir="mackeyglass_fluxgvfn"
+exp_file="experiment/timeseries.jl"
+exp_module_name = "TimeSeriesExperiment"
+exp_func_name = "main_experiment"
+arg_iter_type = "iter"
+
+
+[static_args]
+"env" = "MackeyGlass"
+"horizon" = 12
+"steps" = 600000
+"valSteps" = 200000
+"testSteps" = 200000
+
+"agent" = "FluxGVFN"
+"activation" = "relu"
+"update_fn" = "TD"
+"normalizer" = "IncrementalUnity"
+
+"horde" = "Exponential"
+
+[sweep_args]
+"num_gvfs" = [5,9,15]
+"opt" = ["Descent","RMSProp","ADAM"]
+"stepsize" = "clamp.(1.5.^(-20:0), 0.0, 1.0)"
+"tau" = [1, 2, 4, 8, 16, 32]
+"seed" = "1:10"
+
