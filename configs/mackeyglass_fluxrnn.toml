@@ -14,14 +14,14 @@ arg_iter_type = "iter"
 "testSteps" = 200000
 
 "agent" = "FluxRNN"
-"cell" = "GRU"
 "update_fn" = "TD"
 "normalizer" = "IncrementalUnity"
+"opt" = "ADAM"
 
 [sweep_args]
-"opt" = ["Descent","RMSProp","ADAM"]
-"stepsize" = "clamp.(1.5.^(-20:0), 0.0, 1.0)"
-"tau" = [1, 2, 4, 8, 16, 32]
+"cell" = ["GRU", "LSTM"]
 "nhidden" = [32, 64, 128]
+"stepsize" = "clamp.(2.0.^(-20:-5), 0.0, 1.0)"
+"tau" = [1, 2, 4, 8, 16, 32]
 "seed" = "1:10"
 

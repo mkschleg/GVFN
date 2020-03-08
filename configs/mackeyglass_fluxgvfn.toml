@@ -18,12 +18,14 @@ arg_iter_type = "iter"
 "update_fn" = "TD"
 "normalizer" = "IncrementalUnity"
 
-"horde" = "Exponential"
+"horde" = "LinSpacing"
+"gamma_low" = 0.1
+"gamma_high" = 0.97
 
 [sweep_args]
-"num_gvfs" = [5,9,15]
-"opt" = ["Descent","RMSProp","ADAM"]
-"stepsize" = "clamp.(1.5.^(-20:0), 0.0, 1.0)"
+"opt" = ["Descent","RMSProp"]
+"num_gvfs" = [32, 64, 128]
+"stepsize" = "clamp.(2.0.^(-20:-5), 0.0, 1.0)"
 "tau" = [1, 2, 4, 8, 16, 32]
 "seed" = "1:10"
 
