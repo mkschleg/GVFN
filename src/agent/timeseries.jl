@@ -152,7 +152,7 @@ mutable struct TimeSeriesAgent{L, O, C, N, H, Φ} <: MinimalRLCore.AbstractAgent
 
     batch_h::Vector{H}
     batch_obs::Vector{Vector{Φ}}
-    batch_target::Vector{Φ}
+    batch_target::Vector{Vector{Float32}}
 
     horizon::Int
     batchsize::Int
@@ -222,7 +222,7 @@ function TimeSeriesGVFNAgent(parsed; rng=Random.GLOBAL_RNG)
     )
 
     # Init observation sequence and hidden state
-    obs_sequence = DataStructures.CircularBuffer{Obs_t}(τ+1)
+    obs_sequence = DataStructures.CircularBuffer{Obs_t}(τ)
     hidden_state_init = GVFN.get_initial_hidden_state(chain)
 
     # buffers for temporal offsets
@@ -308,7 +308,7 @@ function getNewBatch()
     # get empty batch buffers
     batch_obs = Vector{Obs_t}[]
     batch_h  = Hidden_t[]
-    batch_target = Obs_t[]
+    batch_target = Vector{Float32}[]
     return batch_obs, batch_h, batch_target
 end
 
@@ -345,9 +345,18 @@ function MinimalRLCore.step!(agent::TimeSeriesAgent, env_s_tp1, r, terminal, rng
     # Update =====================================================
     if DataStructures.isfull(agent.obs_buff)
 
+        reset!(agent.chain, agent.hidden_state_init)
+        v_tp1 = agent.chain.(agent.obs_sequence)[end].data
+
+        gvfn_idx = find_layers_with_eq(agent.chain, (l)->l isa Flux.Recur && l.cell isa AbstractGVFRCell)
+        c, Γ, _ = get(agent.chain[1].cell,
+                      nothing,
+                      agent.obs_sequence[end],
+                      nothing)
+
         # Add target, hidden state, and observation sequence to batch
         # ---| Target = most-recent observation; obs/hidden state = earliest in the buffer
-        push!(agent.batch_target, copy(env_s_tp1))
+        push!(agent.batch_target, c.+Γ.*v_tp1)
         push!(agent.batch_obs, copy(agent.obs_buff[1]))
         push!(agent.batch_h, copy(agent.h_buff[1]))
 

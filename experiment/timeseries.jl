@@ -73,6 +73,49 @@ label_results(predictions, gt, valPreds, vgt, testPreds, tgt) = Dict("Prediction
                                                                      "TestPredictions"=>testPreds,
                                                                      "TestGroundTruth"=>tgt)
 
+function subsample(results, skip)
+    for (k,v) ∈ results
+        results[k] = v[1:skip:end]
+    end
+    return v
+end
+
+
+default_config(seed=1) = Dict(
+    "save_dir"=>"mackeyglass_best_gvfn",
+    "exp_file"=>"experiment/timeseries.jl",
+    "exp_module_name" => "TimeSeriesExperiment",
+    "exp_func_name" => "main_experiment",
+    "arg_iter_type" => "iter",
+
+
+    "env" => "MackeyGlass",
+    "horizon" => 12,
+    "steps" => 600000,
+    "valSteps" => 200000,
+    "testSteps" => 200000,
+
+    "agent" => "GVFN",
+    "activation" => "identity",
+    "update_fn" => "BatchTD",
+    "batchsize" => 32,
+
+    "horde" => "LinSpacing",
+    "gamma_low" => 0.2,
+    "gamma_high" => 0.95,
+    "num_gvfs" => 128,
+
+    "gvfn_tau" => 1,
+
+    "gvfn_stepsize" => 3e-5,
+    "gvfn_opt" => "Descent",
+
+    "model_opt" => "ADAM",
+    "model_stepsize" => 0.001,
+
+    "seed" => seed,
+)
+
 # ==================
 # --- EXPERIMENT ---
 # ==================
@@ -187,6 +230,8 @@ function main_experiment(parsed::Dict; working = false, progress=false)
 
     # put the arrays in a dict
     results = label_results(predictions, gt, valPreds, vgt, testPreds, tgt)
+
+    results = subsample(results, parsed["skip"])
 
     # save results
     GVFN.save_results(savefile, results, working)

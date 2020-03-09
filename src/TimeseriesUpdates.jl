@@ -180,14 +180,17 @@ function update!(chain,
                 if length(gvfn_idx) != 1
                     throw("Multi-layer GVFN Not available")
                 end
-                ℒ, v = _gvfn_loss!(chain[1:gvfn_idx[1]],
+                ℒ, v = _gvfn_mse!(chain[1:gvfn_idx[1]],
                                   lu,
                                   h_init,
                                   state_seq,
                                   target,
                                   action_t)
                 # println(v[end-1])
-                ℒ, chain[gvfn_idx[1]+1:end].(v[end-1:end])
+                if size(v,1) == 1
+                    v = [v[1]]
+                end
+                ℒ, chain[gvfn_idx[1]+1:end].(Flux.data.(v))
             else
                 reset!(chain, h_init)
                 param(0.0f0), chain.(state_seq)
@@ -195,7 +198,7 @@ function update!(chain,
         end
 
         # TODO: preds[end] or preds[end-1]?
-        ℒ_out = mean(0.5.*(preds[end] - target).^2)
+        ℒ_out = mean(0.5.*(preds[end] .- target).^2)
 
         grads = Flux.Tracker.gradient(()->ℒ_out + ℒ_gvfn, Flux.params(chain))
         if avg_grads == nothing
