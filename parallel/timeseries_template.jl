@@ -19,10 +19,15 @@ const home = "/home/$(user)/"
 const project_root = "$(home)/TODO"
 const save_dir = "$(home)/TODO"
 
-const cfg_path = "$(project_root)/configs/TODO"
+const cfg_path = "configs/TODO"
 # ================================================
 
 using Pkg; Pkg.activate(project_root)
+
+# Reproduce precompilation bugfix
+using GVFN;
+include("$(project_root)/experiment/timeseries.jl")
+
 using Reproduce
 
 function run(config_file::AbstractString; save_path="", num_workers=Inf)
