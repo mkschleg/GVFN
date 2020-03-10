@@ -1,0 +1,37 @@
+[config]
+save_dir="mackeyglass_gvfn_linear"
+exp_file="experiment/timeseries.jl"
+exp_module_name = "TimeSeriesExperiment"
+exp_func_name = "main_experiment"
+arg_iter_type = "iter"
+
+
+[static_args]
+"env" = "MackeyGlass"
+"horizon" = 12
+"steps" = 600000
+"valSteps" = 200000
+"testSteps" = 200000
+
+"agent" = "GVFN"
+"activation" = "linear"
+"update_fn" = "BatchTD"
+"batchsize" = 32
+
+"horde" = "LinSpacing"
+"gamma_low" = 0.2
+"gamma_high" = 0.95
+"num_gvfs" = 128
+
+"gvfn_opt" = "Descent"
+"model_opt" = "ADAM"
+
+"model_clip_coeff" = 0.25
+
+[sweep_args]
+"gvfn_stepsize" = "collect(2.0.^(-20:2:-9))"
+"model_stepsize" = "collect(2.0.^(-20:2:-9))"
+
+"gvfn_tau" = [1,2,4,8,16,32]
+"seed" = "1:10"
+
