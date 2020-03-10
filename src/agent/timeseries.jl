@@ -17,7 +17,7 @@ mutable struct OriginalTimeSeriesAgent{GVFNOpt,ModelOpt, J, H, Φ, M, G1, G2, N}
     normalizer::N
 
     batch_phi::Vector{Φ}
-    batch_target::Vector{Φ}
+    batch_gvfn_target::Vector{Φ}
     batch_hidden::Vector{Φ}
     batch_h::Vector{Φ}
     batch_obs::Vector{Float32}
@@ -152,10 +152,12 @@ mutable struct TimeSeriesAgent{L, O, C, N, H, Φ} <: MinimalRLCore.AbstractAgent
 
     batch_h::Vector{H}
     batch_obs::Vector{Vector{Φ}}
-    batch_target::Vector{Vector{Float32}}
+    batch_gvfn_target::Vector{Φ}
+    batch_model_target::Vector{Φ}
 
     horizon::Int
     batchsize::Int
+    model_clip_coeff::Float32
 end
 
 # Convenient type aliases
@@ -175,6 +177,8 @@ function TimeSeriesGVFNAgent(parsed; rng=Random.GLOBAL_RNG)
     τ=parsed["gvfn_tau"]
     gvfn_opt_string = parsed["gvfn_opt"]
     gvfn_stepsize = parsed["gvfn_stepsize"]
+
+    model_clip_coeff = Float32(parsed["model_clip_coeff"])
     # ==========================================
 
 
@@ -229,7 +233,7 @@ function TimeSeriesGVFNAgent(parsed; rng=Random.GLOBAL_RNG)
     obs_buff, h_buff = getTemporalBuffers(horizon)
 
     # buffers for batches
-    batch_obs, batch_h, batch_target = getNewBatch()
+    batch_obs, batch_h, batch_gvfn_target, batch_model_target = getNewBatch()
 
 
     TimeSeriesAgent(lu,
@@ -245,10 +249,12 @@ function TimeSeriesGVFNAgent(parsed; rng=Random.GLOBAL_RNG)
 
                     batch_h,
                     batch_obs,
-                    batch_target,
+                    batch_gvfn_target,
+                    batch_model_target,
 
                     horizon,
-                    batchsize)
+                    batchsize,
+                    model_clip_coeff)
 end
 
 function TimeSeriesRNNAgent(parsed; rng=Random.GLOBAL_RNG)
@@ -260,6 +266,7 @@ function TimeSeriesRNNAgent(parsed; rng=Random.GLOBAL_RNG)
     nhidden=parsed["rnn_nhidden"]
     τ=parsed["rnn_tau"]
     lr = parsed["rnn_lr"]
+    clip_coeff = Float32(parsed["model_clip_coeff"])
 
     lu_func = getproperty(GVFN, Symbol(alg_string))
     lu = lu_func()
@@ -275,14 +282,14 @@ function TimeSeriesRNNAgent(parsed; rng=Random.GLOBAL_RNG)
         Flux.Dense(parsed["rnn_nhidden"], 1 ; initW=(dims...)->glorot_uniform(rng, dims...))
     )
 
-    obs_sequence = DataStructures.CircularBuffer{Obs_t}(τ+1)
+    obs_sequence = DataStructures.CircularBuffer{Obs_t}(τ)
     hidden_state_init = GVFN.get_initial_hidden_state(chain)
 
     # buffers for temporal offsets
     obs_buff, h_buff = getTemporalBuffers(horizon)
 
     # buffers for batches
-    batch_obs, batch_h, batch_target = getNewBatch()
+    batch_obs, batch_h, batch_gvfn_target, batch_model_target = getNewBatch()
 
     TimeSeriesAgent(lu,
                     opt,
@@ -297,10 +304,12 @@ function TimeSeriesRNNAgent(parsed; rng=Random.GLOBAL_RNG)
 
                     batch_h,
                     batch_obs,
-                    batch_target,
+                    batch_gvfn_target,
+                    batch_model_target,
 
                     horizon,
-                    batchsize)
+                    batchsize,
+                    clip_coeff)
 
 end
 
@@ -308,13 +317,14 @@ function getNewBatch()
     # get empty batch buffers
     batch_obs = Vector{Obs_t}[]
     batch_h  = Hidden_t[]
-    batch_target = Vector{Float32}[]
-    return batch_obs, batch_h, batch_target
+    batch_gvfn_target = Vector{Float32}[]
+    batch_model_target = Vector{Float32}[]
+    return batch_obs, batch_h, batch_gvfn_target, batch_model_target
 end
 
 function resetBatch!(agent::TimeSeriesAgent)
     # reset the agent's batch buffers
-    agent.batch_obs, agent.batch_h, agent.batch_target = getNewBatch()
+    agent.batch_obs, agent.batch_h, agent.batch_gvfn_target, agent.batch_model_target = getNewBatch()
 end
 
 function getTemporalBuffers(horizon::Int)
@@ -345,29 +355,35 @@ function MinimalRLCore.step!(agent::TimeSeriesAgent, env_s_tp1, r, terminal, rng
     # Update =====================================================
     if DataStructures.isfull(agent.obs_buff)
 
-        reset!(agent.chain, agent.hidden_state_init)
-        v_tp1 = agent.chain.(agent.obs_sequence)[end].data
+        if contains_gvfn(agent.chain)
+            # compute and buffer the targets for the GVFN layer
+            reset!(agent.chain, agent.hidden_state_init)
+            v_tp1 = agent.chain.(agent.obs_sequence)[end].data
 
-        gvfn_idx = find_layers_with_eq(agent.chain, (l)->l isa Flux.Recur && l.cell isa AbstractGVFRCell)
-        c, Γ, _ = get(agent.chain[1].cell,
-                      nothing,
-                      agent.obs_sequence[end],
-                      nothing)
+            gvfn_idx = find_layers_with_eq(agent.chain, (l)->l isa Flux.Recur && l.cell isa AbstractGVFRCell)
+            c, Γ, _ = get(agent.chain[1].cell,
+                          nothing,
+                          agent.obs_sequence[end],
+                          nothing)
+            push!(agent.batch_gvfn_target, c.+Γ.*v_tp1)
+        end
 
         # Add target, hidden state, and observation sequence to batch
         # ---| Target = most-recent observation; obs/hidden state = earliest in the buffer
-        push!(agent.batch_target, c.+Γ.*v_tp1)
         push!(agent.batch_obs, copy(agent.obs_buff[1]))
         push!(agent.batch_h, copy(agent.h_buff[1]))
+        push!(agent.batch_model_target, copy(env_s_tp1))
 
-        if length(agent.batch_target) == agent.batchsize
+        if length(agent.batch_obs) == agent.batchsize
             update!(agent.chain,
                     agent.opt,
                     agent.lu,
                     agent.batchsize,
                     agent.batch_h,
                     agent.batch_obs,
-                    agent.batch_target)
+                    agent.batch_gvfn_target,
+                    agent.batch_model_target;
+                    max_norm = agent.model_clip_coeff)
 
 
             # Reset the batch buffers

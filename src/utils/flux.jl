@@ -5,6 +5,7 @@ using Reproduce
 import ..GVFN.ARNNCell
 # import ..GVFN.RNNInvCell
 import ..GVFN
+import LinearAlgebra: norm
 
 
 function rnn_settings!(as::ArgParseSettings)
@@ -100,5 +101,16 @@ end
 
 get_initial_hidden_state(rnn::Flux.Recur{T}) where {T} = Flux.data(rnn.state)
 get_initial_hidden_state(rnn::Flux.Recur{T}) where {T<:Flux.LSTMCell} = Flux.data.(rnn.state)
+
+function grad_clip_coeff(parameters, grads, max_norm::Float32)
+    total_sqr_norm = 0.0f0
+    for p in parameters
+        param_norm = norm(grads[p].data, 2)
+        total_sqr_norm += param_norm.^2
+    end
+    total_norm = √total_sqr_norm
+    clip_coeff = max_norm / (total_norm + 1e-6)
+    return min(clip_coeff,1.0f0)
+end
 
 end

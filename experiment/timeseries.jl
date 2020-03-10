@@ -73,14 +73,6 @@ label_results(predictions, gt, valPreds, vgt, testPreds, tgt) = Dict("Prediction
                                                                      "TestPredictions"=>testPreds,
                                                                      "TestGroundTruth"=>tgt)
 
-function subsample(results, skip)
-    for (k,v) ∈ results
-        results[k] = v[1:skip:end]
-    end
-    return v
-end
-
-
 default_config(seed=1) = Dict(
     "save_dir"=>"mackeyglass_best_gvfn",
     "exp_file"=>"experiment/timeseries.jl",
@@ -112,6 +104,7 @@ default_config(seed=1) = Dict(
 
     "model_opt" => "ADAM",
     "model_stepsize" => 0.001,
+    "model_clip_coeff"=>0.25,
 
     "seed" => seed,
 )
@@ -230,8 +223,6 @@ function main_experiment(parsed::Dict; working = false, progress=false)
 
     # put the arrays in a dict
     results = label_results(predictions, gt, valPreds, vgt, testPreds, tgt)
-
-    results = subsample(results, parsed["skip"])
 
     # save results
     GVFN.save_results(savefile, results, working)

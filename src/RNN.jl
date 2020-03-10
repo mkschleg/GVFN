@@ -34,6 +34,10 @@ function _reset!(m::Flux.Recur{T}, h_init) where {T<:Flux.LSTMCell}
     m.state[2].data .= Flux.data(h_init[2])
 end
 
+function _reset!(m, h_init::T) where {T<:AbstractArray{Float32,2}}
+    m.state = param(h_init)
+end
+
 function contains_rnntype(m, rnn_type::Type)
     is_rnn_type = Bool[]
     Flux.prefor(x -> push!(is_rnn_type, x isa Flux.Recur && x.cell isa rnn_type), m)

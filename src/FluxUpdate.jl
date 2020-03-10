@@ -155,14 +155,7 @@ function _gvfn_mse!(chain,
 
     reset!(chain, h_init)
     preds = chain.(states)
-
-    δ_all = param(0.0f0)
-    for t ∈ 1:length(preds)
-        preds_t = preds[t]
-        δ_all += mean(0.5.*(targets[t].-preds_t).^2)
-    end
-
-    return δ_all * 1 // length(preds), preds
+    return 0.5f0*mean((targets-preds[end]).^2), preds
 end
 function _gvfn_loss!(chain,
                      lu::BatchTD,
