@@ -216,7 +216,7 @@ function TimeSeriesGVFNAgent(parsed; rng=Random.GLOBAL_RNG)
     normalizer = TimeSeriesUtils.getNormalizer(parsed)
 
     # build model
-    act = getproperty(Flux, Symbol(parsed["activation"]))
+    act = FluxUtils.get_activation(parsed["activation"])
     init_func = (dims...)->glorot_uniform(rng, dims...)
     chain = Flux.Chain(
         GVFR_RNN(1, horde, act; init=init_func),

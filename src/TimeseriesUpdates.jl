@@ -98,7 +98,8 @@ function update!(chain,
                   batch_h_init,
                   batch_state_seq,
                   batch_gvfn_target,
-                  batch_model_target
+                  batch_model_target,
+                  max_grad_norm
                   ) where {H}
 
     action_t = nothing # Never actions in timeseries experiments
@@ -140,8 +141,10 @@ function update!(chain,
     # TODO: needed?
     # reset!(chain, h_init)
 
-    for weights in Flux.params(chain)
-        Flux.Tracker.update!(opt, weights, grads[weights])
+    prms = Flux.params(chain[gvfn_idx[1]+1:end])
+    clip_coeff = FluxUtils.grad_clip_coeff(prms,grads,max_norm)
+    for weights in prms
+        Flux.Tracker.update!(opt, weights, grads[weights] * clip_coeff)
     end
 end
 
