@@ -98,9 +98,9 @@ function update!(chain,
                   batch_h_init,
                   batch_state_seq,
                   batch_gvfn_target,
-                  batch_model_target,
-                  max_grad_norm
-                  ) where {H}
+                  batch_model_target;
+                  max_norm = 0.25) where {H}
+                  
 
     action_t = nothing # Never actions in timeseries experiments
     ρ = 1.0            # No off-policy learning in the timeseries stuff
@@ -112,6 +112,8 @@ function update!(chain,
     state_seq = [cat(getindex.(batch_state_seq, t)...; dims=2) for t∈1:length(batch_state_seq[1])]
     gvfn_target = cat(batch_gvfn_target...; dims=2)
     model_target = cat(batch_model_target...; dims=2)
+
+    rnn_idx = contains_gvfn(chain) ? find_layers_with_eq(chain, (l)->l isa Flux.Recur && l.cell isa AbstractGVFRCell)[1]+1 : 1
 
     # Update GVFN First
     ℒ_gvfn, preds = begin
@@ -141,7 +143,7 @@ function update!(chain,
     # TODO: needed?
     # reset!(chain, h_init)
 
-    prms = Flux.params(chain[gvfn_idx[1]+1:end])
+    prms = Flux.params(chain[rnn_idx:end])
     clip_coeff = FluxUtils.grad_clip_coeff(prms,grads,max_norm)
     for weights in prms
         Flux.Tracker.update!(opt, weights, grads[weights] * clip_coeff)
@@ -169,6 +171,8 @@ function update!(chain,
     state_seq = [cat(getindex.(batch_state_seq, t)...; dims=2) for t∈1:length(batch_state_seq[1])]
     gvfn_target = cat(batch_gvfn_target...; dims=2)
     model_target = cat(batch_model_target...; dims=2)
+
+    rnn_idx = contains_gvfn(chain) ? find_layers_with_eq(chain, (l)->l isa Flux.Recur && l.cell isa AbstractGVFRCell)[1]+1 : 1
 
     # Update GVFN First
     ℒ_gvfn, preds = begin
@@ -202,7 +206,7 @@ function update!(chain,
         Flux.Tracker.update!(opt.gvfn, weights, grads[weights])
     end
 
-    prms = Flux.params(chain[gvfn_idx[1]+1:end])
+    prms = Flux.params(chain[rnn_idx:end])
     clip_coeff = FluxUtils.grad_clip_coeff(prms,grads,max_norm)
     for weights in prms
         Flux.Tracker.update!(opt.model, weights, grads[weights] * clip_coeff)
