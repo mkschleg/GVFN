@@ -53,7 +53,7 @@ include("TimeseriesUpdates.jl")
 
 export GradientGVFN
 include("RGTD.jl")
-# include("RGTD_act.jl")
+include("RGTD_act.jl")
 
 include("ActingPolicy.jl")
 

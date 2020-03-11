@@ -31,7 +31,7 @@ function construct_agent(parsed, rng=Random.GLOBAL_RNG)
     fc = if "cell" ∈ keys(parsed) && parsed["cell"] ∉ ["ARNN", "ARNNCell"]
         RWU.StandardFeatureCreatorWithAction()
     else
-        RWU.StandardFeatureCreator()    
+        RWU.StandardFeatureCreator()
     end
     fs = feature_size(fc)
 
