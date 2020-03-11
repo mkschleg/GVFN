@@ -25,7 +25,8 @@ const shared_args = Dict(
     "steps"=>500000,
     "gamma"=>0.95,
     "opt"=>"Descent",
-    "save_dir"=>joinpath(save_loc, "data")
+    "save_dir"=>joinpath(save_loc, "data"),
+    "sweep"=>true
 )
 
 @load "final_run_params/ringworld/ringworld_gvfn_descent.jld2" args_list

@@ -12,6 +12,7 @@ using Pkg
 Pkg.activate(".")
 
 using Reproduce
+using JLD2
 
 
 const save_loc = "final_compworld_gvfn"
@@ -21,13 +22,16 @@ const exp_func_name = :main_experiment
 
 # include(joinpath(ENV["SLURM_SUBMIT_DIR"], "parallel/parallel_config.jl"))
 
-const args_list = [
 
-]
 
 const shared_args = Dict(
-    
+    "steps"=>50,
+    "out-horde"=>"forward",
+    "opt"=>"Descent",
+    "save_dir"=>joinpath(save_loc, "data")
 )
+
+@load "final_run_params/compassworld/compassworld_gvfn_descent.jld2" args_list
 
 const runs = 1:30
 const seeds = runs .+ 10

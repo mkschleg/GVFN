@@ -25,7 +25,8 @@ const shared_args = Dict(
     "steps"=>50,
     "gamma"=>0.95,
     "opt"=>"RMSProp",
-    "save_dir"=>joinpath(save_loc, "data")
+    "save_dir"=>joinpath(save_loc, "data"),
+    "sweep"=>true
 )
 
 
