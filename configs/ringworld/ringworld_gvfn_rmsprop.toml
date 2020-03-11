@@ -1,5 +1,5 @@
 [config]
-save_dir="ringworld_forecast_rmsprop"
+save_dir="/home/mkschleg/scratch/GVFN/ringworld_gvfn_rmsprop"
 exp_file="experiment/ringworld.jl"
 exp_module_name = "RingWorldExperiment"
 exp_func_name = "main_experiment"
@@ -14,9 +14,9 @@ arg_iter_type = "iter"
 
 [sweep_args]
 "size" = [6, 10]
+"activation" = ["sigmoid"]
 "outhorde" = ["gammas_term", "onestep"]
-"cell" = ["ARNNCell", "GRUCell", "LSTMCell"]
-"alpha" = "clamp.(0.01*1.5.^(-10:2:1), 0.0, 1.0)"
-"klength" = [14, 22]
+"horde" = ["gamma_chain", "chain", "gammas_aj", "gammas_term"]
+"alpha" = "clamp.(0.01*1.5.^(-9:1), 0.0, 1.0)"
 "truncation" = [1, 2, 3, 4, 6, 8, 12, 16]
 "seed" = "1:10"

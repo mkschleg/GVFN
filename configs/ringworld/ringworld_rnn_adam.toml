@@ -16,6 +16,6 @@ arg_iter_type = "iter"
 "size" = [6, 10]
 "outhorde" = ["gammas_term", "onestep"]
 "cell" = ["ARNN", "GRU", "LSTM"]
-"alpha" = "clamp.(0.01*1.5.^(-9:1), 0.0, 1.0)"
+"alpha" = "clamp.(0.01*1.5.^(-10:2:1), 0.0, 1.0)"
 "truncation" = [1, 2, 3, 4, 6, 8, 12, 16]
 "seed" = "1:10"

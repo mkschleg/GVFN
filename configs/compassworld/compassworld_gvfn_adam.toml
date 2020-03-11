@@ -1,5 +1,6 @@
+
 [config]
-save_dir="compassworld_rnn_adam"
+save_dir="compassworld_gvfn_adam"
 exp_file="experiment/compassworld.jl"
 exp_module_name = "CompassWorldExperiment"
 exp_func_name = "main_experiment"
@@ -15,8 +16,7 @@ arg_iter_type = "iter"
 
 [sweep_args]
 "activation" = ["sigmoid"]
-"cell" = ["ARNN", "GRU", "LSTM"]
-"hidden" = [35, 40, 110]
+"gvfn-horde" = ["rafols", "gammas_aj", "gammas_aj_term"]
 "alpha" = "clamp.(0.01*1.5.^(-18:2:1), 0.0, 1.0)"
 "truncation" = [1, 4, 8, 12, 16, 24, 32]
 "seed" = "1:10"
