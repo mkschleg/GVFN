@@ -102,6 +102,7 @@ function update!(chain,
 
     action_t = nothing # Never actions in timeseries experiments
     ρ = 1.0            # No off-policy learning in the timeseries stuff
+    b_prob = 1.0f0     #
 
     avg_grads = nothing
     for i=1:batchsize
@@ -133,7 +134,7 @@ function update!(chain,
         end
 
         # TODO: preds[end] or preds[end-1]?
-        ℒ_out = 0.5*(sum(preds[end] - target).^2)
+        ℒ_out = 0.5*sum((preds[end] - target).^2)
 
         grads = Flux.Tracker.gradient(()->ℒ_out + ℒ_gvfn, Flux.params(chain))
         if avg_grads == nothing

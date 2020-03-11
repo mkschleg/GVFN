@@ -157,24 +157,25 @@ function _gvfn_loss!(chain,
     reset!(chain, h_init)
     preds = chain.(states)
 
-    δ_all = param(zeros(length(preds)-1))
+    δ_all = param(0.0f0)
     for t ∈ 1:(length(preds)-1)
         preds_t = preds[t]
         preds_tilde = Flux.data(preds[t+1])
 
-        cumulants, discounts, π_prob = get(chain[t+1].cell,
+        cumulants, discounts, π_prob = get(chain[end].cell,
                                            action_t,
                                            env_state_tp1,
                                            preds_tilde)
         ρ = π_prob/b_prob
-        δ_all[t] =  offpolicy_tdloss_gvfn(Float32.(ρ),
+        δ_all +=  offpolicy_tdloss_gvfn(Float32.(ρ),
                                           preds_t,
                                           Float32.(cumulants),
                                           Float32.(discounts),
                                           preds_tilde)
     end
 
-    return mean(δ_all)
+
+    return δ_all * 1 // (length(preds)-1), preds
 
 end
 
