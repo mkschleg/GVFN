@@ -27,6 +27,7 @@ const shared_args = Dict(
     "size"=>8,
     "policy"=>"rafols",
     "steps"=>1000000,
+    "hidden"=>40,
     "out-horde"=>"forward",
     "opt"=>"Descent",
     "save_dir"=>joinpath(save_loc, "data"),
