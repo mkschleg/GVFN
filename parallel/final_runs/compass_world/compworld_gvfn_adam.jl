@@ -1,8 +1,8 @@
 #!/cvmfs/soft.computecanada.ca/easybuild/software/2017/avx2/Compiler/gcc7.3/julia/1.3.0/bin/julia
 #SBATCH --mail-user=mkschleg@ualberta.ca
 #SBATCH --mail-type=ALL
-#SBATCH -o final_comp_gvfn.out # Standard output
-#SBATCH -e final_comp_gvfn.err # Standard error
+#SBATCH -o final_comp_gvfn_adam.out # Standard output
+#SBATCH -e final_comp_gvfn_adam.err # Standard error
 #SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
 #SBATCH --time=24:00:00 # Running time of 12 hours
 #SBATCH --ntasks=128
@@ -15,7 +15,7 @@ using Reproduce
 using JLD2
 
 
-const save_loc = "/home/mkschleg/scratch/GVFN/final_runs/final_compworld_gvfn"
+const save_loc = "/home/mkschleg/scratch/GVFN/final_runs/final_compworld_gvfn_adam"
 const exp_file = "experiment/compassworld.jl"
 const exp_module_name = :CompassWorldExperiment
 const exp_func_name = :main_experiment
@@ -28,12 +28,12 @@ const shared_args = Dict(
     "policy"=>"rafols",
     "steps"=>1000000,
     "out-horde"=>"forward",
-    "opt"=>"Descent",
+    "opt"=>"ADAM",
     "save_dir"=>joinpath(save_loc, "data"),
     "sweep"=>true
 )
 
-@load "final_run_params/compassworld/compassworld_gvfn_descent.jld2" args_list
+@load "final_run_params/compassworld/compassworld_gvfn_adam.jld2" args_list
 
 const runs = 1:30
 const seeds = runs .+ 10
