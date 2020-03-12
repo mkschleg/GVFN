@@ -3,7 +3,7 @@
 #SBATCH --mail-type=ALL
 #SBATCH -o final_comp_gvfn.out # Standard output
 #SBATCH -e final_comp_gvfn.err # Standard error
-#SBATCH --mem-per-cpu=2000M # Memory request of 2 GB
+#SBATCH --mem-per-cpu=5000M # Memory request of 2 GB
 #SBATCH --time=24:00:00 # Running time of 12 hours
 #SBATCH --ntasks=128
 #SBATCH --account=rrg-whitem
