@@ -35,7 +35,7 @@ const shared_args = Dict(
     "sweep"=>true
 )
 
-@load "final_run_params/compassworld/compassworld_rnn_40.jld2" args_list
+@load "final_run_params/compassworld/compassworld_rnn_40_all.jld2" args_list
 
 const runs = 1:30
 const seeds = runs .+ 10
