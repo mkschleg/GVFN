@@ -36,7 +36,8 @@ export
     FeatureCumulant,
     PredictionCumulant,
     ScaledCumulant,
-    NormalizedCumulant
+    NormalizedCumulant,
+    UnityCumulant
 
 include("GVF.jl")
 

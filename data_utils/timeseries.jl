@@ -13,12 +13,15 @@ using FileIO
 using Statistics
 using ProgressMeter
 
-function NRMSE(results; phase="Validation", window, skip)
+function NRMSE(results, window, skip, subsample; phase)
     # Ground truth and predictions
     g,p = results["$(phase)GroundTruth"], results["$(phase)Predictions"]
 
     # drop the extra predictions past the last ground truth
     p = p[1:length(g)]
+
+    # subsample the data
+    g, p = g[1:subsample:end], p[1:subsample:end]
 
     values = Float64[]
     for i=window+1:skip:length(p)
@@ -29,32 +32,11 @@ function NRMSE(results; phase="Validation", window, skip)
     return values
 end
 
-TrainingNRMSE(results, window, skip) = NRMSE(results; phase="",window=window,skip=skip)
-ValidationNRMSE(results, window, skip) = NRMSE(results; phase="Validation",window=window,skip=skip)
-TestNRMSE(results, window, skip) = NRMSE(results; phase="Test",window=window,skip=skip)
+TrainingNRMSE(results, window, skip, subsample) = NRMSE(results, window, skip, subsample; phase="")
+ValidationNRMSE(results, window, skip, subsample) = NRMSE(results, window, skip, subsample; phase="Validation")
+TestNRMSE(results, window, skip, subsample) = NRMSE(results, window, skip, subsample; phase="Test")
 
-loadData(itm) = load(joinpath(itm.folder_str,"results.jld2"))["results"]
-
-function get_setting(ic, clean_func; window, skip)
-
-    diff_dict = diff(ic)
-
-    itms = ic.items
-    res = Vector{Float64}[]
-    for (itm_idx, itm) ∈ enumerate(itms)
-        push!(res, clean_func(loadData(itm), window, skip))
-    end
-
-    vals = zeros(length(res[1]),length(res))
-    for i=1:length(res)
-        vals[:,i] .= res[i]
-    end
-
-    μ = mean(vals,dims=2)
-    σ = std(vals, dims=2, corrected=true)./sqrt(length(itms))
-
-    return μ, σ
-end
+loadData(itm) = FileIO.load(joinpath(itm.folder_str,"results.jld2"))["results"]
 
 function getNRMSE()
 
@@ -69,14 +51,15 @@ function getNRMSE()
         arg_type=Int
         "--skip"
         arg_type=Int
+        "--subsample"
+        arg_type=Int
+        default=1
     end
     parsed = parse_args(as)
 
+    window, skip, subsample = parsed["window"], parsed["skip"], parsed["subsample"]
+
     read_dir = parsed["dir"][end] == '/' ? parsed["dir"][1:end-1] : parsed["dir"]
-    window = parsed["window"]
-    skip = parsed["skip"]
-
-
     fldr = split(read_dir,"/")[end]
     save_loc = joinpath(parsed["dest_dir"],fldr*"_NRMSE")
     if !isdir(save_loc)
@@ -105,12 +88,12 @@ function getNRMSE()
         functions = [TrainingNRMSE, ValidationNRMSE, TestNRMSE]
         pairs = Dict(Pair.(String.(Symbol.(functions)), functions))
         for (lbl, fn) ∈ pairs
-            nrmse = fn(loadData(itm), window, skip)
+            nrmse = fn(loadData(itm), window, skip, subsample)
             results["$(lbl)"] = nrmse
         end
-        results["window"], results["skip"] = window, skip
+        results["window"], results["skip"], results["subsample"] = window, skip, subsample
 
-        @save joinpath(tmp_save_loc, "results.jld2") results
+        JLD2.@save joinpath(tmp_save_loc, "results.jld2") results
         cp(joinpath(read_loc, "settings.jld2"), joinpath(tmp_save_loc, "settings.jld2"))
     end
 

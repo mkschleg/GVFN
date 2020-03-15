@@ -74,7 +74,7 @@ label_results(predictions, gt, valPreds, vgt, testPreds, tgt) = Dict("Prediction
                                                                      "TestGroundTruth"=>tgt)
 
 default_config(seed=1) = Dict(
-    "save_dir"=>"mackeyglass_best_gvfn",
+    "save_dir"=>"DefaultConfig",
     "exp_file"=>"experiment/timeseries.jl",
     "exp_module_name" => "TimeSeriesExperiment",
     "exp_func_name" => "main_experiment",
@@ -88,22 +88,29 @@ default_config(seed=1) = Dict(
     "testSteps" => 200000,
 
     "agent" => "GVFN",
-    "activation" => "identity",
+    #"agent" => "RNN",
+    "activation" => "relu",
     "update_fn" => "BatchTD",
     "batchsize" => 32,
 
     "horde" => "LinSpacing",
-    "gamma_low" => 0.2,
-    "gamma_high" => 0.95,
+    "gamma_low" => 0.1,
+    "gamma_high" => 0.97,
     "num_gvfs" => 128,
 
     "gvfn_tau" => 1,
 
     "gvfn_stepsize" => 3e-5,
     "gvfn_opt" => "Descent",
-
     "model_opt" => "ADAM",
     "model_stepsize" => 0.001,
+
+    # "rnn_opt" => "ADAM",
+    # "rnn_lr" => 0.001,
+    # "rnn_cell" => "GRU",
+    # "rnn_nhidden" => 128,
+    # "rnn_tau" => 4,
+
     "model_clip_coeff"=>0.25,
 
     "seed" => seed,

@@ -55,6 +55,13 @@ function get_horde(parsed::Dict)
         return Horde(
             map(γ->GVF(NormalizedCumulant(1-γ, FeatureCumulant(1)), ConstantDiscount(γ),NullPolicy()), Γ)
         )
+    elseif horde_t == "LinUnity"
+        lo, hi, N = parsed["gamma_low"], parsed["gamma_high"], parsed["num_gvfs"]
+
+        Γ = Float32.(collect(LinRange(lo,hi,N)))
+        return Horde(
+            map(γ->GVF(UnityCumulant(1-γ, FeatureCumulant(1)), ConstantDiscount(γ),NullPolicy()), Γ)
+        )
     elseif horde_t == "Exponential"
         N = parsed["num_gvfs"]
 
