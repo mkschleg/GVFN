@@ -44,9 +44,8 @@ function getNRMSE()
     @add_arg_table! as begin
         "--dir"
         arg_type=String
-        "--dest_dir"
+        "--dest"
         arg_type=String
-        default="."
         "--window"
         arg_type=Int
         "--skip"
@@ -61,7 +60,7 @@ function getNRMSE()
 
     read_dir = parsed["dir"][end] == '/' ? parsed["dir"][1:end-1] : parsed["dir"]
     fldr = split(read_dir,"/")[end]
-    save_loc = joinpath(parsed["dest_dir"],fldr*"_NRMSE")
+    save_loc = joinpath(parsed["dest"],fldr*"_NRMSE")
     if !isdir(save_loc)
         mkdir(save_loc)
     end
