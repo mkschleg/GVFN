@@ -93,7 +93,7 @@ function construct_agent(parsed::Dict, rng=Random.GLOBAL_RNG)
 
     act = FluxUtils.get_activation(parsed["act"])
 
-    gvfn = GradientGVFN(fs, horde, act; initθ=initf)
+    gvfn = GVFN.GradientGVFN_act(fs, horde, 1, act; initθ=initf)
 
     num_out_gvfs = length(out_horde)
     model = Linear(num_gvfs, num_out_gvfs; init=initf)

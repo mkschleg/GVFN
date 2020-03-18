@@ -123,6 +123,7 @@ function main_experiment(parsed::Dict; verbose=false, working=false, progress=fa
 
     out_pred_strg = zeros(Float32, num_steps, length(agent.out_horde))
     out_err_strg = zeros(Float32, num_steps, length(agent.out_horde))
+    pred_strg = zeros(Float32, num_steps, length(agent.gvfn.horde))
     pred_err_strg = zeros(Float32, num_steps, length(agent.gvfn.horde))
     
     prg_bar = ProgressMeter.Progress(num_steps, "Step: ")
@@ -130,18 +131,22 @@ function main_experiment(parsed::Dict; verbose=false, working=false, progress=fa
     cur_step = 1
     run_episode!(env, agent, num_steps, rng) do (s, a, s′, r)
         
-        out_pred_strg[cur_step] = Flux.data(a.out_preds)[1]
-        out_err_strg[cur_step] = out_pred_strg[cur_step][1] - RWU.oracle(env, "onestep", 0.0)[1]
-        
+        out_pred_strg[cur_step, :] = Flux.data(a.out_preds)
+        out_err_strg[cur_step, :] = out_pred_strg[cur_step, :] - RWU.oracle(env, "onestep", 0.0)
+        pred_strg[cur_step, :] = a.preds
         pred_err_strg[cur_step, :] .= a.preds - RWU.oracle(env, parsed["horde"], parsed["gamma"])
         if progress
             isdefined(Main, :IJulia) && Main.IJulia.clear_output(true)
             next!(prg_bar, showvalues=[(:err, mean(out_err_strg[1:cur_step].^2)), (:preds, mean(sqrt.(mean(pred_err_strg[(cur_step-100<1 ? 1 : cur_step-100):cur_step, :].^2; dims=2)))), (:step, cur_step)])
+        elseif verbose
+            println(env)
+            println(agent)
+            println(RWU.oracle(env, parsed["horde"], parsed["gamma"]))
         end
         cur_step += 1
     end
 
-    results = Dict(["out_pred"=>out_pred_strg, "out_err_strg"=>out_err_strg, "pred_err_strg"=>pred_err_strg])
+    results = Dict(["out_pred"=>out_pred_strg, "out_err_strg"=>out_err_strg, "gvfn-pred"=>pred_strg, "pred_err_strg"=>pred_err_strg])
 
     if !working
         JLD2.@save savefile results

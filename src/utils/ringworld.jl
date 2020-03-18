@@ -151,13 +151,29 @@ function oracle(env::RingWorld, horde_str, γ=0.9)
     if horde_str == "chain"
         ret = zeros(chain_length*2)
         ret[1 + chain_length - state] = 1
-        ret[chain_length + state] = 1
+        if state == 1
+            ret[end] = 1
+        else
+            ret[chain_length + (state-1)] = 1
+        end
+        # ret[chain_length + state] = 1
     elseif horde_str == "gamma_chain"
         ret = zeros(chain_length*2 + 2)
         ret[1 + chain_length - state] = 1
-        ret[chain_length + 1 + state] = 1
+        # ret[chain_length + 1 + state] = 1
+        if state == 1
+            ret[end-1] = 1
+        else
+            ret[chain_length + (state-1) + 1] = 1
+        end
         ret[chain_length + 1] = γ^(chain_length - state)
-        ret[end] = γ^(state - 1)
+
+        if state == 1
+            ret[end] = γ^(chain_length-1)
+        else
+            ret[end] = γ^(state-1)
+        end
+
     elseif horde_str == "onestep"
         #TODO: Hack fix.
         ret = zeros(2)
@@ -166,11 +182,11 @@ function oracle(env::RingWorld, horde_str, γ=0.9)
     elseif horde_str == "gammas_term"
         ret = zeros(20)
         if state == 1
-            ret[1:10] .= collect(0.0:0.1:0.9).^(chain_length)
-            ret[11:end] .= collect(0.0:0.1:0.9).^(chain_length)
+            ret[1:10] .= collect(0.0:0.1:0.9).^(chain_length-state)
+            ret[11:end] .= collect(0.0:0.1:0.9).^(chain_length-state)
         else
             ret[1:10] .= collect(0.0:0.1:0.9).^(chain_length - state)
-            ret[11:end] .= collect(0.0:0.1:0.9).^(state - 2)
+            ret[11:end] .= collect(0.0:0.1:0.9).^(state - 1)
         end
     else
         throw("Bug Found")

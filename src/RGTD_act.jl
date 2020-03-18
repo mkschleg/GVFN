@@ -106,18 +106,17 @@ function GradientGVFN_act(in, horde, num_actions, σ; initθ=Flux.glorot_uniform
 end
 
 get_npk(gvfn::GradientGVFN_act) = gvfn.n + gvfn.k
-get_θ(gvfn::GradientGVFN_act, act) = begin
+function get_θ(gvfn::GradientGVFN_act, act) 
     place = ((act-1)*get_npk(gvfn))
-    # @show size(gvfn.θ[:, place:(place-1+get_npk(gvfn))])
     @view gvfn.θ[:, place+1:(place+get_npk(gvfn))]
 end
 
-(gvfn::GradientGVFN_act)(s_tp1, pred_t, type::Type{Prediction}) =
+(gvfn::GradientGVFN_act)(s_tp1, pred_t, type) =
     gvfn.σ.(get_θ(gvfn, s_tp1[1])*[s_tp1[2]; pred_t], type)
-(gvfn::GradientGVFN_act)(s_tp1, pred_t, type::Type{Derivative}) =
-    gvfn.σ.(get_θ(gvfn, s_tp1[1])*[s_tp1[2]; pred_t], type)
-(gvfn::GradientGVFN_act)(s_tp1, pred_t, type::Type{DoubleDerivative}) =
-    gvfn.σ.(get_θ(gvfn, s_tp1[1])*[s_tp1[2]; pred_t], type)
+# (gvfn::GradientGVFN_act)(s_tp1, pred_t, type::Type{Derivative}) =
+#     gvfn.σ.(get_θ(gvfn, s_tp1[1])*[s_tp1[2]; pred_t], type)
+# (gvfn::GradientGVFN_act)(s_tp1, pred_t, type::Type{DoubleDerivative}) =
+#     gvfn.σ.(get_θ(gvfn, s_tp1[1])*[s_tp1[2]; pred_t], type)
 
 """
     roll
@@ -141,10 +140,21 @@ function roll(gvfn::GradientGVFN_act, states, pred_init, type)
     return ret
 end
 
+function roll(gvfn::GradientGVFN_act, states, pred_init, preds, type)
+    ret = [gvfn(states[1], pred_init, type)]
+    for i in 2:length(states)
+        push!(ret, gvfn(states[i], preds[i-1], type))
+    end
+    return ret
+end
 
-# is_cumulant(cumulant, j) = false
-# is_cumulant(cumulant::PredictionCumulant, j) =
-#     cumulant.idx == j
+function get_rolls(gvfn::GradientGVFN_act, states, h_init)
+    preds = roll(gvfn, states, h_init, Prediction)
+    preds′ = roll(gvfn, states, h_init, preds, Derivative)
+    preds′′ = roll(gvfn, states, h_init, preds, DoubleDerivative)
+    preds, preds′, preds′′
+end
+
 
 is_cumulant(gvfn::T, i, j) where {T <: GradientGVFN_act} =
     is_cumulant(gvfn.horde[i].cumulant, j)
@@ -157,43 +167,7 @@ function is_cumulant_mat(gvfn::T) where {T<:GradientGVFN_act}
     C
 end
 
-# abstract type AbstractGradUpdate end
 
-# mutable struct RGTD <: AbstractGradUpdate
-#     α::Float32
-#     β::Float32
-# end
-
-"""
-    _sum_kron_delta(lhs::matrix, rhs::vector)
-
-    lhs = i \by npk*n, rhs = npk
-
-lhs^i_{k,j} + rhs_j *δ^κ_{i,k}
-"""
-# function _sum_kron_delta!(lhs, rhs, k, n)
-#     for i in 1:size(lhs)[1]
-#         idx = (n+k)*(i-1)+1
-#         lhs[i, idx:(idx+(n+k-1))] .+= rhs
-#     end
-#     return lhs
-# end
-
-# function _sum_kron_delta(lhs, rhs, k, n)
-#     ret = copy(lhs)
-#     for i in 1:size(lhs)[1]
-#         idx = (n+k)*(i-1)+1
-#         ret[i, idx:(idx+(n+k-1))] .+= rhs
-#     end
-#     ret
-# end
-
-# function _sum_kron_delta_2!(lhs, k, val)
-#     lhs[k] += val
-#     lhs
-# end
-
-# _kron_delta(x::T, i, j) where {T<:Number} = i==j ? one(x) : zero(x)
 
 function update!(gvfn::GradientGVFN_act{H},
                  opt,
@@ -216,10 +190,134 @@ function update!(gvfn::GradientGVFN_act{H},
 
     npk = n+no
     num_feats = npk*gvfn.a
+
+    kj_iter = collect(Iterators.product(1:n, 1:num_feats))
+
+    preds, preds′, preds′′ = get_rolls(gvfn, states, h_init)
+
+    preds_t = preds[end-1]
+    preds_tilde = preds[end]
+
+    # calculate the gradients:
+    # Assume the gradients are zero at the beginning of input (I.e. truncated).
+    fill!(ϕ, zero(eltype(ϕ)))
+    fill!(ϕ', zero(eltype(ϕ)))
+    fill!(ξ, zero(eltype(ξ)))
+    fill!(hvp, zero(eltype(hvp)))
+
+    gradR = zeros(Float32, num_feats)
+    xtp1 = zeros(Float32, num_feats)
     
-    preds = roll(gvfn, states, h_init, Prediction)
-    preds′ = roll(gvfn, states, h_init, Derivative)
-    preds′′ = roll(gvfn, states, h_init, DoubleDerivative)
+    @inbounds for tp1 in 1:(length(states)-1)
+        
+        act_t = states[tp1][1]
+        place = (act_t-1)*npk
+        
+        fill!(xtp1, 0.0f0)
+        fill!(gradR, 0.0f0)
+
+        preds′_tp1 = preds′[tp1]
+        preds′′_tp1 = preds′′[tp1]
+        
+        xtp1[place+1:place+npk] = if tp1 == 1
+            [states[tp1][2]; h_init] # x_tp1 = [o_t, h_{t-1}]
+        else
+            [states[tp1][2]; preds[tp1-1]] # x_tp1 = [o_t, h_{t-1}]
+        end
+
+        xw = w*xtp1
+
+        for i in 1:n
+            gradR[place+no+i] = ξ[i]
+        end
+
+        θgradR = θ*gradR
+
+        term_0 = preds′′_tp1 .* (θgradR + xw)
+
+        w_gradJK = view(w, :, (place+no+1):(place+no+n))*ϕ
+        θ_gradJK = view(θ, :, (place+no+1):(place+no+n))*ϕ
+
+        θ_hess = view(θ, :, (place+no+1):(place+no+n))*hvp
+
+        term_2 = θ_hess + w_gradJK
+        term_1 = θ_gradJK
+
+        @inbounds @simd for kj ∈ kj_iter
+            
+            k=kj[1]; j=kj[2]
+            grad_place = (k-1)*num_feats + j
+            
+            term_1[k, grad_place] += xtp1[j]
+            term_2[k, grad_place] += gradR[j]
+        end
+
+        hvp .= term_0.*term_1 + preds′_tp1 .* term_2
+        ϕ .= preds′_tp1 .* term_1
+        ξ .= preds′_tp1 .* (θgradR + xw)
+    end
+
+    tp1 = length(states)
+
+    act_t = states[end][1]
+    place = (act_t-1)*npk
+    
+    fill!(xtp1, 0.0f0)
+    xtp1[place+1:place+npk] = [states[end][2]; preds[end-1]] # x_tp1 = [o_t, h_{t-1}]
+    preds′_tp1 = preds′[tp1]
+
+    term_1 = θ[:, (place+no+1):(place+no+n)]*ϕ
+    
+    @inbounds @simd for kj ∈ kj_iter
+        k = kj[1]; j = kj[2]
+        grad_place = (k-1)*num_feats + j
+        term_1[k, grad_place] += xtp1[j]
+    end
+
+    ϕ′ .= preds′_tp1 .* term_1
+    
+    cumulants, discounts, π_prob = get(gvfn.horde, action_t, env_state_tp1, preds_tilde)
+    ρ = π_prob ./ b_prob
+    targets = cumulants + discounts.*preds_tilde
+    δ =  targets - preds_t
+
+    ϕw = ϕ*reshape(w', length(w), 1)
+
+    Ψ .= sum((ρ.*δ - ϕw).*hvp; dims=1)[1,:]
+    α = lu.α
+    β = lu.β
+    C = is_cumulant_mat(gvfn)
+    
+    rs_θ = reshape(θ', length(θ), 1)
+    rs_w = reshape(w', length(w), 1)
+
+    rs_θ .+= α*(ϕ'*(ρ.*δ) - ((C'*ϕ′ .+ discounts.*ϕ′)' * (ρ.*ϕw)) .- Ψ)
+    rs_w .+= β*(ϕ'*(ρ.*δ - ϕw))
+end
+
+function update_old!(gvfn::GradientGVFN_act{H},
+                 opt,
+                 lu::RGTD,
+                 h_init,
+                 states,
+                 env_state_tp1,
+                 action_t=nothing,
+                 b_prob::F=1.0f0) where {H <: AbstractHorde, F<:AbstractFloat}
+    η = gvfn.η
+    ϕ = gvfn.Φ
+    ϕ′ = gvfn.Φ′
+    Ψ = gvfn.Ψ
+    θ = gvfn.θ
+    w = gvfn.h
+    no = gvfn.k
+    n = gvfn.n
+    ξ = gvfn.ξ
+    hvp = gvfn.Hvp
+
+    npk = n+no
+    num_feats = npk*gvfn.a
+
+    preds, preds′, preds′′ = get_rolls(gvfn, states, h_init)
 
     preds_t = preds[end-1]
     preds_tilde = preds[end]
@@ -240,7 +338,14 @@ function update!(gvfn::GradientGVFN_act{H},
     for tp1 in 1:(length(states)-1)
         act_t = states[tp1][1]
         place = (act_t-1)*npk
+        fill!(xtp1, 0.0f0)
+        fill!(gradR, 0.0f0)
+        fill!(gradJK, 0.0f0)
+        fill!(hess, 0.0f0)
 
+        preds′_tp1 = preds′[tp1]
+        preds′′_tp1 = preds′′[tp1]
+        
         xtp1[place+1:place+npk] = if tp1 == 1
             [states[tp1][2]; h_init] # x_tp1 = [o_t, h_{t-1}]
         else
@@ -249,71 +354,61 @@ function update!(gvfn::GradientGVFN_act{H},
 
         xw = w*xtp1
 
-        gradR[place+1+no:place+npk] = ξ
+        for i in 1:n
+            gradR[place+no+i] = ξ[i]
+        end
+
+        θgradR = θ*gradR
+
+        term_0 = preds′′_tp1 .* (θgradR + xw)
         
         for (k,j) ∈ Iterators.product(1:n, 1:num_feats)
+            
             grad_place = (k-1)*num_feats + j
-            gradJK[place+1+no:place+npk] = ϕ[:, grad_place]
+            # gradJK[place+no+1:place+no+n] = ϕ[:, grad_place]
+            for i ∈ 1:n
+                gradJK[place+no+i] = ϕ[i, grad_place]
+            end
 
             term_1 = θ*gradJK
             term_1[k] += xtp1[j]
 
-            term_2 = θ*hess + w*gradJK
-            term_2[k] += gradR[j]
-
             for i ∈ 1:n
                 hess[place+no+i] = hvp[i, grad_place]
             end
+
+            term_2 = θ*hess + w*gradJK
+            term_2[k] += gradR[j]
             
             delta_hvp[:, grad_place] =
-                preds′′[tp1] .* (θ*gradR + xw) .* term_1 +
-                preds′[tp1] .* term_2
+                term_0 .* term_1 +
+                preds′_tp1 .* term_2
 
-            ϕ′[:, grad_place] = preds′[tp1] .* term_1
+            ϕ′[:, grad_place] = preds′_tp1 .* term_1
         end
 
         hvp .= delta_hvp
         ϕ .= ϕ′
 
-        ξ .= preds′[tp1] .* (θ*gradR + xw)
-        # for i ∈ 1:n
-        #     ξ[i] = preds′[tp1][i]*(dot(θ[i, :], gradR) + xw[i])
-        # end
-
-        
-        
-        # act_t = states[tp1][1]
-        # place = (act_t-1)*npk + 1
-        # xtp1 = if tp1 == 1
-        #     [states[tp1][2]; h_init] # x_tp1 = [o_t, h_{t-1}]
-        # else
-        #     [states[tp1][2]; preds[tp1-1]] # x_tp1 = [o_t, h_{t-1}]
-        # end
-        
-        # η .= _sum_kron_delta!(θ[:, (place+k):(place+k+n)]*ϕ, xtp1, k, n)
-
-        # ϕ′ .= preds′[tp1] .* η
-        # wx = w*xtp1
-
-        # # ξ is n+k
-        # term_1 = (preds′′[tp1].*(θ[:, (k+1):end]*ξ .+ wx)) .* η
-        # term_2 = preds′[tp1] .* _sum_kron_delta!(θ[:, (k+1):end]*hvp .+ w[:, (k+1):end]*ϕ, [zero(states[1]); ξ], k, n)
-        # hvp .= term_1 .+ term_2
-        # ξ .= preds′[tp1].*(θ[:, (k+1):end]*ξ + wx)
-        # ϕ .= ϕ′ # tp1 -> t
+        ξ .= preds′_tp1 .* (θgradR + xw)
     end
 
     tp1 = length(states)
 
     act_t = states[end][1]
     place = (act_t-1)*npk
+    fill!(xtp1, 0.0f0)
+    fill!(gradJK, 0.0f0)
     xtp1[place+1:place+npk] = [states[end][2]; preds[end-1]] # x_tp1 = [o_t, h_{t-1}]
+    preds′_tp1 = preds′[tp1]
     for (k,j) ∈ Iterators.product(1:n, 1:num_feats)
         grad_place = (k-1)*num_feats + j
-        gradJK[place+1+no:place+npk] = ϕ[:, grad_place]
+        for i ∈ 1:n
+            gradJK[place+no+i] = ϕ[i, grad_place]
+        end
         term_1 = θ*gradJK
         term_1[k] += xtp1[j]
-        ϕ′[:, grad_place] = preds′[tp1] .* term_1
+        ϕ′[:, grad_place] = preds′_tp1 .* term_1
     end
     
     cumulants, discounts, π_prob = get(gvfn.horde, action_t, env_state_tp1, preds_tilde)
