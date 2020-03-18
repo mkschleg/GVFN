@@ -89,7 +89,7 @@ default_config(seed=1) = Dict(
 
     "agent" => "GVFN",
     #"agent" => "RNN",
-    "activation" => "relu",
+    "activation" => "clip",
     "update_fn" => "BatchTD",
     "batchsize" => 32,
 

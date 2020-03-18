@@ -73,6 +73,17 @@ Flux.Tracker.@grad function clip(a)
     return clip(Flux.data(a)), Δ -> Tuple(Δ)
 end
 
+function bounded(a)
+    Float32.(clamp.(a, -10.0,10.0))
+end
+
+function bounded(a::TrackedArray)
+    track(bounded, a)
+end
+Flux.Tracker.@grad function bounded(a)
+    return bounded(Flux.data(a)), Δ -> Δ
+end
+
 function get_activation(act::AbstractString)
     if act == "sigmoid"
         return GVFN.sigmoid
@@ -82,6 +93,8 @@ function get_activation(act::AbstractString)
         return Flux.identity
     elseif act == "clip"
         return clip
+    elseif act == "bounded"
+        return bounded
     elseif act == "relu"
         return Flux.relu
     elseif act == "softplus"
