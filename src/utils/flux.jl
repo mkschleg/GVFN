@@ -74,7 +74,7 @@ Flux.Tracker.@grad function clip(a)
 end
 
 function bounded(a)
-    Float32.(clamp.(a, -10.0,10.0))
+    clamp.(a, -10.0f0,10.0f0)
 end
 
 function bounded(a::TrackedArray)
