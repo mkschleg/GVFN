@@ -1,5 +1,5 @@
 [config]
-save_dir="compassworld_rnn_adam"
+save_dir="compassworld_rnn_lstm_extra"
 exp_file="experiment/compassworld.jl"
 exp_module_name = "CompassWorldExperiment"
 exp_func_name = "main_experiment"
@@ -8,15 +8,15 @@ arg_iter_type = "iter"
 [static_args]
 "size" = 8
 "steps" = 1000000
-"opt" = "ADAM"
+"opt" = "Descent"
 "out-horde" = "forward"
 "sweep" = true
 "policy" = "rafols"
 
 [sweep_args]
 "activation" = ["sigmoid"]
-"cell" = ["ARNN", "GRU", "LSTM"]
-"hidden" = [5]
-"alpha" = "clamp.(0.01*1.5.^(-18:2:1), 0.0, 1.0)"
+"cell" = ["LSTM"]
+"hidden" = [40]
+"alpha" = "clamp.(0.1*1.5.^(5:6), 0.0, 1.0)"
 "truncation" = [1, 4, 8, 12, 16, 24, 32]
 "seed" = "1:10"
