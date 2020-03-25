@@ -13,7 +13,7 @@ arg_iter_type = "iter"
 "testSteps" = 200000
 
 "agent" = "RNN"
-"rnn_cell" = "GRU"
+"rnn_opt" = "ADAM"
 "update_fn" = "BatchTD"
 "batchsize" = 32
 
