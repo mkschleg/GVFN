@@ -100,4 +100,17 @@ function getNRMSE()
     cp(joinpath(read_dir, "notes.org"), joinpath(save_loc, "notes.org"))
 end
 
+function moveData(src, dest)
+    if !isdir(dest)
+        mkpath(dest)
+    end
+
+    ic = ItemCollection(src)
+    for itm ∈ ic.items
+        if "normalizer"∈keys(itm.parsed_args)
+            mv(itm.folder_str, joinpath(dest, split(itm.folder_str, "/")[end]))
+        end
+    end
+end
+
 getNRMSE()

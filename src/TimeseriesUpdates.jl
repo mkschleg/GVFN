@@ -91,6 +91,45 @@ end
 
 # Janky batch update for RNN batch n-horizon updates
 function update!(chain,
+                  horde::H,
+                  opt,
+                  lu::BatchTD,
+                  batchsize::Int,
+                  batch_h_init,
+                  batch_state_seq,
+                  batch_gvfn_target,
+                  batch_model_target;
+                  max_norm = 0.25) where {H<:AbstractHorde}
+    action_t = nothing # Never actions in timeseries experiments
+    ρ = 1.0            # No off-policy learning in the timeseries stuff
+    b_prob = 1.0f0     #
+
+    # create batches like a normal human
+    kys = keys(batch_h_init[1])
+    h_init = IdDict(k=>cat([batch_h_init[i][k] for i=1:batchsize]...; dims=2) for k ∈ kys)
+    state_seq = [cat(getindex.(batch_state_seq, t)...; dims=2) for t∈1:length(batch_state_seq[1])]
+    gvfn_target = cat(batch_gvfn_target...; dims=2)
+    model_target = cat(batch_model_target...; dims=2)
+
+    # Update GVFN First
+    ℒ_aux, preds = begin
+
+        reset!(chain, h_init)
+        preds = chain.(state_seq)
+        0.5f0*mean((gvfn_target-preds[end][2:end,:]).^2), preds
+    end
+    ℒ_out = 0.5f0*mean((preds[end][1,:]' - model_target).^2)
+
+    prms = Flux.params(chain)
+    grads = Flux.Tracker.gradient(() -> (ℒ_aux + ℒ_out) * 1 // 2, prms)
+
+    clip_coeff = FluxUtils.grad_clip_coeff(prms,grads,max_norm)
+    for weights in prms
+        Flux.Tracker.update!(opt, weights, grads[weights] * clip_coeff)
+    end
+end
+
+function update!(chain,
                   #horde::H,
                   opt,
                   lu::BatchTD,
@@ -100,7 +139,6 @@ function update!(chain,
                   batch_gvfn_target,
                   batch_model_target;
                   max_norm = 0.25) where {H}
-                  
 
     action_t = nothing # Never actions in timeseries experiments
     ρ = 1.0            # No off-policy learning in the timeseries stuff
@@ -139,9 +177,6 @@ function update!(chain,
     ℒ_out = 0.5f0*mean((preds[end] - model_target).^2)
 
     grads = Flux.Tracker.gradient(()->ℒ_out + ℒ_gvfn, Flux.params(chain))
-
-    # TODO: needed?
-    # reset!(chain, h_init)
 
     prms = Flux.params(chain[rnn_idx:end])
     clip_coeff = FluxUtils.grad_clip_coeff(prms,grads,max_norm)
@@ -196,7 +231,6 @@ function update!(chain,
         end
     end
 
-    # TODO: preds[end] or preds[end-1]?
     ℒ_out = 0.5f0*mean((preds[end] - model_target).^2)
 
     grads = Flux.Tracker.gradient(()->ℒ_out + ℒ_gvfn, Flux.params(chain))

@@ -53,12 +53,10 @@ function get_agent(parsed, rng)
     Agent_t = parsed["agent"]
     if Agent_t == "GVFN"
         agent = GVFN.TimeSeriesGVFNAgent(parsed; rng=rng)
-    elseif Agent_t == "FluxGVFN"
-        agent = GVFN.TimeSeriesFluxGVFNAgent(parsed; rng=rng)
     elseif Agent_t == "RNN"
         agent = GVFN.TimeSeriesRNNAgent(parsed;rng=rng)
-    elseif Agent_t == "FluxRNN"
-        agent = GVFN.TimeSeriesFluxRNNAgent(parsed; rng=rng)
+    elseif Agent_t == "AuxTasks"
+        agent = GVFN.TimeSeriesAuxTaskAgent(parsed;rng=rng)
     else
         throw(DomainError("Agent $(Agent_t) not implemented!"))
     end
@@ -87,9 +85,10 @@ default_config(seed=1) = Dict(
     "valSteps" => 200000,
     "testSteps" => 200000,
 
-    "agent" => "GVFN",
+    #"agent" => "GVFN",
     #"agent" => "RNN",
-    "activation" => "clip",
+    "agent" => "AuxTasks",
+    "activation" => "relu",
     "update_fn" => "BatchTD",
     "batchsize" => 32,
 
@@ -98,18 +97,17 @@ default_config(seed=1) = Dict(
     "gamma_high" => 0.97,
     "num_gvfs" => 128,
 
-    "gvfn_tau" => 1,
+    # "gvfn_tau" => 1,
+    # "gvfn_stepsize" => 3e-5,
+    # "gvfn_opt" => "Descent",
+    # "model_opt" => "ADAM",
+    # "model_stepsize" => 0.001,
 
-    "gvfn_stepsize" => 3e-5,
-    "gvfn_opt" => "Descent",
-    "model_opt" => "ADAM",
-    "model_stepsize" => 0.001,
-
-    # "rnn_opt" => "ADAM",
-    # "rnn_lr" => 0.001,
-    # "rnn_cell" => "GRU",
-    # "rnn_nhidden" => 128,
-    # "rnn_tau" => 4,
+    "rnn_opt" => "ADAM",
+    "rnn_lr" => 0.001,
+    "rnn_cell" => "GRU",
+    "rnn_nhidden" => 128,
+    "rnn_tau" => 1,
 
     "model_clip_coeff"=>0.25,
 

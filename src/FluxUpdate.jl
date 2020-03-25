@@ -157,6 +157,7 @@ function _gvfn_mse!(chain,
     preds = chain.(states)
     return 0.5f0*mean((targets-preds[end]).^2), preds
 end
+
 function _gvfn_loss!(chain,
                      lu::BatchTD,
                      h_init,
