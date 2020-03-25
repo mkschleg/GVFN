@@ -73,16 +73,17 @@ Flux.Tracker.@grad function clip(a)
     return clip(Flux.data(a)), Δ -> Tuple(Δ)
 end
 
-function bounded(a)
-    clamp.(a, -10.0f0,10.0f0)
-end
+bounded10(a) = clamp.(a, -10.0f0,10.0f0)
+bounded10(a::TrackedArray) = track(bounded10, a)
+Flux.Tracker.@grad function bounded10(a)  bounded10(Flux.data(a)), Δ -> Δ end
 
-function bounded(a::TrackedArray)
-    track(bounded, a)
-end
-Flux.Tracker.@grad function bounded(a)
-    return bounded(Flux.data(a)), Δ -> Δ
-end
+bounded5(a) = clamp.(a, -5.0f0,5.0f0)
+bounded5(a::TrackedArray) = track(bounded5, a)
+Flux.Tracker.@grad function bounded5(a)  bounded5(Flux.data(a)), Δ -> Δ end
+
+bounded1(a) = clamp.(a, -1.0f0,1.0f0)
+bounded1(a::TrackedArray) = track(bounded1, a)
+Flux.Tracker.@grad function bounded1(a)  bounded1(Flux.data(a)), Δ -> Δ end
 
 function get_activation(act::AbstractString)
     if act == "sigmoid"
@@ -93,8 +94,12 @@ function get_activation(act::AbstractString)
         return Flux.identity
     elseif act == "clip"
         return clip
-    elseif act == "bounded"
-        return bounded
+    elseif act == "bounded1"
+        return bounded1
+    elseif act == "bounded5"
+        return bounded5
+    elseif act == "bounded10"
+        return bounded10
     elseif act == "relu"
         return Flux.relu
     elseif act == "softplus"
