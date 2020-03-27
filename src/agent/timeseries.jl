@@ -326,6 +326,7 @@ function TimeSeriesAuxTaskAgent(parsed; rng=Random.GLOBAL_RNG)
     nhidden=parsed["rnn_nhidden"]
     τ=parsed["rnn_tau"]
     lr = parsed["rnn_lr"]
+    β1, β2 = parsed["rnn_beta1"], parsed["rnn_beta2"]
     clip_coeff = Float32(parsed["model_clip_coeff"])
 
     lu_func = getproperty(GVFN, Symbol(alg_string))
@@ -338,7 +339,7 @@ function TimeSeriesAuxTaskAgent(parsed; rng=Random.GLOBAL_RNG)
     normalizer = TimeSeriesUtils.getNormalizer(parsed)
 
     # build model
-    opt = getproperty(Flux, Symbol(parsed["rnn_opt"]))(lr)
+    opt = getproperty(Flux, Symbol(parsed["rnn_opt"]))(lr, (β1,β2))
     cell = getproperty(Flux, Symbol(parsed["rnn_cell"]))
     chain = Flux.Chain(
         cell(1, nhidden; init=(dims...)->glorot_uniform(rng, dims...)),

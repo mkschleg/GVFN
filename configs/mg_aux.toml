@@ -15,6 +15,8 @@ arg_iter_type = "iter"
 "agent" = "AuxTasks"
 "rnn_cell" = "GRU"
 "rnn_opt" = "ADAM"
+"rnn_beta1" = 0.9
+"rnn_beta2" = 0.999
 "update_fn" = "BatchTD"
 "batchsize" = 32
 

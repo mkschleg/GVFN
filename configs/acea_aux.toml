@@ -13,7 +13,10 @@ arg_iter_type = "iter"
 "testSteps" = 20000
 
 "agent" = "AuxTasks"
+"rnn_cell" = "GRU"
 "rnn_opt" = "ADAM"
+"rnn_beta1" = 0.9
+"rnn_beta2" = 0.999
 "update_fn" = "BatchTD"
 "batchsize" = 32
 
@@ -29,7 +32,6 @@ arg_iter_type = "iter"
 
 [sweep_args]
 "rnn_lr" = "collect(2.0.^(-20:-1))"
-"rnn_cell" = ["GRU","LSTM"]
 "rnn_nhidden" = [32,64,128]
 "rnn_tau" = [1]
 "seed" = "1:10"
