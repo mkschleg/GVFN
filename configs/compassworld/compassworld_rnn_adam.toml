@@ -17,6 +17,6 @@ arg_iter_type = "iter"
 "activation" = ["sigmoid"]
 "cell" = ["ARNN", "GRU", "LSTM"]
 "hidden" = [35, 40, 110]
-"alpha" = "clamp.(0.01*1.5.^(-10:2:1), 0.0, 1.0)"
+"alpha" = "clamp.(0.01*1.5.^(-18:2:1), 0.0, 1.0)"
 "truncation" = [1, 4, 8, 12, 16, 24, 32]
 "seed" = "1:10"

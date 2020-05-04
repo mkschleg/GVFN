@@ -10,7 +10,7 @@ arg_iter_type = "iter"
 "steps" = 1000000
 "opt" = "RMSProp"
 "out-horde" = "forward"
-"sweep" = false
+"sweep" = true
 "policy" = "rafols"
 
 [sweep_args]
@@ -18,4 +18,4 @@ arg_iter_type = "iter"
 "klength" = [8, 22]
 "alpha" = "clamp.(0.01*1.5.^(-10:2:1), 0.0, 1.0)"
 "truncation" = [1, 4, 8, 12, 16, 24, 32]
-"seed" = "1:10"
+"seed" = "1:5"

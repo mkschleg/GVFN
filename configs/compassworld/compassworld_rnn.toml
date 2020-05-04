@@ -15,8 +15,8 @@ arg_iter_type = "iter"
 
 [sweep_args]
 "activation" = ["sigmoid"]
-"cell" = ["ARNN", "GRU", "LSTM"]
+"cell" = ["GRU", "LSTM"]
 "hidden" = [35, 40, 110]
-"alpha" = "clamp.(0.1*1.5.^(-6:4), 0.0, 1.0)"
+"alpha" = "clamp.(0.1*1.5.^(-10:-4), 0.0, 1.0)"
 "truncation" = [1, 4, 8, 12, 16, 24, 32]
 "seed" = "1:10"

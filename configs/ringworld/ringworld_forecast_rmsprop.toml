@@ -7,7 +7,7 @@ arg_iter_type = "iter"
 
 [static_args]
 "steps" = 300000
-"opt" = "Descent"
+"opt" = "RMSProp"
 "outgamma" = 0.0
 "gamma" = 0.95
 "sweep" = true
@@ -16,7 +16,7 @@ arg_iter_type = "iter"
 "size" = [6, 10]
 "outhorde" = ["gammas_term", "onestep"]
 "cell" = ["ARNNCell", "GRUCell", "LSTMCell"]
-"alpha" = "clamp.(0.01*1.5.^(-9:1), 0.0, 1.0)"
+"alpha" = "clamp.(0.01*1.5.^(-10:2:1), 0.0, 1.0)"
 "klength" = [14, 22]
 "truncation" = [1, 2, 3, 4, 6, 8, 12, 16]
 "seed" = "1:10"

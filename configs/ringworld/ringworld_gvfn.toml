@@ -1,5 +1,5 @@
 [config]
-save_dir="/home/mkschleg/scratch/GVFN/ringworld_gvfn"
+save_dir="ringworld_gvfn"
 exp_file="experiment/ringworld.jl"
 exp_module_name = "RingWorldExperiment"
 exp_func_name = "main_experiment"
@@ -16,7 +16,7 @@ arg_iter_type = "iter"
 "size" = [6, 10]
 "activation" = ["sigmoid"]
 "outhorde" = ["gammas_term", "onestep"]
-"horde" = ["gamma_chain", "chain", "gammas_aj", "gammas_term"]
+"horde" = ["gammas_aj_term"]
 "alpha" = "clamp.(0.1*1.5.^(-6:4), 0.0, 1.0)"
 "truncation" = [1, 2, 3, 4, 6, 8, 12, 16]
 "seed" = "1:10"

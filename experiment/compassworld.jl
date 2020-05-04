@@ -148,8 +148,8 @@ function main_experiment(parsed::Dict; progress=false, working=false)
                 ProgressMeter.next!(prg_bar)
             end
             cur_step += 1
-    end
-        catch exc
+        end
+    catch exc
         if exc isa ErrorException && (exc.msg == "Loss is infinite" || exc.msg == "Loss is NaN" || exc.msg == "Loss is Inf")
             out_pred_strg[cur_step:end, :] .= Inf
         else

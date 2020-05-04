@@ -26,7 +26,7 @@ function horde_settings!(as::ArgParseSettings, prefix::AbstractString="")
 end
 
 
-function onestep(chain_length::Integer)
+function onestep(chain_length::Integer=0)
     gvfs = [GVF(FeatureCumulant(1), ConstantDiscount(0.0), NullPolicy())]
     return Horde(gvfs)
 end
@@ -149,8 +149,14 @@ function oracle(env::CycleWorld, horde_str, γ=0.9)
         tmp = zeros(chain_length + 1)
         tmp[chain_length - state] = 1
         ret = [tmp[1]]
-    elseif horde_str == "gammas"
+    # elseif horde_str == "gammas"
+        # ret = collect(0.0:0.1:0.9).^(chain_length - state - 1)
+        
+    elseif horde_str == "gammas_term"
         ret = collect(0.0:0.1:0.9).^(chain_length - state - 1)
+    elseif horde_str == "gammas_aj_term"
+        gammas = 1.0 .- 2.0 .^ collect(-7:-1)
+        ret = gammas.^(chain_length - state - 1)
     else
         throw("Bug Found")
     end
