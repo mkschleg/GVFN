@@ -145,13 +145,25 @@ end
 
 struct BatchTD <: LearningUpdate end
 
+function _gvfn_mse!(chain,
+                     lu::BatchTD,
+                     h_init,
+                     states,
+                     targets,
+                     action_t=nothing;
+                     kwargs...) where {H<:AbstractHorde}
+
+    reset!(chain, h_init)
+    preds = chain.(states)
+    return 0.5f0*mean((targets-preds[end]).^2), preds
+end
+
 function _gvfn_loss!(chain,
                      lu::BatchTD,
                      h_init,
                      states,
                      env_state_tp1,
-                     action_t=nothing,
-                     b_prob=1.0;
+                     action_t=nothing;
                      kwargs...) where {H<:AbstractHorde}
 
     reset!(chain, h_init)
@@ -166,17 +178,14 @@ function _gvfn_loss!(chain,
                                            action_t,
                                            env_state_tp1,
                                            preds_tilde)
-        ρ = π_prob/b_prob
-        δ_all +=  offpolicy_tdloss_gvfn(Float32.(ρ),
-                                          preds_t,
-                                          Float32.(cumulants),
-                                          Float32.(discounts),
-                                          preds_tilde)
+        δ_all +=  mean_tdloss_gvfn(preds_t,
+                                   Float32.(cumulants),
+                                   Float32.(discounts),
+                                   preds_tilde)
     end
 
 
     return δ_all * 1 // (length(preds)-1), preds
-
 end
 
 function update!(model,

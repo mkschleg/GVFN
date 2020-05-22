@@ -1,5 +1,5 @@
 [config]
-save_dir="mso_gvfn"
+save_dir="mackeyglass_gvfn_linear_orig"
 exp_file="experiment/timeseries.jl"
 exp_module_name = "TimeSeriesExperiment"
 exp_func_name = "main_experiment"
@@ -7,19 +7,20 @@ arg_iter_type = "iter"
 
 
 [static_args]
-"env" = "MSO"
+"env" = "MackeyGlass"
 "horizon" = 12
 "steps" = 600000
 "valSteps" = 200000
 "testSteps" = 200000
 
 "agent" = "GVFN"
+"activation" = "linear"
 "update_fn" = "BatchTD"
 "batchsize" = 32
 
 "horde" = "LinSpacing"
 "gamma_low" = 0.1
-"gamma_high" = 0.9
+"gamma_high" = 0.97
 "num_gvfs" = 128
 
 "gvfn_opt" = "Descent"
@@ -28,9 +29,8 @@ arg_iter_type = "iter"
 "model_clip_coeff" = 0.25
 
 [sweep_args]
-"gvfn_stepsize" = [1e-6,5e-6,0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005]
-"model_stepsize" = [0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01]
-"activation" = ["bounded1","bounded5","bounded10"]
+"gvfn_stepsize" = [0.00001, 0.00003, 0.0001, 0.0003]
+"model_stepsize" = [0.0001, 0.0003, 0.001, 0.003]
 
 "gvfn_tau" = [1,2,4,8,16,32]
 "seed" = "1:10"

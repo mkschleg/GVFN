@@ -60,6 +60,20 @@ function get(cumulant::NormalizedCumulant, state_t, action_t, state_tp1, action_
     return c * cumulant.scale / cumulant.rmax
 end
 
+mutable struct UnityCumulant{F<:Number, T<:AbstractCumulant} <: AbstractCumulant
+    scale::F
+    cumulant::T
+    rmax::F
+    rmin::F
+end
+
+UnityCumulant(scale, cumulant) = UnityCumulant(scale, cumulant, 1.0f0, 0.0f0)
+
+function get(cumulant::UnityCumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1)
+    c = get(cumulant.cumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1)
+    cumulant.rmax, cumulant.rmin = max(cumulant.rmax,c), min(cumulant.rmin, c)
+    return (c - cumulant.rmin) * (cumulant.rmax-cumulant.rmin) * cumulant.scale 
+end
 
 """
 Discounting

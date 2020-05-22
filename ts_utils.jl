@@ -1,27 +1,27 @@
-import Pkg; Pkg.activate(".")
 using Revise
 using Reproduce
 using FileIO
 using JLD2
 using Statistics
-using Plots; gr()
+using Plots; pyplot()
 using Reproduce.Config
 
 includet("experiment/timeseries.jl")
 
-const default_config = "configs/test_rnn.toml"
+const default_config = "configs/test_gvfn.toml"
 const saveDir = string(@__DIR__)
 
 # =============================
 # --- D E B U G   U T I L S ---
 # =============================
 
-function exp(cfg, idx)
+function exp(cfg, idx, run=1)
     cfg = ConfigManager(cfg, saveDir)
-    parse!(cfg, idx)
-    TimeSeriesExperiment.main_experiment(cfg)
+    parse!(cfg, idx, run)
+    TimeSeriesExperiment.main_experiment(cfg; progress=true)
 end
 
+exp(run) = exp(default_config, 1, run)
 exp() = exp(default_config, 1)
 
 # ===============
@@ -53,12 +53,12 @@ function NRMSE(cfg, idx)
     for r=1:nruns
         results = get_run_data(cfg, idx, r)
 
-        g,p = results["ValidationGroundTruth"], results["ValidationPredictions"]
+        g,p = results["GroundTruth"], results["Predictions"]
 
         p = p[1:length(g)]
 
         values = Float64[]
-        start = 10000
+        start = 1000
         for i=start+1:10:length(p)
             ĝ = g[i-start:i]
             P̂ = p[i-start:i]
@@ -78,8 +78,8 @@ function NRMSE(cfg, idx)
     return vals
 end
 
-function getBestNRMSE()
-    cfg = ConfigManager(default_config, saveDir)
+function getBestNRMSE(cfgFile)
+    cfg = ConfigManager(cfgFile, saveDir)
 
     best = Inf
     bestData = nothing
@@ -99,12 +99,21 @@ function getBestNRMSE()
     return bestData
 end
 
-function plotNRMSE()
-    values = getBestNRMSE()
-    av = mean(values, dims=1)
-    σ = std(values, dims=1, corrected=true) / sqrt(size(values,1))
-    plot(av', ribbon=σ', grid=false, label="NRMSE")
+getBestNRMSE() = getBestNRMSE(default_config)
+
+function plotNRMSE(cfgFiles::Vector{String})
+    p = plot()
+    for cfgFile in cfgFiles
+        values = getBestNRMSE(cfgFile)
+        av = mean(values, dims=1)
+        σ = std(values, dims=1, corrected=true) / sqrt(size(values,1))
+        plot!(av', ribbon=σ', grid=false, label="NRMSE",ylim=[0,2])
+    end
+    return p
 end
+
+plotNRMSE(cfgFile::String) = plotNRMSE([cfgFile])
+plotNRMSE() = plotNRMSE(default_config)
 
 function plotData(b::Dict)
     p=plot()
