@@ -1,5 +1,5 @@
 [config]
-save_dir="mso_gvfn"
+save_dir="mso_aux_normalized"
 exp_file="experiment/timeseries.jl"
 exp_module_name = "TimeSeriesExperiment"
 exp_func_name = "main_experiment"
@@ -12,17 +12,27 @@ arg_iter_type = "iter"
 "valSteps" = 200000
 "testSteps" = 200000
 
-"agent" = "GVFN"
+"agent" = "AuxTasks"
+"rnn_cell" = "GRU"
+"rnn_opt" = "ADAM"
+"rnn_beta1" = 0.9
+"rnn_beta2" = 0.999
 "update_fn" = "BatchTD"
 "batchsize" = 32
 
 "horde" = "LinSpacing"
-"gamma_low" = 0.1
+"gamma_low" = 0.2
 "gamma_high" = 0.95
+"num_gvfs" = 128
+
+"normalizer"="Unity"
+"max" = 3.6442
+"min" = -3.6442
+
+"model_clip_coeff" = 0.25
 
 [sweep_args]
-"num_gvfs" = [32,64,128]
-"gvfn_opt" = ["Descent","RMSProp"]
-"gvfn_stepsize" = [0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005]
-"gvfn_tau" = [1, 4, 16]
+"rnn_lr" = "collect(2.0.^(-20:-1))"
+"rnn_nhidden" = [32,64,128]
+"rnn_tau" = [1]
 "seed" = "1:10"
