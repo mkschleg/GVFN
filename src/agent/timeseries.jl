@@ -1,4 +1,6 @@
-export TimeSeriesGVFNAgent, TimeSeriesRNNAgent, TimeSeriesAuxTaskAgent, predict!
+export TimeSeriesGVFNAgent, TimeSeriesRNNAgent, TimeSeriesAuxTaskAgent,
+    TimeSeriesOriginalRNNAgent, TimeSeriesOriginalAuxTaskAgent,
+    predict!
 
 import Flux
 import Random
@@ -131,9 +133,7 @@ end
 function TimeSeriesOriginalRNNAgent(parsed; rng=Random.GLOBAL_RNG)
     # RNN architecture originally used, with RNN -> linear output
 
-    lr = parsed["rnn_lr"]
     nhidden = parsed["rnn_nhidden"]
-    opt = getproperty(Flux, Symbol(parsed["rnn_opt"]))(lr)
     cell = getproperty(Flux, Symbol(parsed["rnn_cell"]))
 
     init_func = (dims...)->glorot_uniform(rng, dims...)
@@ -144,22 +144,20 @@ function TimeSeriesOriginalRNNAgent(parsed; rng=Random.GLOBAL_RNG)
     return _TimeSeriesRNNAgent(parsed, chain; rng=rng)
 end
 
-function TimeSeriesRNNAgent(parse;; rng=Random.GLOBAL_RNG)
+function TimeSeriesRNNAgent(parsed; rng=Random.GLOBAL_RNG)
     # Uses an architecture more similar to the GVFN, with
     # a recurrent layer producing a representation, and
     # a FC NN producing timeseries predictions from this.
 
-    lr = parsed["rnn_lr"]
     nhidden = parsed["rnn_nhidden"]
-    opt = getproperty(Flux, Symbol(parsed["rnn_opt"]))(lr)
     cell = getproperty(Flux, Symbol(parsed["rnn_cell"]))
     act = FluxUtils.get_activation(parsed["activation"])
 
     init_func = (dims...)->glorot_uniform(rng, dims...)
     chain = Flux.Chain(
-        cell(1, nhidden, act; ini =init_func)
+        cell(1, nhidden, act; init =init_func),
         Flux.Dense(nhidden, nhidden, relu; initW=init_func),
-        Flux.Dense(nhidden; initW=init_func)
+        Flux.Dense(nhidden, 1; initW=init_func)
     )
     return _TimeSeriesRNNAgent(parsed, chain; rng=rng)
 end
@@ -179,7 +177,9 @@ function _TimeSeriesRNNAgent(parsed, chain; rng=Random.GLOBAL_RNG)
     # get normalizer
     normalizer = TimeSeriesUtils.getNormalizer(parsed)
 
-    # build model
+    # get optimizer
+    lr, β1, β2 = map(k->parsed[k], ["rnn_lr","rnn_beta1","rnn_beta2"])
+    opt = getproperty(Flux, Symbol(parsed["rnn_opt"]))(lr, (β1, β2))
 
     obs_sequence = DataStructures.CircularBuffer{Obs_t}(τ)
     hidden_state_init = GVFN.get_initial_hidden_state(chain)
@@ -347,10 +347,7 @@ num_gvfs(a::TimeSeriesAuxTaskAgent) = length(a.horde)
 
 function TimeSeriesOriginalAuxTaskAgent(parsed; rng=Random.GLOBAL_RNG)
     # RNN architecture originally used, with RNN -> linear output
-    lr = parsed["rnn_lr"]
-    β1, β2 = parsed["rnn_beta1"], parsed["rnn_beta2"]
     nhidden = parsed["rnn_nhidden"]
-    opt = getproperty(Flux, Symbol(parsed["rnn_opt"]))(lr, (β1,β2))
     cell = getproperty(Flux, Symbol(parsed["rnn_cell"]))
 
     horde = TimeSeriesUtils.get_horde(parsed)
@@ -364,14 +361,12 @@ function TimeSeriesOriginalAuxTaskAgent(parsed; rng=Random.GLOBAL_RNG)
     return _TimeSeriesAuxTaskAgent(parsed, chain, horde; rng=rng)
 end
 
-function TimeSeriesAuxTaskAgent(parse;; rng=Random.GLOBAL_RNG)
+function TimeSeriesAuxTaskAgent(parsed; rng=Random.GLOBAL_RNG)
     # Uses an architecture more similar to the GVFN, with
     # a recurrent layer producing a representation, and
     # a FC NN producing timeseries predictions from this.
 
-    lr = parsed["rnn_lr"]
     nhidden = parsed["rnn_nhidden"]
-    opt = getproperty(Flux, Symbol(parsed["rnn_opt"]))(lr)
     cell = getproperty(Flux, Symbol(parsed["rnn_cell"]))
     act = FluxUtils.get_activation(parsed["activation"])
 
@@ -402,6 +397,10 @@ function _TimeSeriesAuxTaskAgent(parsed, chain, horde; rng=Random.GLOBAL_RNG)
 
     # get normalizer
     normalizer = TimeSeriesUtils.getNormalizer(parsed)
+
+    # get optimizer
+    lr, β1, β2 = map(k->parsed[k], ["rnn_lr","rnn_beta1","rnn_beta2"])
+    opt = getproperty(Flux, Symbol(parsed["rnn_opt"]))(lr, (β1,β2))
 
     obs_sequence = DataStructures.CircularBuffer{Obs_t}(τ)
     hidden_state_init = GVFN.get_initial_hidden_state(chain)
