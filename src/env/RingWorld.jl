@@ -38,7 +38,7 @@ RingWorld(ring_size::Int; partially_observable=true) =
 
 function env_settings!(as::Reproduce.ArgParseSettings,
                        env_type::Type{RingWorld})
-    Reproduce.@add_arg_table as begin
+    Reproduce.@add_arg_table! as begin
         "--size"
         help="The length of the ring world chain"
         arg_type=Int64

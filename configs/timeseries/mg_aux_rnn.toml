@@ -1,10 +1,9 @@
 [config]
-save_dir="mackeyglass_gvfn_relu_rmsprop"
+save_dir="mackeyglass_aux_rnn"
 exp_file="experiment/timeseries.jl"
 exp_module_name = "TimeSeriesExperiment"
 exp_func_name = "main_experiment"
 arg_iter_type = "iter"
-
 
 [static_args]
 "env" = "MackeyGlass"
@@ -13,8 +12,12 @@ arg_iter_type = "iter"
 "valSteps" = 200000
 "testSteps" = 200000
 
-"agent" = "GVFN"
-"activation" = "relu"
+"agent" = "AuxTasks"
+"rnn_nhidden" = 128
+"rnn_cell" = "RNN"
+"rnn_opt" = "ADAM"
+"rnn_beta1" = 0.9
+"rnn_beta2" = 0.999
 "update_fn" = "BatchTD"
 "batchsize" = 32
 
@@ -23,12 +26,10 @@ arg_iter_type = "iter"
 "gamma_high" = 0.95
 "num_gvfs" = 128
 
-"gvfn_opt" = "RMSProp"
-
 "model_clip_coeff" = 0.25
 
 [sweep_args]
-"gvfn_stepsize" = "collect(2.0.^(-20:-6))"
-"gvfn_tau" = [1,2,4,8,16,32]
+"rnn_lr" = "collect(2.0.^(-20:-6))"
+"activation" = ["bounded1","bounded5","bounded10"]
+"rnn_tau" = [1,2,4,8,16,32]
 "seed" = "1:10"
-
