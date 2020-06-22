@@ -510,16 +510,16 @@ end
 function predict!(agent::TimeSeriesAuxTaskAgent, env_s_tp1, r, terminal, rng=Random.GLOBAL_RNG)
     # for validation/test; predict, updating hidden states, but don't update models
 
+    # update the hidden state
+    agent.hidden_state_init =
+        get_next_hidden_state(agent.chain, agent.hidden_state_init, agent.obs_sequence[end])
+
     # Update the sequence of observations
     push!(agent.obs_sequence, agent.normalizer(env_s_tp1))
 
     # reset the chain's initial hidden state and run through the observation sequence
     reset!(agent.chain, agent.hidden_state_init)
-    out_preds = agent.chain.(agent.obs_sequence)[end]
-
-    # update the hidden state
-    agent.hidden_state_init =
-        get_next_hidden_state(agent.chain, agent.hidden_state_init, agent.obs_sequence[1])
+    out_preds = agent.chain(agent.obs_sequence[end])
 
     return out_preds.data[1]
 end
