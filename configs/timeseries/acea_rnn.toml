@@ -28,6 +28,6 @@ arg_iter_type = "iter"
 
 [sweep_args]
 "rnn_lr" = "collect(2.0.^(-20:-1))"
-"activation" = ["bounded1","bounded5","bounded10"]
+"activation" = ["bounded1","bounded5","bounded10","tanh"]
 "rnn_tau" = [1,2,4,8,16,32]
 "seed" = "1:10"
