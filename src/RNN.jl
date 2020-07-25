@@ -3,8 +3,17 @@
 
 using Flux
 
+#####
+#
 # Utilities for using RNNs and Action RNNs online and in chains.
+#
+#####
 
+"""
+    dont_learn_initial_state!
+
+Simple function which prevents the initial hidden state stored by Flux.Recur to be not learnable. This isn't used in the code base as the hidden state is managed externally from the RNN, but could be useful later.
+"""
 dont_learn_initial_state!(rnn) = prefor(x -> x isa Flux.Recur && _dont_learn_initial_state_!(x), rnn)
 dont_learn_initial_state_!(rnn) = 
     rnn.init = Flux.data(rnn.init)
@@ -12,6 +21,11 @@ function _dont_learn_initial_state!(rnn::Flux.Recur{Flux.LSTMCell})
     rnn.init = Flux.data.(rnn.init)
 end
 
+"""
+    reset!(model, h_init)
+
+Reset the hidden state of the model to h_init. If h_init is an IdDict the key will be the Flux.Recur layer (which is compatible w/ `get_hidden_state`.)
+"""
 reset!(m, h_init) = 
     Flux.prefor(x -> x isa Flux.Recur && _reset!(x, h_init), m)
 
@@ -38,12 +52,22 @@ function _reset!(m, h_init::T) where {T<:AbstractArray{Float32,2}}
     m.state = param(h_init)
 end
 
+"""
+    contains_rnntype(m, rnn_type::Type)
+
+Return a boolean if rnn_type is contained in the model (useful for determining if this is a GVFN or if this is an ActionRNN.)
+"""
 function contains_rnntype(m, rnn_type::Type)
     is_rnn_type = Bool[]
     Flux.prefor(x -> push!(is_rnn_type, x isa Flux.Recur && x.cell isa rnn_type), m)
     return any(is_rnn_type)
 end
 
+"""
+    find_layers_with_eq(m, eq)
+
+Find layer indecies that fulfill condition `eq(l)`, returns an array of Union{Int, Tuple} to determine layer indecies.
+"""
 function find_layers_with_eq(m, eq)
     layer_indecies = Union{Int, Tuple}[]
     for (idx, l) in enumerate(m)
@@ -59,6 +83,11 @@ function find_layers_with_eq(m, eq)
     return layer_indecies
 end
 
+"""
+    needs_action_input(m)
+
+Returns a boolean if there is a layer requiring explicit action input (i.e. a tuple).
+"""
 function needs_action_input(m)
     needs_action = Bool[]
     Flux.prefor(x -> push!(needs_action, _needs_action_input(x)), m)
@@ -68,6 +97,11 @@ end
 _needs_action_input(m) = false
 _needs_action_input(m::Flux.Recur{T}) where {T} = _needs_action_input(m.cell)
 
+"""
+    get_next_hidden_state(model, h_init, input)
+
+Get the next hidden state of the model (returned as an array or as an IdDict see `get_hidden_state`)
+"""
 function get_next_hidden_state(rnn::Flux.Recur{T}, h_init, input) where {T}
     return Flux.data(rnn.cell(h_init, input)[1])
 end
@@ -83,6 +117,11 @@ function get_next_hidden_state(c, h_init, input)
 end
 
 ### TODO there may be extra copies here than what is actually needed. Test in the future if there is slowdown from allocations here.
+"""
+    get_hidden_state(model)
+
+Return the hidden state of the model stored in an IdDict.
+"""
 function get_hidden_state(c)
     h_state = IdDict()
     Flux.prefor(x -> x isa Flux.Recur && get!(h_state, x, get_hidden_state(x)), c)
@@ -92,6 +131,11 @@ end
 get_hidden_state(rnn::Flux.Recur{T}) where {T} = copy(Flux.data(rnn.state))
 get_hidden_state(rnn::Flux.Recur{T}) where {T<:Flux.LSTMCell} = deepcopy(Flux.data.(rnn.state))
 
+"""
+    get_initial_hidden_state(model)
+
+Return initial hidden state (useful for episode restarts).
+"""
 function get_initial_hidden_state(c)
     h_state = IdDict()
     Flux.prefor(x -> x isa Flux.Recur && get!(h_state, x, get_initial_hidden_state(x)), c)
@@ -110,8 +154,6 @@ function get_hidden_states_and_preds(c, data)
     map((datum)->_get_next_hidden_state(c, datum), data)
 end
 
-
-
 abstract type AbstractActionRNN end
 
 _needs_action_input(m::M) where {M<:AbstractActionRNN} = true
@@ -120,10 +162,19 @@ _needs_action_input(m::M) where {M<:AbstractActionRNN} = true
     ARNNCell
 
     An RNN cell which explicitily transforms the hidden state of the recurrent neural network according to action.
+"""
+mutable struct ARNNCell{F, A, V, H} <: AbstractActionRNN
+    σ::F
+    Wx::A
+    Wh::A
+    b::V
+    h::H
+end
 
-    Figure for A-RNN with 3 actions.
-        O - Concatenate
-        X - Split by action
+#= 
+Figure for A-RNN with 3 actions.
+   O - Concatenate
+   X - Split by action
 
           -----------------------------------
          |     |--> W_1*[o_{t+1};h_t]-|      |
@@ -136,14 +187,7 @@ _needs_action_input(m::M) where {M<:AbstractActionRNN} = true
           -|---------------------------------
            | (o_{t+1}, a_t)
            |
-"""
-mutable struct ARNNCell{F, A, V, H} <: AbstractActionRNN
-    σ::F
-    Wx::A
-    Wh::A
-    b::V
-    h::H
-end
+=#
 
 ARNNCell(in, num_actions, out, activation=tanh; init=Flux.glorot_uniform) =
     ARNNCell(
