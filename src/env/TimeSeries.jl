@@ -3,6 +3,8 @@ using MinimalRLCore
 import DataStructures: CircularBuffer
 import HDF5: h5read
 
+import .CritterbotUtils
+
 
 abstract type TimeSeriesEnv <: AbstractEnvironment end
 
@@ -10,6 +12,48 @@ init!(self::TimeSeriesEnv) = nothing
 MinimalRLCore.step!(self::TimeSeriesEnv, action) = MinimalRLCore.step!(self::TimeSeriesEnv)
 
 get_num_features(self::TimeSeriesEnv) = 1
+
+# ==================
+# --- CRITTERBOT ---
+# ==================
+
+mutable struct Critterbot <: TimeSeriesEnv
+    num_steps::Int
+    num_features::Int
+    sensorIdx::Int
+
+    idx::Int
+    tiles::Vector{Int}
+    data::Array{Float64}
+end
+
+Critterbot(sensorIdx) = Critterbox(CritterbotUtils.numSteps(),
+                                   CritterbotUtils.numFeatures(),
+                                   sensorIdx, 0,
+                                   CritterbotUtils.loadTiles(),
+                                   CritterbotUtils.loadSensor(sensorIdx))
+
+function MinimalRLCore.start!(cb::Critterbot)
+    cb.idx = 1
+    return _encode(cb)
+end
+
+function MinimalRLCore.step!(cb::Critterbot)
+    cb.idx += 1
+    return _encode(cb), _reward(cb), cb.idx == cb.num_steps
+end
+
+function _encode(cb::Critterbot)
+    ϕ = zeros(cb.num_features)
+    ϕ[cb.tiles[cb.idx]] = 1.0
+    return ϕ
+end
+
+_reward(cb::Critterbot) = cb.data[:, cb.idx]
+get_num_features(cb::Critterbot) = cb.num_features
+
+MinimalRLCore.get_reward(cb::Critterbot) = _reward(cb)
+MinimalRLCore.get_state(cb::Critterbot) = _encode(cb)
 
 # ===========
 # --- MSO ---
