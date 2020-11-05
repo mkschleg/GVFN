@@ -12,6 +12,7 @@ init!(self::TimeSeriesEnv) = nothing
 MinimalRLCore.step!(self::TimeSeriesEnv, action) = MinimalRLCore.step!(self::TimeSeriesEnv)
 
 get_num_features(self::TimeSeriesEnv) = 1
+get_num_targets(self::TimeSeriesEnv) = 1
 
 # ==================
 # --- CRITTERBOT ---
@@ -20,40 +21,38 @@ get_num_features(self::TimeSeriesEnv) = 1
 mutable struct Critterbot <: TimeSeriesEnv
     num_steps::Int
     num_features::Int
-    sensorIdx::Int
+    sensors::Vector{Int}
 
     idx::Int
-    tiles::Vector{Int}
     data::Array{Float64}
 end
 
-Critterbot(sensorIdx) = Critterbox(CritterbotUtils.numSteps(),
-                                   CritterbotUtils.numFeatures(),
-                                   sensorIdx, 0,
-                                   CritterbotUtils.loadTiles(),
-                                   CritterbotUtils.loadSensor(sensorIdx))
+function Critterbot(obs_sensors, target_sensors)
+    all_sensors = vcat(obs_sensors, target_sensors)
+    num_features = length(obs_sensors)
+    return Critterbot(CritterbotUtils.numSteps(),
+                      num_features, all_sensors,
+                      0, CritterbotUtils.loadSensor(all_sensors))
+end
+
+# Hack to use same features as targets; just duplicate the data in new cols
+Critterbot(sensors::Vector{Int}) = Critterbot(sensors, sensors)
+get_num_features(cb::Critterbot) = cb.num_features
+get_num_targets(cb::Critterbot) = length(cb.sensors)-cb.num_features
 
 function MinimalRLCore.start!(cb::Critterbot)
     cb.idx = 1
-    return _encode(cb)
+    return MinimalRLCore.get_state(cb)
 end
 
 function MinimalRLCore.step!(cb::Critterbot)
     cb.idx += 1
-    return _encode(cb), _reward(cb), cb.idx == cb.num_steps
+    return MinimalRLCore.get_state(cb)
 end
 
-function _encode(cb::Critterbot)
-    ϕ = zeros(cb.num_features)
-    ϕ[cb.tiles[cb.idx]] = 1.0
-    return ϕ
-end
-
-_reward(cb::Critterbot) = cb.data[:, cb.idx]
-get_num_features(cb::Critterbot) = cb.num_features
-
-MinimalRLCore.get_reward(cb::Critterbot) = _reward(cb)
-MinimalRLCore.get_state(cb::Critterbot) = _encode(cb)
+# Data for each sensor in a row, so that we can access data for all sensors by col
+MinimalRLCore.get_state(cb::Critterbot) = cb.data[1:cb.num_features, cb.idx]
+MinimalRLCore.get_reward(cb::Critterbot) = cb.data[cb.num_features+1:end, cb.idx] #
 
 # ===========
 # --- MSO ---

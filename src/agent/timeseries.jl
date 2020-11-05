@@ -39,7 +39,6 @@ Obs_t = Vector{Float32}
 
 function TimeSeriesGVFNAgent(parsed; rng=Random.GLOBAL_RNG)
 
-
     # ==========================================
     # hyperparameters
     # ==========================================
@@ -92,10 +91,10 @@ function TimeSeriesGVFNAgent(parsed; rng=Random.GLOBAL_RNG)
     act = FluxUtils.get_activation(parsed["activation"])
     init_func = (dims...)->glorot_uniform(rng, dims...)
     chain = Flux.Chain(
-        GVFR_RNN(1, horde, act; init=init_func),
+        GVFR_RNN(parsed["num_features"], horde, act; init=init_func),
         Flux.data,
         Flux.Dense(num_gvfs, num_gvfs, relu; initW=init_func),
-        Flux.Dense(num_gvfs, 1; initW=init_func)
+        Flux.Dense(num_gvfs, parsed["num_targets"]; initW=init_func)
     )
 
     # Init observation sequence and hidden state
@@ -155,9 +154,9 @@ function TimeSeriesRNNAgent(parsed; rng=Random.GLOBAL_RNG)
 
     init_func = (dims...)->glorot_uniform(rng, dims...)
     chain = Flux.Chain(
-        cell(1, nhidden, act; init =init_func),
+        cell(parsed["num_features"], nhidden, act; init =init_func),
         Flux.Dense(nhidden, nhidden, relu; initW=init_func),
-        Flux.Dense(nhidden, 1; initW=init_func)
+        Flux.Dense(nhidden, parsed["num_targets"]; initW=init_func)
     )
     return _TimeSeriesRNNAgent(parsed, chain; rng=rng)
 end
@@ -257,7 +256,7 @@ function MinimalRLCore.step!(agent::TimeSeriesAgent, env_s_tp1, r, terminal, rng
         if contains_gvfn(agent.chain)
             # compute and buffer the targets for the GVFN layer
             reset!(agent.chain, agent.hidden_state_init)
-            v_tp1 = agent.chain.(agent.obs_sequence)[end].data
+            v_tp1 = agent.chain[1].(agent.obs_sequence)[end].data
 
             gvfn_idx = find_layers_with_eq(agent.chain, (l)->l isa Flux.Recur && l.cell isa AbstractGVFRCell)
             c, Γ, _ = get(agent.chain[1].cell,
