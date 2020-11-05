@@ -25,7 +25,7 @@ loadSensor(sensorIdx::Int) = getData(joinpath(BASE_DIR,"sensors/sensor$(sensorId
 
 # TODO: eventually when a subset of the sensors is selected we should save that data in 1 file
 # so that we can load the subset with only 1 disk read
-loadSensor(indices::Vector{Int}) = hcat([loadSensor(idx) for idx ∈ indices])
+loadSensor(indices::Vector{Int}) = vcat([loadSensor(idx)' for idx ∈ indices]...)
 
 
 function getSensorName(sensorIdx)
