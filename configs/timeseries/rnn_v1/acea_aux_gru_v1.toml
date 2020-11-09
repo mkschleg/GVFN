@@ -1,26 +1,34 @@
 [config]
-save_dir="mackeyglass_rnn"
+save_dir="acea_aux_gru_v1"
 exp_file="experiment/timeseries.jl"
 exp_module_name = "TimeSeriesExperiment"
 exp_func_name = "main_experiment"
 arg_iter_type = "iter"
 
 [static_args]
-"env" = "MackeyGlass"
-"horizon" = 12
-"steps" = 600000
-"valSteps" = 200000
-"testSteps" = 200000
+"env" = "ACEA"
+"horizon" = 144
+"steps" = 60000
+"valSteps" = 20000
+"testSteps" = 20000
 
-"agent" = "RNN"
+"agent" = "OriginalAuxTasks"
 "rnn_cell" = "GRU"
 "rnn_opt" = "ADAM"
-"rnn_beta1" = 0.99
+"rnn_beta1" = 0.9
 "rnn_beta2" = 0.999
 "update_fn" = "BatchTD"
 "batchsize" = 32
 
+"horde" = "LinSpacing"
+"gamma_low" = 0.2
+"gamma_high" = 0.95
+"num_gvfs" = 128
+
 "model_clip_coeff" = 0.25
+"normalizer" = "Unity"
+"max" = 109.075
+"min" = 3.9
 
 [sweep_args]
 "rnn_lr" = "collect(2.0.^(-20:-1))"
