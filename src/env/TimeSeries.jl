@@ -3,7 +3,12 @@ using MinimalRLCore
 import DataStructures: CircularBuffer
 import HDF5: h5read
 
+"""
+    TimeSeriesEnv
 
+Basic abstract type for timeseries data sets.
+
+"""
 abstract type TimeSeriesEnv <: AbstractEnvironment end
 
 init!(self::TimeSeriesEnv) = nothing
@@ -14,7 +19,13 @@ get_num_features(self::TimeSeriesEnv) = 1
 # ===========
 # --- MSO ---
 # ===========
+"""
+    MSO
 
+Multiple Superimposed Oscillator:
+  y(t) = sin(0.2t) + sin(0.311t) + sin(0.42t) + sin(0.51t)
+
+"""
 mutable struct MSO <: TimeSeriesEnv
     θ::Int
     Ω::Vector{Float64}
@@ -40,7 +51,11 @@ MinimalRLCore.get_state(self::MSO) = self.state
 # =================
 # --- SINE WAVE ---
 # =================
+"""
+    SineWave
 
+Simple sine wave dataset for debugging.
+"""
 mutable struct SineWave <: TimeSeriesEnv
     dataset::Vector{Float64}
     idx::Int
@@ -67,7 +82,11 @@ end
 # ===================
 # --- MACKEYGLASS ---
 # ===================
+"""
+    MackeyGlass
 
+Mackey-Glass synthetic dataset
+"""
 mutable struct MackeyGlass <: TimeSeriesEnv
     delta::Int
     tau::Int
@@ -103,7 +122,9 @@ end
 # ============
 # --- ACEA ---
 # ============
-
+"""
+    ACEA
+"""
 mutable struct ACEA <: TimeSeriesEnv
     data::Vector{Float64}
     idx::Int

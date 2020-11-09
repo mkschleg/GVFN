@@ -3,6 +3,11 @@ using StatsBase
 
 import Base.get, Base.get!
 
+"""
+    AbstractParameterFunction
+
+An abstract type to define cumulants, discounts, and policies.
+"""
 abstract type AbstractParameterFunction end
 
 function get(apf::AbstractParameterFunction, state_t, action_t, state_tp1, action_tp1, preds_tilde) end
@@ -12,9 +17,10 @@ function call(apf::AbstractParameterFunction, state_t, action_t, state_tp1, acti
 end
 
 """
-Cumulants
-"""
+    AbstractCumulant
 
+Abstract type for cumulants.
+"""
 abstract type AbstractCumulant <: AbstractParameterFunction end
 
 function get(cumulant::AbstractCumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1)
@@ -24,7 +30,8 @@ end
 
 """
     FeatureCumulant
-    - Basic Cumulant which takes the value c_t = s_tp1[idx] for 1<=idx<=length(s_tp1)
+
+Basic Cumulant which takes the value c_t = s_tp1[idx] for 1<=idx<=length(s_tp1)
 """
 struct FeatureCumulant <: AbstractCumulant
     idx::Int
@@ -32,12 +39,22 @@ end
 
 get(cumulant::FeatureCumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1) = state_tp1[cumulant.idx]
 
+"""
+    PredictionCumulant
+
+Cumulant which implements the compositional idea where c_t = p_tp1[idx] for 1<=idx<=length(preds_tp1).
+"""
 struct PredictionCumulant <: AbstractCumulant
     idx::Int
 end
 
 get(cumulant::PredictionCumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1) = preds_tp1[cumulant.idx]
 
+"""
+    ScaledCumulant
+
+A cumulant which is scaled by a number. This scales the result of get(cumulant, ...)
+"""
 struct ScaledCumulant{F<:Number, T<:AbstractCumulant} <: AbstractCumulant
     scale::F
     cumulant::T
@@ -46,6 +63,11 @@ end
 get(cumulant::ScaledCumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1) =
     cumulant.scale*get(cumulant.cumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1)
 
+"""
+    NormalizedCumulant
+
+This scales a cumulant by c * scale / rmax where rmax is calculated online or passed in the constructor.
+"""
 mutable struct NormalizedCumulant{F<:Number, T<:AbstractCumulant} <: AbstractCumulant
     scale::F
     cumulant::T
@@ -60,9 +82,30 @@ function get(cumulant::NormalizedCumulant, state_t, action_t, state_tp1, action_
     return c * cumulant.scale / cumulant.rmax
 end
 
+"""
+    UnityCumulant
+
+This scales the cumulant to be in the range 0.0-1.0.
+"""
+mutable struct UnityCumulant{F<:Number, T<:AbstractCumulant} <: AbstractCumulant
+    scale::F
+    cumulant::T
+    rmax::F
+    rmin::F
+end
+
+UnityCumulant(scale, cumulant) = UnityCumulant(scale, cumulant, 1.0f0, 0.0f0)
+
+function get(cumulant::UnityCumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1)
+    c = get(cumulant.cumulant, state_t, action_t, state_tp1, action_tp1, preds_tp1)
+    cumulant.rmax, cumulant.rmin = max(cumulant.rmax,c), min(cumulant.rmin, c)
+    return (c - cumulant.rmin) * (cumulant.rmax-cumulant.rmin) * cumulant.scale 
+end
 
 """
-Discounting
+    AbstractDiscount
+
+Abstract type for discounts.
 """
 abstract type AbstractDiscount <: AbstractParameterFunction end
 
@@ -70,12 +113,22 @@ function get(γ::AbstractDiscount, state_t, action_t, state_tp1, action_tp1, pre
     throw(DomainError("get(DiscountType, args...) not defined!"))
 end
 
+"""
+    ConstantDiscount
+
+Will always return γ
+"""
 struct ConstantDiscount{T} <: AbstractDiscount
     γ::T
 end
 
 get(cd::ConstantDiscount, state_t, action_t, state_tp1, action_tp1, preds_tp1) = cd.γ
 
+"""
+    StateTerminationDiscount
+
+Returns 0.0 if condition(state_tp1) is true, otherwise it returns γ.
+"""
 struct StateTerminationDiscount{T<:Number, F} <: AbstractDiscount
     γ::T
     condition::F
@@ -88,7 +141,8 @@ get(td::StateTerminationDiscount, state_t, action_t, state_tp1, action_tp1, pred
 
 
 """
-Policies
+    AbstractPolicy
+
 """
 abstract type AbstractPolicy <: AbstractParameterFunction end
 
@@ -96,16 +150,31 @@ function get(π::AbstractPolicy, state_t, action_t, state_tp1, action_tp1, preds
     throw(DomainError("get(PolicyType, args...) not defined!"))
 end
 
+"""
+    NullPolicy
+
+Stand in policy when it isn't needed. Always returns 1.0f0.
+"""
 struct NullPolicy <: AbstractPolicy
 end
 get(π::NullPolicy, state_t, action_t, state_tp1, action_tp1, preds_tp1) = 1.0f0
 
+"""
+    PersistentPolicy
+
+Returns 1.0f0 if action == action_t and 0.0f0 otherwise.
+"""
 struct PersistentPolicy <: AbstractPolicy
     action::Int64
 end
 
 get(π::PersistentPolicy, state_t, action_t, state_tp1, action_tp1, preds_tp1) = π.action == action_t ? 1.0f0 : 0.0f0
 
+"""
+    RandomPolicy
+
+Returns the probability of taking action_t based on probabilities. This type of policy can also be sampled from.
+"""
 struct RandomPolicy{T<:AbstractFloat} <: AbstractPolicy
     probabilities::Array{T,1}
     weight_vec::Weights{T, T, Array{T, 1}}
@@ -118,6 +187,11 @@ StatsBase.sample(π::RandomPolicy) = StatsBase.sample(Random.GLOBAL_RNG, π)
 StatsBase.sample(rng::Random.AbstractRNG, π::RandomPolicy) = StatsBase.sample(rng, π.weight_vec)
 StatsBase.sample(rng::Random.AbstractRNG, π::RandomPolicy, state) = StatsBase.sample(rng, π.weight_vec)
 
+"""
+    FunctionalPolicy
+
+Returns func(state_t, action_t, state_tp1, action_tp1, preds_tp1)
+"""
 struct FunctionalPolicy{F} <: AbstractPolicy
     func::F
 end
@@ -125,6 +199,11 @@ end
 Base.get(π::FunctionalPolicy, state_t, action_t, state_tp1, action_tp1, preds_tp1) =
     π.func(state_t, action_t, state_tp1, action_tp1, preds_tp1)
 
+"""
+    PredictionConditionalPolicy
+
+Returns condition(preds_tp1) * get(policy, ...)
+"""
 struct PredictionConditionalPolicy{P<:AbstractPolicy, F} <: AbstractPolicy
     policy::P
     condition::F
@@ -133,6 +212,9 @@ end
 Base.get(π::PredictionConditionalPolicy, state_t, action_t, state_tp1, action_tp1, preds_tp1) =
     π.condition(preds_tp1) * get(π.policy, state_t, action_t, state_tp1, action_tp1, preds_tp1)
 
+"""
+    AbstractGVF
+"""
 abstract type AbstractGVF end
 
 function get(gvf::AbstractGVF, state_t, action_t, state_tp1, action_tp1, preds_tp1) end
@@ -147,6 +229,11 @@ function cumulant(gvf::AbstractGVF) end
 function discount(gvf::AbstractGVF) end
 function policy(gvf::AbstractGVF) end
 
+"""
+    GVF
+
+Basic provided GVF. Expects a Cumulant, Discount, and Policy all of which are derived from the above abstract types.
+"""
 struct GVF{C<:AbstractCumulant, D<:AbstractDiscount, P<:AbstractPolicy} <: AbstractGVF
     cumulant::C
     discount::D
@@ -164,6 +251,9 @@ function get(gvf::GVF, state_t, action_t, state_tp1, action_tp1, preds_tp1)
     return c, γ, π_prob
 end
 
+"""
+    AbstractHorde
+"""
 abstract type AbstractHorde end
 
 struct Horde{T<:AbstractGVF} <: AbstractHorde

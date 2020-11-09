@@ -8,7 +8,6 @@ using Statistics
 using Random
 using ProgressMeter
 using Reproduce
-using Reproduce.Config
 using Random
 using Flux.Tracker: TrackedArray, TrackedReal, track, @grad
 using DataStructures: CircularBuffer
@@ -54,8 +53,14 @@ function get_agent(parsed, rng)
     Agent_t = parsed["agent"]
     if Agent_t == "GVFN"
         agent = GVFN.TimeSeriesGVFNAgent(parsed; rng=rng)
+    elseif Agent_t == "OriginalRNN"
+        agent = GVFN.TimeSeriesOriginalRNNAgent(parsed;rng=rng)
     elseif Agent_t == "RNN"
         agent = GVFN.TimeSeriesRNNAgent(parsed;rng=rng)
+    elseif Agent_t == "AuxTasks"
+        agent = GVFN.TimeSeriesAuxTaskAgent(parsed;rng=rng)
+    elseif Agent_t == "OriginalAuxTasks"
+        agent = GVFN.TimeSeriesOriginalAuxTaskAgent(parsed;rng=rng)
     else
         throw(DomainError("Agent $(Agent_t) not implemented!"))
     end
@@ -69,20 +74,64 @@ label_results(predictions, gt, valPreds, vgt, testPreds, tgt) = Dict("Prediction
                                                                      "ValidationGroundTruth"=>vgt,
                                                                      "TestPredictions"=>testPreds,
                                                                      "TestGroundTruth"=>tgt)
+
+default_config(seed=1) = Dict(
+    "save_dir"=>"DefaultConfig",
+    "exp_file"=>"experiment/timeseries.jl",
+    "exp_module_name" => "TimeSeriesExperiment",
+    "exp_func_name" => "main_experiment",
+    "arg_iter_type" => "iter",
+
+
+    "env" => "MackeyGlass",
+    "horizon" => 12,
+    "steps" => 600000,
+    "valSteps" => 200000,
+    "testSteps" => 200000,
+
+    #"agent" => "GVFN",
+    #"agent" => "RNN",
+    "agent" => "AuxTasks",
+    "activation" => "relu",
+    "update_fn" => "BatchTD",
+    "batchsize" => 32,
+
+    "horde" => "LinSpacing",
+    "gamma_low" => 0.1,
+    "gamma_high" => 0.97,
+    "num_gvfs" => 128,
+
+    # "gvfn_tau" => 1,
+    # "gvfn_stepsize" => 3e-5,
+    # "gvfn_opt" => "Descent",
+    # "model_opt" => "ADAM",
+    # "model_stepsize" => 0.001,
+
+    "rnn_opt" => "ADAM",
+    "rnn_lr" => 0.001,
+    "rnn_cell" => "GRU",
+    "rnn_nhidden" => 128,
+    "rnn_tau" => 1,
+
+    "model_clip_coeff"=>0.25,
+
+    "seed" => seed,
+)
+
 # ==================
 # --- EXPERIMENT ---
 # ==================
 
-checkConfig(cfg) = Config.get_checklist(cfg)[cfg["param_setting"]] == 1
 
-function main_experiment(cfg::ConfigManager, save_loc::String=string(@__DIR__), progress=false)
+function main_experiment(parsed::Dict; working = false, progress=false)
 
-
-    # dict specifying parameters of the experiment
-    parsed = cfg["args"]
+    savefile = GVFN.save_setup(parsed; save_dir_key="save_dir", working=working)
+    if savefile == nothing
+        return
+    end
 
     # get parsed args
-    seed = cfg["run"]+203857
+    seed = parsed["seed"]
 
     horizon = parsed["horizon"]
     num_steps = parsed["steps"]
@@ -94,12 +143,6 @@ function main_experiment(cfg::ConfigManager, save_loc::String=string(@__DIR__), 
 
     # init data buffers
     predictions, gt, valPreds, vgt, testPreds, tgt = init_data(num_steps, num_val, num_test, horizon)
-
-    # Check if we ran this experiment already
-    if checkConfig(cfg)
-        println("Config already in checklist. skipping...")
-        return nothing
-    end
 
     # get environment
     env = get_env(parsed)
@@ -142,8 +185,7 @@ function main_experiment(cfg::ConfigManager, save_loc::String=string(@__DIR__), 
             testPreds .= Inf
 
             results = label_results(predictions, gt, valPreds, vgt, testPreds, tgt)
-            save(cfg, results)
-            mark_config(cfg)
+            GVFN.save_results(savefile, results, working)
         else
             rethrow()
         end
@@ -192,10 +234,7 @@ function main_experiment(cfg::ConfigManager, save_loc::String=string(@__DIR__), 
     results = label_results(predictions, gt, valPreds, vgt, testPreds, tgt)
 
     # save results
-    save(cfg, results)
-
-    # mark this config off the checklist
-    mark_config(cfg)
+    GVFN.save_results(savefile, results, working)
 
     return results
 end

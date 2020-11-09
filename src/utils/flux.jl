@@ -5,6 +5,7 @@ using Reproduce
 import ..GVFN.ARNNCell
 # import ..GVFN.RNNInvCell
 import ..GVFN
+import LinearAlgebra: norm
 
 
 function rnn_settings!(as::ArgParseSettings)
@@ -72,6 +73,18 @@ Flux.Tracker.@grad function clip(a)
     return clip(Flux.data(a)), Δ -> Tuple(Δ)
 end
 
+bounded10(a) = clamp.(a, -10.0f0,10.0f0)
+bounded10(a::TrackedArray) = track(bounded10, a)
+Flux.Tracker.@grad function bounded10(a)  bounded10(Flux.data(a)), Δ -> Δ end
+
+bounded5(a) = clamp.(a, -5.0f0,5.0f0)
+bounded5(a::TrackedArray) = track(bounded5, a)
+Flux.Tracker.@grad function bounded5(a)  bounded5(Flux.data(a)), Δ -> Δ end
+
+bounded1(a) = clamp.(a, -1.0f0,1.0f0)
+bounded1(a::TrackedArray) = track(bounded1, a)
+Flux.Tracker.@grad function bounded1(a)  bounded1(Flux.data(a)), Δ -> Δ end
+
 function get_activation(act::AbstractString)
     if act == "sigmoid"
         return GVFN.sigmoid
@@ -81,6 +94,12 @@ function get_activation(act::AbstractString)
         return Flux.identity
     elseif act == "clip"
         return clip
+    elseif act == "bounded1"
+        return bounded1
+    elseif act == "bounded5"
+        return bounded5
+    elseif act == "bounded10"
+        return bounded10
     elseif act == "relu"
         return Flux.relu
     elseif act == "softplus"
@@ -100,5 +119,16 @@ end
 
 get_initial_hidden_state(rnn::Flux.Recur{T}) where {T} = Flux.data(rnn.state)
 get_initial_hidden_state(rnn::Flux.Recur{T}) where {T<:Flux.LSTMCell} = Flux.data.(rnn.state)
+
+function grad_clip_coeff(parameters, grads, max_norm::Float32)
+    total_sqr_norm = 0.0f0
+    for p in parameters
+        param_norm = norm(grads[p].data, 2)
+        total_sqr_norm += param_norm.^2
+    end
+    total_norm = √total_sqr_norm
+    clip_coeff = max_norm / (total_norm + 1e-6)
+    return min(clip_coeff,1.0f0)
+end
 
 end

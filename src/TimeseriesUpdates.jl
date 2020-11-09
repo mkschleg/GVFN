@@ -91,63 +91,158 @@ end
 
 # Janky batch update for RNN batch n-horizon updates
 function update!(chain,
+                  horde::H,
+                  opt,
+                  lu::BatchTD,
+                  batchsize::Int,
+                  batch_h_init,
+                  batch_state_seq,
+                  batch_gvfn_target,
+                  batch_model_target;
+                  max_norm = 0.25) where {H<:AbstractHorde}
+    action_t = nothing # Never actions in timeseries experiments
+    ρ = 1.0            # No off-policy learning in the timeseries stuff
+    b_prob = 1.0f0     #
+
+    # create batches like a normal human
+    kys = keys(batch_h_init[1])
+    h_init = IdDict(k=>cat([batch_h_init[i][k] for i=1:batchsize]...; dims=2) for k ∈ kys)
+    state_seq = [cat(getindex.(batch_state_seq, t)...; dims=2) for t∈1:length(batch_state_seq[1])]
+    gvfn_target = cat(batch_gvfn_target...; dims=2)
+    model_target = cat(batch_model_target...; dims=2)
+
+    # Update GVFN First
+    ℒ_aux, preds = begin
+
+        reset!(chain, h_init)
+        preds = chain.(state_seq)
+        0.5f0*mean((gvfn_target-preds[end][2:end,:]).^2), preds
+    end
+    ℒ_out = 0.5f0*mean((preds[end][1,:]' - model_target).^2)
+
+    prms = Flux.params(chain)
+    grads = Flux.Tracker.gradient(() -> (ℒ_aux + ℒ_out) * 1 // 2, prms)
+
+    clip_coeff = FluxUtils.grad_clip_coeff(prms,grads,max_norm)
+    for weights in prms
+        Flux.Tracker.update!(opt, weights, grads[weights] * clip_coeff)
+    end
+end
+
+function update!(chain,
                   #horde::H,
                   opt,
                   lu::BatchTD,
                   batchsize::Int,
                   batch_h_init,
                   batch_state_seq,
-                  batch_target
-                  ) where {H}
+                  batch_gvfn_target,
+                  batch_model_target;
+                  max_norm = 0.25) where {H}
 
     action_t = nothing # Never actions in timeseries experiments
     ρ = 1.0            # No off-policy learning in the timeseries stuff
     b_prob = 1.0f0     #
 
-    avg_grads = nothing
-    for i=1:batchsize
-        # Idx into the batch
-        h_init = batch_h_init[i]
-        state_seq = batch_state_seq[i]
-        target = batch_target[i]
+    # create batches like a normal human
+    kys = keys(batch_h_init[1])
+    h_init = IdDict(k=>cat([batch_h_init[i][k] for i=1:batchsize]...; dims=2) for k ∈ kys)
+    state_seq = [cat(getindex.(batch_state_seq, t)...; dims=2) for t∈1:length(batch_state_seq[1])]
+    gvfn_target = cat(batch_gvfn_target...; dims=2)
+    model_target = cat(batch_model_target...; dims=2)
 
-        # Update GVFN First
-        ℒ_gvfn, preds = begin
-            if contains_gvfn(chain)
-                gvfn_idx = find_layers_with_eq(chain, (l)->l isa Flux.Recur && l.cell isa AbstractGVFRCell)
-                if length(gvfn_idx) != 1
-                    throw("Multi-layer GVFN Not available")
-                end
-                ℒ, v = _gvfn_loss!(chain[1:gvfn_idx[1]],
-                                  lu,
-                                  h_init,
-                                  state_seq,
-                                  target,
-                                  action_t,
-                                  b_prob;)
-                # println(v[end-1])
-                ℒ, chain[gvfn_idx[1]+1:end].(v[end-1:end])
-            else
-                reset!(chain, h_init)
-                param(0.0f0), chain.(state_seq)
+    rnn_idx = contains_gvfn(chain) ? find_layers_with_eq(chain, (l)->l isa Flux.Recur && l.cell isa AbstractGVFRCell)[1]+1 : 1
+
+    # Update GVFN First
+    ℒ_gvfn, preds = begin
+        if contains_gvfn(chain)
+            gvfn_idx = find_layers_with_eq(chain, (l)->l isa Flux.Recur && l.cell isa AbstractGVFRCell)
+            if length(gvfn_idx) != 1
+                throw("Multi-layer GVFN Not available")
             end
-        end
-
-        # TODO: preds[end] or preds[end-1]?
-        ℒ_out = 0.5*sum((preds[end] - target).^2)
-
-        grads = Flux.Tracker.gradient(()->ℒ_out + ℒ_gvfn, Flux.params(chain))
-        if avg_grads == nothing
-            avg_grads = grads
+            ℒ, v = _gvfn_mse!(chain[1:gvfn_idx[1]],
+                              lu,
+                              h_init,
+                              state_seq,
+                              gvfn_target,
+                              action_t)
+            # println(v[end-1])
+            ℒ, chain[gvfn_idx[1]+1:end].(Flux.data.(v))
         else
-            for weights in Flux.params(chain)
-                avg_grads[weights] += grads[weights] ./ batchsize
-            end
+            reset!(chain, h_init)
+            param(0.0f0), chain.(state_seq)
         end
-        reset!(chain, h_init)
     end
 
-    for weights in Flux.params(chain)
-        Flux.Tracker.update!(opt, weights, avg_grads[weights])
+    ℒ_out = 0.5f0*mean((preds[end] - model_target).^2)
+
+    grads = Flux.Tracker.gradient(()->ℒ_out + ℒ_gvfn, Flux.params(chain))
+
+    prms = Flux.params(chain[rnn_idx:end])
+    clip_coeff = FluxUtils.grad_clip_coeff(prms,grads,max_norm)
+    for weights in prms
+        Flux.Tracker.update!(opt, weights, grads[weights] * clip_coeff)
+    end
+end
+
+# Used when prediction layer (GVFN) and model have separate optimizers
+function update!(chain,
+                 opt::NamedTuple,
+                 lu::BatchTD,
+                 batchsize::Int,
+                 batch_h_init,
+                 batch_state_seq,
+                 batch_gvfn_target,
+                 batch_model_target;
+                 max_norm=0.25) where {H}
+
+    action_t = nothing # Never actions in timeseries experiments
+    ρ = 1.0            # No off-policy learning in the timeseries stuff
+    b_prob = 1.0f0     #
+
+    # Create batches like a normal human
+    kys = keys(batch_h_init[1])
+    h_init = IdDict(k=>cat([batch_h_init[i][k] for i=1:batchsize]...; dims=2) for k ∈ kys)
+    state_seq = [cat(getindex.(batch_state_seq, t)...; dims=2) for t∈1:length(batch_state_seq[1])]
+    gvfn_target = cat(batch_gvfn_target...; dims=2)
+    model_target = cat(batch_model_target...; dims=2)
+
+    rnn_idx = contains_gvfn(chain) ? find_layers_with_eq(chain, (l)->l isa Flux.Recur && l.cell isa AbstractGVFRCell)[1]+1 : 1
+
+    # Update GVFN First
+    ℒ_gvfn, preds = begin
+        if contains_gvfn(chain)
+        #if false
+            gvfn_idx = find_layers_with_eq(chain, (l)->l isa Flux.Recur && l.cell isa AbstractGVFRCell)
+            if length(gvfn_idx) != 1
+                throw("Multi-layer GVFN Not available")
+            end
+            ℒ, v = _gvfn_mse!(chain[1:gvfn_idx[1]],
+                              lu,
+                              h_init,
+                              state_seq,
+                              gvfn_target,
+                              action_t)
+            # println(v[end-1])
+            ℒ, chain[gvfn_idx[1]+1:end].(Flux.data.(v))
+        else
+            reset!(chain, h_init)
+            param(0.0f0), chain.(state_seq)
+        end
+    end
+
+    ℒ_out = 0.5f0*mean((preds[end] - model_target).^2)
+
+    grads = Flux.Tracker.gradient(()->ℒ_out + ℒ_gvfn, Flux.params(chain))
+
+    gvfn_idx = find_layers_with_eq(chain, (l)->l isa Flux.Recur && l.cell isa AbstractGVFRCell)
+    for weights in Flux.params(chain[1:gvfn_idx[1]])
+        Flux.Tracker.update!(opt.gvfn, weights, grads[weights])
+    end
+
+    prms = Flux.params(chain[rnn_idx:end])
+    clip_coeff = FluxUtils.grad_clip_coeff(prms,grads,max_norm)
+    for weights in prms
+        Flux.Tracker.update!(opt.model, weights, grads[weights] * clip_coeff)
     end
 end
