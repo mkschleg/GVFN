@@ -149,12 +149,17 @@ function TimeSeriesRNNAgent(parsed; rng=Random.GLOBAL_RNG)
     # a FC NN producing timeseries predictions from this.
 
     nhidden = parsed["rnn_nhidden"]
-    cell = getproperty(Flux, Symbol(parsed["rnn_cell"]))
     act = FluxUtils.get_activation(parsed["activation"])
 
     init_func = (dims...)->glorot_uniform(rng, dims...)
+    cell_name, nfeats = parsed["rnn_cell"], parsed["num_features"]
+    cell_t = getproperty(Flux, Symbol(cell_name))
+    cell = cell_name == "RNN" ?
+        cell_t(nfeats, nhidden, act; init=init_func) :
+        cell_t(nfeats, nhidden; init=init_func)
+
     chain = Flux.Chain(
-        cell(parsed["num_features"], nhidden, act; init =init_func),
+        cell,
         Flux.Dense(nhidden, nhidden, relu; initW=init_func),
         Flux.Dense(nhidden, parsed["num_targets"]; initW=init_func)
     )

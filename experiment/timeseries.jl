@@ -77,7 +77,7 @@ label_results(predictions, gt, valPreds, vgt, testPreds, tgt) = Dict("Prediction
                                                                      "TestPredictions"=>testPreds,
                                                                      "TestGroundTruth"=>tgt)
 
-default_config(seed=1) = Dict(
+default_config(cell="GRU", tau=1, seed=1) = Dict(
     "save_dir"=>"DefaultConfig",
     "exp_file"=>"experiment/timeseries.jl",
     "exp_module_name" => "TimeSeriesExperiment",
@@ -92,8 +92,8 @@ default_config(seed=1) = Dict(
     "testSteps" => 200000,
 
     #"agent" => "GVFN",
-    #"agent" => "RNN",
-    "agent" => "AuxTasks",
+    "agent" => "RNN",
+    #"agent" => "AuxTasks",
     "activation" => "relu",
     "update_fn" => "BatchTD",
     "batchsize" => 32,
@@ -111,9 +111,13 @@ default_config(seed=1) = Dict(
 
     "rnn_opt" => "ADAM",
     "rnn_lr" => 0.001,
-    "rnn_cell" => "GRU",
+    "rnn_beta1" => 0.99,
+    "rnn_beta2" => 0.999,
+
+    "rnn_cell" => cell,
     "rnn_nhidden" => 128,
-    "rnn_tau" => 1,
+    "rnn_activation" => "tanh",
+    "rnn_tau" => tau,
 
     "model_clip_coeff"=>0.25,
 
