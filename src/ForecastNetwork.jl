@@ -1,6 +1,10 @@
 
 
+"""
+    TargetCell
 
+A wrapper for RNN cells which ise used in FluxUpdate.jl. This forces the user to pass in explicit targets for the hidden state.
+"""
 mutable struct TargetCell{R}
     rnn::R
 end
