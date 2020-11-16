@@ -30,8 +30,13 @@ end
 
 function _reset!(m::Flux.Recur{T}, h_init) where {T<:Flux.LSTMCell}
     Flux.reset!(m)
-    m.state[1].data .= Flux.data(h_init[1])
-    m.state[2].data .= Flux.data(h_init[2])
+    if ndims(h_init[1]) == 2
+        m.state[1] = param(copy(Flux.data(h_init[1])))
+        m.state[2] = param(copy(Flux.data(h_init[2])))
+    else
+        m.state[1].data .= Flux.data(h_init[1])
+        m.state[2].data .= Flux.data(h_init[2])
+    end
 end
 
 function _reset!(m, h_init::T) where {T<:AbstractArray{Float32,2}}
