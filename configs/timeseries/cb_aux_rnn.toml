@@ -1,16 +1,18 @@
 [config]
-save_dir="mackeyglass_aux_rnn"
+save_dir="critterbot_aux_rnn"
 exp_file="experiment/timeseries.jl"
 exp_module_name = "TimeSeriesExperiment"
 exp_func_name = "main_experiment"
 arg_iter_type = "iter"
 
 [static_args]
-"env" = "MackeyGlass"
+"env" = "Critterbot"
 "horizon" = 12
-"steps" = 600000
-"valSteps" = 200000
-"testSteps" = 200000
+"steps" = 119000
+"valSteps" = 100
+"testSteps" = 100
+"observation_sensors" = [31, 32, 33]
+"target_sensors" = [31, 32, 33]
 
 "agent" = "AuxTasks"
 "rnn_nhidden" = 128
@@ -32,4 +34,4 @@ arg_iter_type = "iter"
 "rnn_lr" = "collect(2.0.^(-20:-6))"
 "activation" = ["bounded1","bounded5","bounded10","tanh"]
 "rnn_tau" = [1,2,4,8,16,32]
-"seed" = "1:10"
+"seed" = "1:30"

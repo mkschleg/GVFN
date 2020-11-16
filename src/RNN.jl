@@ -35,18 +35,30 @@ reset!(m, h_init::IdDict) =
 function _reset!(m, h_init)
     Flux.reset!(m)
     if m.state isa Tuple
-        m.state[1].data .= Flux.data(h_init[1])
-        m.state[2].data .= Flux.data(h_init[2])
+        if ndims(h_init[1]) == 2
+            m.state = (param(copy(h_init[1])), param(copy(h_init[2])))
+        else
+            m.state[1].data .= Flux.data(h_init[1])
+            m.state[2].data .= Flux.data(h_init[2])
+        end
     else
-        m.state.data .= Flux.data(h_init)
+        if ndims(h_init) == 1
+            m.state.data .= Flux.data(h_init)
+        else
+            m.state = param(h_init)
+        end
     end
 end
 
-function _reset!(m::Flux.Recur{T}, h_init) where {T<:Flux.LSTMCell}
-    Flux.reset!(m)
-    m.state[1].data .= Flux.data(h_init[1])
-    m.state[2].data .= Flux.data(h_init[2])
-end
+# function _reset!(m::Flux.Recur{T}, h_init) where {T<:Flux.LSTMCell}
+#     Flux.reset!(m)
+#     if ndims(h_init[1]) == 2
+#         m.state = (param(copy(h_init[1])), param(copy(h_init[2])))
+#     else
+#         m.state[1].data .= Flux.data(h_init[1])
+#         m.state[2].data .= Flux.data(h_init[2])
+#     end
+# end
 
 function _reset!(m, h_init::T) where {T<:AbstractArray{Float32,2}}
     m.state = param(h_init)

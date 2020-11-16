@@ -39,7 +39,6 @@ Obs_t = Vector{Float32}
 
 function TimeSeriesGVFNAgent(parsed; rng=Random.GLOBAL_RNG)
 
-
     # ==========================================
     # hyperparameters
     # ==========================================
@@ -92,10 +91,10 @@ function TimeSeriesGVFNAgent(parsed; rng=Random.GLOBAL_RNG)
     act = FluxUtils.get_activation(parsed["activation"])
     init_func = (dims...)->glorot_uniform(rng, dims...)
     chain = Flux.Chain(
-        GVFR_RNN(1, horde, act; init=init_func),
+        GVFR_RNN(parsed["num_features"], horde, act; init=init_func),
         Flux.data,
         Flux.Dense(num_gvfs, num_gvfs, relu; initW=init_func),
-        Flux.Dense(num_gvfs, 1; initW=init_func)
+        Flux.Dense(num_gvfs, parsed["num_targets"]; initW=init_func)
     )
 
     # Init observation sequence and hidden state
@@ -150,14 +149,19 @@ function TimeSeriesRNNAgent(parsed; rng=Random.GLOBAL_RNG)
     # a FC NN producing timeseries predictions from this.
 
     nhidden = parsed["rnn_nhidden"]
-    cell = getproperty(Flux, Symbol(parsed["rnn_cell"]))
     act = FluxUtils.get_activation(parsed["activation"])
 
     init_func = (dims...)->glorot_uniform(rng, dims...)
+    cell_name, nfeats = parsed["rnn_cell"], parsed["num_features"]
+    cell_t = getproperty(Flux, Symbol(cell_name))
+    cell = cell_name == "RNN" ?
+        cell_t(nfeats, nhidden, act; init=init_func) :
+        cell_t(nfeats, nhidden; init=init_func)
+
     chain = Flux.Chain(
-        cell(1, nhidden, act; init =init_func),
+        cell,
         Flux.Dense(nhidden, nhidden, relu; initW=init_func),
-        Flux.Dense(nhidden, 1; initW=init_func)
+        Flux.Dense(nhidden, parsed["num_targets"]; initW=init_func)
     )
     return _TimeSeriesRNNAgent(parsed, chain; rng=rng)
 end
@@ -257,7 +261,7 @@ function MinimalRLCore.step!(agent::TimeSeriesAgent, env_s_tp1, r, terminal, rng
         if contains_gvfn(agent.chain)
             # compute and buffer the targets for the GVFN layer
             reset!(agent.chain, agent.hidden_state_init)
-            v_tp1 = agent.chain.(agent.obs_sequence)[end].data
+            v_tp1 = agent.chain[1].(agent.obs_sequence)[end].data
 
             gvfn_idx = find_layers_with_eq(agent.chain, (l)->l isa Flux.Recur && l.cell isa AbstractGVFRCell)
             c, Γ, _ = get(agent.chain[1].cell,
@@ -510,16 +514,16 @@ end
 function predict!(agent::TimeSeriesAuxTaskAgent, env_s_tp1, r, terminal, rng=Random.GLOBAL_RNG)
     # for validation/test; predict, updating hidden states, but don't update models
 
+    # update the hidden state
+    agent.hidden_state_init =
+        get_next_hidden_state(agent.chain, agent.hidden_state_init, agent.obs_sequence[end])
+
     # Update the sequence of observations
     push!(agent.obs_sequence, agent.normalizer(env_s_tp1))
 
     # reset the chain's initial hidden state and run through the observation sequence
     reset!(agent.chain, agent.hidden_state_init)
-    out_preds = agent.chain.(agent.obs_sequence)[end]
-
-    # update the hidden state
-    agent.hidden_state_init =
-        get_next_hidden_state(agent.chain, agent.hidden_state_init, agent.obs_sequence[1])
+    out_preds = agent.chain(agent.obs_sequence[end])
 
     return out_preds.data[1]
 end

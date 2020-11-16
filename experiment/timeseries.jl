@@ -16,17 +16,17 @@ using DataStructures: CircularBuffer
 # --- UTILITIES ---
 # =================
 
-function init_data(num_steps, num_val, num_test, horizon)
+function init_data(num_steps, num_targets, num_val, num_test, horizon)
     # --- init the buffers we'll save data in ---
 
-    predictions = zeros(Float64,num_steps)
-    gt = zeros(Float64, num_steps-horizon)
+    predictions = zeros(Float64, num_steps, num_targets)
+    gt = zeros(Float64, num_steps-horizon, num_targets)
 
-    valPreds=zeros(Float64,num_val)
-    vgt = zeros(Float64, num_val - horizon)
+    valPreds=zeros(Float64,num_val, num_targets)
+    vgt = zeros(Float64, num_val - horizon, num_targets)
 
-    testPreds=zeros(Float64,num_test)
-    tgt = zeros(Float64, num_test-horizon)
+    testPreds=zeros(Float64,num_test, num_targets)
+    tgt = zeros(Float64, num_test-horizon, num_targets)
 
     return predictions, gt, valPreds, vgt, testPreds, tgt
 end
@@ -41,6 +41,8 @@ function get_env(parsed)
         env = MSO()
     elseif env_t == "ACEA"
         env = ACEA()
+    elseif env_t == "Critterbot"
+        env = Critterbot(parsed["observation_sensors"], parsed["target_sensors"])
     else
         throw(DomainError("Environment $(env_t) not implemented!"))
     end
@@ -75,7 +77,7 @@ label_results(predictions, gt, valPreds, vgt, testPreds, tgt) = Dict("Prediction
                                                                      "TestPredictions"=>testPreds,
                                                                      "TestGroundTruth"=>tgt)
 
-default_config(seed=1) = Dict(
+default_config(cell="GRU", tau=1, seed=1) = Dict(
     "save_dir"=>"DefaultConfig",
     "exp_file"=>"experiment/timeseries.jl",
     "exp_module_name" => "TimeSeriesExperiment",
@@ -90,8 +92,8 @@ default_config(seed=1) = Dict(
     "testSteps" => 200000,
 
     #"agent" => "GVFN",
-    #"agent" => "RNN",
-    "agent" => "AuxTasks",
+    "agent" => "RNN",
+    #"agent" => "AuxTasks",
     "activation" => "relu",
     "update_fn" => "BatchTD",
     "batchsize" => 32,
@@ -109,9 +111,13 @@ default_config(seed=1) = Dict(
 
     "rnn_opt" => "ADAM",
     "rnn_lr" => 0.001,
-    "rnn_cell" => "GRU",
+    "rnn_beta1" => 0.99,
+    "rnn_beta2" => 0.999,
+
+    "rnn_cell" => cell,
     "rnn_nhidden" => 128,
-    "rnn_tau" => 1,
+    "rnn_activation" => "tanh",
+    "rnn_tau" => tau,
 
     "model_clip_coeff"=>0.25,
 
@@ -141,14 +147,17 @@ function main_experiment(parsed::Dict; working = false, progress=false)
     # seed RNG
     rng = Random.MersenneTwister(seed)
 
-    # init data buffers
-    predictions, gt, valPreds, vgt, testPreds, tgt = init_data(num_steps, num_val, num_test, horizon)
-
     # get environment
     env = get_env(parsed)
     num_state_features = get_num_features(env)
+    num_targets = get_num_targets(env)
+
+    # init data buffers
+    predictions, gt, valPreds, vgt, testPreds, tgt = init_data(num_steps, num_targets, num_val, num_test, horizon)
 
     # get agent
+    parsed["num_features"] = num_state_features
+    parsed["num_targets"] = get_num_targets(env)
     agent = get_agent(parsed, rng)
 
     # start experiment
@@ -166,10 +175,10 @@ function main_experiment(parsed::Dict; working = false, progress=false)
             s_tp1 = step!(env)
 
             pred = step!(agent, s_tp1, 0, false, rng)
-            predictions[step] = pred[1]
+            predictions[step,:] = pred
 
             if step > horizon
-                gt[step-horizon] = s_tp1[1]
+                gt[step-horizon,:] = s_tp1
             end
 
             if progress
@@ -200,10 +209,10 @@ function main_experiment(parsed::Dict; working = false, progress=false)
         s_tp1= step!(env)
 
         pred = predict!(agent, s_tp1,0,false, rng)
-        valPreds[step] = Flux.data(pred[1])
+        valPreds[step,:] = Flux.data(pred)
 
         if step>horizon
-            vgt[step-horizon] = s_tp1[1]
+            vgt[step-horizon,:] = s_tp1
         end
 
         if progress
@@ -219,10 +228,10 @@ function main_experiment(parsed::Dict; working = false, progress=false)
         s_tp1= step!(env)
 
         pred = predict!(agent, s_tp1, 0, false, rng)
-        testPreds[step] = Flux.data(pred[1])
+        testPreds[step,:] = Flux.data(pred)
 
         if step>horizon
-            tgt[step - horizon] = s_tp1[1]
+            tgt[step - horizon,:] = s_tp1
         end
 
         if progress
