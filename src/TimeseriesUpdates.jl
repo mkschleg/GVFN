@@ -129,6 +129,20 @@ function update!(chain,
     end
 end
 
+function make_batch_h_init(batch_h_init)
+    id_dict = IdDict()
+    kys = keys(batch_h_init[1])
+    batchsize = length(batch_h_init)
+    for k ∈ kys
+        if batch_h_init[1][k] isa Tuple
+            id_dict[k] = (cat([batch_h_init[i][k][1] for i=1:batchsize]...; dims=2), cat([batch_h_init[i][k][2] for i=1:batchsize]...; dims=2))
+        else
+            id_dict[k] = cat([batch_h_init[i][k] for i=1:batchsize]...; dims=2)
+        end
+    end
+    id_dict
+end
+
 function update!(chain,
                   #horde::H,
                   opt,
@@ -146,7 +160,9 @@ function update!(chain,
 
     # create batches like a normal human
     kys = keys(batch_h_init[1])
-    h_init = IdDict(k=>cat([batch_h_init[i][k] for i=1:batchsize]...; dims=2) for k ∈ kys)
+    # h_init = IdDict(k=>cat([batch_h_init[i][k] for i=1:batchsize]...; dims=2) for k ∈ kys)
+    h_init = make_batch_h_init(batch_h_init)
+    
     state_seq = [cat(getindex.(batch_state_seq, t)...; dims=2) for t∈1:length(batch_state_seq[1])]
     gvfn_target = cat(batch_gvfn_target...; dims=2)
     model_target = cat(batch_model_target...; dims=2)
