@@ -9,9 +9,8 @@ contains_gvfn(m) = contains_rnntype(m, AbstractGVFRCell)
 """
     GVFRCell
 
-    A wrapper for RNN cells which
+    A wrapper for RNN cells which contain a Flux RNN (or LSTM/GRU/other) cell and a horde for determining the loss of the GVFN.
 """
-
 mutable struct GVFRCell{R, H<:AbstractHorde} <: AbstractGVFRCell
     rnn::R
     horde::H

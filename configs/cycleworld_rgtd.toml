@@ -7,7 +7,7 @@ arg_iter_type = "iter"
 
 [static_args]
 "chain" = 6
-"steps" = 100
+"steps" = 100000
 "opt" = "Descent"
 "gamma" = 0.9
 "sweep" = false
@@ -16,7 +16,7 @@ arg_iter_type = "iter"
 [sweep_args]
 "act" = ["sigmoid"]
 "horde" = ["gamma_chain", "chain"]
-"rgtd-alpha" = "clamp.(0.1*1.5.^(-6:4), 0.0, 1.0)"
-"rgtd-beta" = [0.0005, 0.0001, 0.005, 0.01]
+"rgtd-alpha" = "clamp.(0.1*1.5.^(5:6), 0.0, 1.0)"
+"rgtd-beta" = [0.0005, 0.0001, 0.001, 0.005, 0.01]
 "truncation" = [1, 2, 3, 4, 6, 8]
-"seed" = "1:10"
+"seed" = "1:20"

@@ -3,18 +3,73 @@ using MinimalRLCore
 import DataStructures: CircularBuffer
 import HDF5: h5read
 
+import .CritterbotUtils
 
+"""
+    TimeSeriesEnv
+
+
+Basic abstract type for timeseries data sets.
+
+"""
 abstract type TimeSeriesEnv <: AbstractEnvironment end
 
 init!(self::TimeSeriesEnv) = nothing
 MinimalRLCore.step!(self::TimeSeriesEnv, action) = MinimalRLCore.step!(self::TimeSeriesEnv)
 
 get_num_features(self::TimeSeriesEnv) = 1
+get_num_targets(self::TimeSeriesEnv) = 1
+
+# ==================
+# --- CRITTERBOT ---
+# ==================
+
+mutable struct Critterbot <: TimeSeriesEnv
+    num_steps::Int
+    num_features::Int
+    sensors::Vector{Int}
+
+    idx::Int
+    data::Array{Float64}
+end
+
+function Critterbot(obs_sensors, target_sensors)
+    all_sensors = vcat(obs_sensors, target_sensors)
+    num_features = length(obs_sensors)
+    return Critterbot(CritterbotUtils.numSteps(),
+                      num_features, all_sensors,
+                      0, CritterbotUtils.loadSensor(all_sensors))
+end
+
+# Hack to use same features as targets; just duplicate the data in new cols
+Critterbot(sensors::Vector{Int}) = Critterbot(sensors, sensors)
+get_num_features(cb::Critterbot) = cb.num_features
+get_num_targets(cb::Critterbot) = length(cb.sensors)-cb.num_features
+
+function MinimalRLCore.start!(cb::Critterbot)
+    cb.idx = 1
+    return MinimalRLCore.get_state(cb)
+end
+
+function MinimalRLCore.step!(cb::Critterbot)
+    cb.idx += 1
+    return MinimalRLCore.get_state(cb)
+end
+
+# Data for each sensor in a row, so that we can access data for all sensors by col
+MinimalRLCore.get_state(cb::Critterbot) = cb.data[1:cb.num_features, cb.idx]
+MinimalRLCore.get_reward(cb::Critterbot) = cb.data[cb.num_features+1:end, cb.idx] #
 
 # ===========
 # --- MSO ---
 # ===========
+"""
+    MSO
 
+Multiple Superimposed Oscillator:
+  y(t) = sin(0.2t) + sin(0.311t) + sin(0.42t) + sin(0.51t)
+
+"""
 mutable struct MSO <: TimeSeriesEnv
     θ::Int
     Ω::Vector{Float64}
@@ -40,7 +95,11 @@ MinimalRLCore.get_state(self::MSO) = self.state
 # =================
 # --- SINE WAVE ---
 # =================
+"""
+    SineWave
 
+Simple sine wave dataset for debugging.
+"""
 mutable struct SineWave <: TimeSeriesEnv
     dataset::Vector{Float64}
     idx::Int
@@ -67,7 +126,11 @@ end
 # ===================
 # --- MACKEYGLASS ---
 # ===================
+"""
+    MackeyGlass
 
+Mackey-Glass synthetic dataset
+"""
 mutable struct MackeyGlass <: TimeSeriesEnv
     delta::Int
     tau::Int
@@ -103,7 +166,9 @@ end
 # ============
 # --- ACEA ---
 # ============
-
+"""
+    ACEA
+"""
 mutable struct ACEA <: TimeSeriesEnv
     data::Vector{Float64}
     idx::Int

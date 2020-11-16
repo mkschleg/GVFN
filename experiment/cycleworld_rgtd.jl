@@ -122,6 +122,7 @@ function main_experiment(parsed::Dict; verbose=false, working=false, progress=fa
     working = get(parsed, "working", working)
     
     savefile = GVFN.save_setup(parsed; save_dir_key="save_dir", working=working)
+    # @info savefile
     if savefile isa Nothing
         return
     end
@@ -159,7 +160,7 @@ function main_experiment(parsed::Dict; verbose=false, working=false, progress=fa
         cur_step += 1
     end
 
-    results = Dict(["out_pred"=>out_pred_strg, "out_err_strg"=>out_err_strg, "pred_err_strg"=>pred_err_strg])
+    results = Dict(["out_pred"=>out_pred_strg, "out_err_strg"=>out_err_strg])
 
     if !working
         JLD2.@save savefile results

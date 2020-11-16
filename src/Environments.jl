@@ -11,7 +11,7 @@ include("env/CompassWorld.jl")
 export CycleWorld
 include("env/CycleWorld.jl")
 
-export MackeyGlass, MSO, SineWave, ACEA
+export MackeyGlass, MSO, SineWave, ACEA, Critterbot, get_num_targets
 include("env/TimeSeries.jl")
 
 export RingWorld
