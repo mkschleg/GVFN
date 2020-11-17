@@ -60,4 +60,15 @@ function getReturns(indices::AbstractArray, γ::Float64)
     return returns
 end
 
+function getReturns(indices::AbstractArray, γs::AbstractArray)
+    sensors = loadSensor(indices)
+    returns = [zeros(size(sensors)[1], size(sensors)[2]) for i in 1:length(γs)]
+    for j ∈ 1:length(γs)
+        for i ∈ (size(sensors)[2]-1):-1:1
+            returns[j][:, i] = sensors[:, i+1] + γs[j]*returns[j][:,i+1]
+        end
+    end
+    vcat(returns...)
+end
+
 end # module

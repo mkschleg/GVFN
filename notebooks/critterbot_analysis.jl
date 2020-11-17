@@ -103,6 +103,31 @@ begin
 	# plot!(rets[range, sensor], label="Return")
 end
 
+# ╔═╡ 668953a8-291c-11eb-0eff-a3b4a8d3e141
+function temporal_cor(x, y, horizon)
+	R = cor(x)
+	c = [cor(x[1:end-horizon,i], y[(horizon+1):end]) for i ∈ 1:(size(x)[2])]
+	c'*R*c
+end
+
+# ╔═╡ b1f1eb44-291b-11eb-3aaf-5360c13eb28c
+plot([temporal_cor(final_sensors, final_targets[:, 1], i) for i ∈ 1:64])
+
+# ╔═╡ daa8ddd0-291c-11eb-2cc7-7125cfb2a094
+plot([temporal_cor(final_sensors, final_targets[:, 2], i) for i ∈ 1:64])
+
+# ╔═╡ ee1af876-291c-11eb-3f9e-7f06000548af
+final_rets = normalize_cols(GVFN.CritterbotUtils.getReturns(obs_sens, [0.0, 0.5, 0.75, 0.9, 0.95, 0.99, 0.9975])')
+
+# ╔═╡ 0b024c32-291d-11eb-3c2a-5d8af2bb51e8
+plot([temporal_cor(final_rets, final_targets[:, 1], i) for i ∈ 1:64])
+
+# ╔═╡ 6f3b586e-291e-11eb-1af2-8d1444ed18bb
+plot([temporal_cor(final_rets, final_targets[:, 2], i) for i ∈ 1:64])
+
+# ╔═╡ 2f926ed2-291e-11eb-3ffe-dd699cda158d
+GVFN.CritterbotUtils.getReturns(obs_sens, [0.0, 0.5, 0.9, 0.99])
+
 # ╔═╡ Cell order:
 # ╠═174b25fe-28fa-11eb-2a22-734aacc6b674
 # ╠═acbb4c5c-28fc-11eb-02ac-39a012b86a3c
@@ -127,3 +152,10 @@ end
 # ╠═b47ab02c-2915-11eb-2ed7-31fae87079d1
 # ╠═ba9f87b0-2916-11eb-3878-970d78f737cb
 # ╠═c930495a-2915-11eb-0687-7f55d222cd5d
+# ╠═668953a8-291c-11eb-0eff-a3b4a8d3e141
+# ╠═b1f1eb44-291b-11eb-3aaf-5360c13eb28c
+# ╠═daa8ddd0-291c-11eb-2cc7-7125cfb2a094
+# ╠═ee1af876-291c-11eb-3f9e-7f06000548af
+# ╠═0b024c32-291d-11eb-3c2a-5d8af2bb51e8
+# ╠═6f3b586e-291e-11eb-1af2-8d1444ed18bb
+# ╠═2f926ed2-291e-11eb-3ffe-dd699cda158d
