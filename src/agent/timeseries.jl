@@ -88,7 +88,8 @@ function TimeSeriesGVFNAgent(parsed; rng=Random.GLOBAL_RNG)
     normalizer = TimeSeriesUtils.getNormalizer(parsed)
 
     # build model
-    act = FluxUtils.get_activation(parsed["activation"])
+    act_str = get(parsed, "activation", "sigmoid")
+    act = FluxUtils.get_activation(act_str)
     init_func = (dims...)->glorot_uniform(rng, dims...)
     chain = Flux.Chain(
         GVFR_RNN(parsed["num_features"], horde, act; init=init_func),
@@ -149,7 +150,8 @@ function TimeSeriesRNNAgent(parsed; rng=Random.GLOBAL_RNG)
     # a FC NN producing timeseries predictions from this.
 
     nhidden = parsed["rnn_nhidden"]
-    act = FluxUtils.get_activation(parsed["activation"])
+    act_str = get(parsed, "activation", "tanh")
+    act = FluxUtils.get_activation(act_str)
 
     init_func = (dims...)->glorot_uniform(rng, dims...)
     cell_name, nfeats = parsed["rnn_cell"], parsed["num_features"]
@@ -372,7 +374,8 @@ function TimeSeriesAuxTaskAgent(parsed; rng=Random.GLOBAL_RNG)
 
     nhidden = parsed["rnn_nhidden"]
     cell = getproperty(Flux, Symbol(parsed["rnn_cell"]))
-    act = FluxUtils.get_activation(parsed["activation"])
+    act_str = get(parsed, "activation", "tanh")
+    act = FluxUtils.get_activation(act_str)
 
     horde = TimeSeriesUtils.get_horde(parsed)
     num_gvfs = length(horde)
