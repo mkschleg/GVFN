@@ -84,7 +84,7 @@ begin
 end
 
 # ╔═╡ 531c631e-2915-11eb-27ea-9313a76de394
-target_sens, obs_sens = ["Mag0", "Mag2"], ["Light1", "Light2", "Motor21", "Thermal0"]
+target_sens, obs_sens = ["Mag0", "Mag2"], ["Light1", "Light2", "Light3", "Thermal0"]
 
 # ╔═╡ 732adf66-2915-11eb-0009-41ffc35fa94a
 final_sensors = normalize_cols(GVFN.CritterbotUtils.loadSensor_cmajor(obs_sens))
@@ -99,7 +99,7 @@ final_targets = normalize_cols(GVFN.CritterbotUtils.loadSensor_cmajor(target_sen
 begin
 	rm_2 = Int(range_max_2/100 * (size(final_sensors)[1] - 20000) + 1)
 	range_2 = rm_2:(rm_2+19999)
-	plot(final_sensors[range_2, 1], label="Sensor", alpha=0.4)
+	plot(final_sensors[range_2, 4], label="Sensor", alpha=0.4)
 	# plot!(rets[range, sensor], label="Return")
 end
 
