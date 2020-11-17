@@ -10,6 +10,9 @@ numFeatures() = 8197
 
 function getData(filename::String)
     data = nothing
+    if !isfile(filename)
+        throw(ErrorException("$(filename) does not exist."))
+    end
     h5open(filename) do f
         data = read(f["data"])
     end
@@ -18,16 +21,21 @@ end
 
 # according to adam
 relevant_sensors() = getData(joinpath(BASE_DIR, "relevantSensors.h5")) .+ 1 # NOTE: +1 for 1-based indexing
+relevant_sensor_idx() = getData(joinpath(BASE_DIR, "relevantSensorIndices.h5")) .+ 1
 numRelevantSensors() = length(relevant_sensors())
 
 loadTiles() = getData(joinpath(BASE_DIR, "tiles.h5")) .+ 1 # NOTE: +1 to get 1-based indexing
 loadSensor(sensorIdx::Int) = getData(joinpath(BASE_DIR,"sensors/sensor$(sensorIdx).h5"))
+loadSensor(sensorName::String) =
+    getData(joinpath(BASE_DIR,"sensors/sensor$(getSensorIndex(sensorName)).h5"))
 
 # TODO: eventually when a subset of the sensors is selected we should save that data in 1 file
 # so that we can load the subset with only 1 disk read
-loadSensor(indices::Vector{Int}) = vcat([loadSensor(idx)' for idx ∈ indices]...)
+# loadSensor(indices::Vector{Int}) = vcat([loadSensor(idx)' for idx ∈ indices]...)
+loadSensor(indices::AbstractArray)  = vcat([loadSensor(idx)' for idx ∈ indices]...)
+loadSensor_cmajor(indices::AbstractArray)  = hcat([loadSensor(idx) for idx ∈ indices]...)
 
-
+getSensorNames() = getData(joinpath(BASE_DIR, "sensorNames.h5"))
 function getSensorName(sensorIdx)
     names = getData(joinpath(BASE_DIR, "sensorNames.h5"))
     return names[sensorIx]
@@ -43,11 +51,11 @@ function getSensorIndex(sensorName)
     error("Sensor $(sensorName) not found")
 end
 
-function getReturns(indices::Vector{Int}, γ::Float64)
+function getReturns(indices::AbstractArray, γ::Float64)
     sensors = loadSensor(indices)
-    returns = zeros(numSteps(), length(indices))
-    for i=length(rs)-1:-1:1
-        returns[:,i] = sensors[:,i+1] + γ*returns[:,i+1]
+    returns = zero(sensors)
+    for i ∈ (size(sensors)[2]-1):-1:1
+        returns[:, i] = sensors[:, i+1] + γ*returns[:,i+1]
     end
     return returns
 end
