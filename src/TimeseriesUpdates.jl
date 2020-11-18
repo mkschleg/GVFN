@@ -106,7 +106,8 @@ function update!(chain,
 
     # create batches like a normal human
     kys = keys(batch_h_init[1])
-    h_init = IdDict(k=>cat([batch_h_init[i][k] for i=1:batchsize]...; dims=2) for k ∈ kys)
+    # h_init = IdDict(k=>cat([batch_h_init[i][k] for i=1:batchsize]...; dims=2) for k ∈ kys)
+    h_init = make_batch_h_init(batch_h_init)
     state_seq = [cat(getindex.(batch_state_seq, t)...; dims=2) for t∈1:length(batch_state_seq[1])]
     gvfn_target = cat(batch_gvfn_target...; dims=2)
     model_target = cat(batch_model_target...; dims=2)

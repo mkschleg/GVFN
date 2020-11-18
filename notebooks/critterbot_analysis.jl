@@ -122,11 +122,24 @@ final_rets = normalize_cols(GVFN.CritterbotUtils.getReturns(obs_sens, [0.0, 0.5,
 # ╔═╡ 0b024c32-291d-11eb-3c2a-5d8af2bb51e8
 plot([temporal_cor(final_rets, final_targets[:, 1], i) for i ∈ 1:64])
 
-# ╔═╡ 6f3b586e-291e-11eb-1af2-8d1444ed18bb
-plot([temporal_cor(final_rets, final_targets[:, 2], i) for i ∈ 1:64])
+# ╔═╡ 563eb1e6-2921-11eb-31b6-b15bb20552ec
+@bind sensor_cor html"<input type='number' default='1' id='quantity' name='quantity' min='1' max='93'>"
 
-# ╔═╡ 2f926ed2-291e-11eb-3ffe-dd699cda158d
-GVFN.CritterbotUtils.getReturns(obs_sens, [0.0, 0.5, 0.9, 0.99])
+# ╔═╡ a472b114-2921-11eb-21c2-cf0261b232c7
+plots = [plot([temporal_cor(final_rets, normalize(GVFN.CritterbotUtils.loadSensor(sc)), i) for i ∈ 1:64], label=sensor_names[sc+1]) for sc ∈ 1:93];
+
+# ╔═╡ 6f3b586e-291e-11eb-1af2-8d1444ed18bb
+plots[sensor_cor]
+
+# ╔═╡ 8636c712-29b9-11eb-08d5-999617b110fc
+plots_2 = begin
+	newrets = ["Mag0", "Mag1", "Thermal0"]
+	final_rets_2 = normalize_cols(GVFN.CritterbotUtils.getReturns(newrets, [0.0, 0.5, 0.75, 0.9, 0.95, 0.99, 0.9975])')
+	[plot([temporal_cor(final_rets_2, normalize(GVFN.CritterbotUtils.loadSensor(sc)), i) for i ∈ 1:64], label=sensor_names[sc+1]) for sc ∈ 1:93];
+end
+
+# ╔═╡ 21f3a6aa-29ba-11eb-25e3-e77acaa017f1
+plots_2[sensor_cor]
 
 # ╔═╡ Cell order:
 # ╠═174b25fe-28fa-11eb-2a22-734aacc6b674
@@ -157,5 +170,8 @@ GVFN.CritterbotUtils.getReturns(obs_sens, [0.0, 0.5, 0.9, 0.99])
 # ╠═daa8ddd0-291c-11eb-2cc7-7125cfb2a094
 # ╠═ee1af876-291c-11eb-3f9e-7f06000548af
 # ╠═0b024c32-291d-11eb-3c2a-5d8af2bb51e8
+# ╠═563eb1e6-2921-11eb-31b6-b15bb20552ec
+# ╠═a472b114-2921-11eb-21c2-cf0261b232c7
 # ╠═6f3b586e-291e-11eb-1af2-8d1444ed18bb
-# ╠═2f926ed2-291e-11eb-3ffe-dd699cda158d
+# ╠═8636c712-29b9-11eb-08d5-999617b110fc
+# ╠═21f3a6aa-29ba-11eb-25e3-e77acaa017f1

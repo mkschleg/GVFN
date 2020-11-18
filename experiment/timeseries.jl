@@ -175,10 +175,11 @@ function main_experiment(parsed::Dict; working = false, progress=false)
             s_tp1 = step!(env)
 
             pred = step!(agent, s_tp1, 0, false, rng)
-            predictions[step,:] = pred
+
+            predictions[step, :] .= Flux.data(pred)
 
             if step > horizon
-                gt[step-horizon,:] = s_tp1
+                gt[step-horizon, :] = s_tp1
             end
 
             if progress
@@ -209,7 +210,8 @@ function main_experiment(parsed::Dict; working = false, progress=false)
         s_tp1= step!(env)
 
         pred = predict!(agent, s_tp1,0,false, rng)
-        valPreds[step,:] = Flux.data(pred)
+        valPreds[step, :] .= Flux.data(pred)
+
 
         if step>horizon
             vgt[step-horizon,:] = s_tp1
@@ -228,7 +230,7 @@ function main_experiment(parsed::Dict; working = false, progress=false)
         s_tp1= step!(env)
 
         pred = predict!(agent, s_tp1, 0, false, rng)
-        testPreds[step,:] = Flux.data(pred)
+        testPreds[step,:] .= Flux.data(pred)
 
         if step>horizon
             tgt[step - horizon,:] = s_tp1
