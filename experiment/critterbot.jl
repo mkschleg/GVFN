@@ -1,4 +1,4 @@
-module TimeSeriesExperiment
+module CritterbotExperiment
 
 using GVFN: MackeyGlass, MSO, ACEA, step!, start!
 using GVFN
@@ -16,35 +16,35 @@ using DataStructures: CircularBuffer
 # --- UTILITIES ---
 # =================
 
-function init_data(num_steps, num_targets, num_val, num_test, horizon)
+function init_data(num_steps, num_targets, horizon)
     # --- init the buffers we'll save data in ---
 
     predictions = zeros(Float64, num_steps, num_targets)
     gt = zeros(Float64, num_steps-horizon, num_targets)
 
-    valPreds=zeros(Float64,num_val, num_targets)
-    vgt = zeros(Float64, num_val - horizon, num_targets)
+    # valPreds=zeros(Float64,num_val, num_targets)
+    # vgt = zeros(Float64, num_val - horizon, num_targets)
 
-    testPreds=zeros(Float64,num_test, num_targets)
-    tgt = zeros(Float64, num_test-horizon, num_targets)
+    # testPreds=zeros(Float64,num_test, num_targets)
+    # tgt = zeros(Float64, num_test-horizon, num_targets)
 
-    return predictions, gt, valPreds, vgt, testPreds, tgt
+    return predictions, gt #, valPreds, vgt, testPreds, tgt
 end
 
 function get_env(parsed)
     # --- get the environment ---
 
     env_t = parsed["env"]
-    if env_t == "MackeyGlass"
-        env = MackeyGlass()
-    elseif env_t == "MSO"
-        env = MSO()
-    elseif env_t == "ACEA"
-        env = ACEA()
-    elseif env_t == "Critterbot"
+    # if env_t == "MackeyGlass"
+    #     env = MackeyGlass()
+    # elseif env_t == "MSO"
+    #     env = MSO()
+    # elseif env_t == "ACEA"
+    #     env = ACEA()
+    if env_t == "Critterbot"
         env = Critterbot(parsed["observation_sensors"], parsed["target_sensors"])
     else
-        throw(DomainError("Environment $(env_t) not implemented!"))
+        throw(DomainError("Environment $(env_t) not implemented, try in Timeseries.jl!"))
     end
     return env
 end
@@ -54,15 +54,15 @@ function get_agent(parsed, rng)
 
     Agent_t = parsed["agent"]
     if Agent_t == "GVFN"
-        agent = GVFN.TimeSeriesGVFNAgent(parsed; rng=rng)
+        agent = GVFN.CritterbotGVFNAgent(parsed; rng=rng)
     elseif Agent_t == "OriginalRNN"
-        agent = GVFN.TimeSeriesOriginalRNNAgent(parsed;rng=rng)
+        agent = GVFN.CritterbotOriginalRNNAgent(parsed;rng=rng)
     elseif Agent_t == "RNN"
-        agent = GVFN.TimeSeriesRNNAgent(parsed;rng=rng)
+        agent = GVFN.CritterbotRNNAgent(parsed;rng=rng)
     elseif Agent_t == "AuxTasks"
-        agent = GVFN.TimeSeriesAuxTaskAgent(parsed;rng=rng)
+        agent = GVFN.CritterbotAuxTaskAgent(parsed;rng=rng)
     elseif Agent_t == "OriginalAuxTasks"
-        agent = GVFN.TimeSeriesOriginalAuxTaskAgent(parsed;rng=rng)
+        agent = GVFN.CritterbotOriginalAuxTaskAgent(parsed;rng=rng)
     else
         throw(DomainError("Agent $(Agent_t) not implemented!"))
     end
@@ -70,17 +70,13 @@ function get_agent(parsed, rng)
 end
 
 # Put the results into a dict with a particular naming convention
-label_results(predictions, gt, valPreds, vgt, testPreds, tgt) = Dict("Predictions"=>predictions,
-                                                                     "GroundTruth"=>gt,
-                                                                     "ValidationPredictions"=>valPreds,
-                                                                     "ValidationGroundTruth"=>vgt,
-                                                                     "TestPredictions"=>testPreds,
-                                                                     "TestGroundTruth"=>tgt)
+label_results(predictions, gt) = Dict("Predictions"=>predictions,
+                                      "GroundTruth"=>gt)
 
 default_config(cell="GRU", tau=1, seed=1) = Dict(
     "save_dir"=>"DefaultConfig",
     "exp_file"=>"experiment/timeseries.jl",
-    "exp_module_name" => "TimeSeriesExperiment",
+    "exp_module_name" => "CritterbotExperiment",
     "exp_func_name" => "main_experiment",
     "arg_iter_type" => "iter",
 
@@ -141,8 +137,8 @@ function main_experiment(parsed::Dict; working = false, progress=false)
 
     horizon = parsed["horizon"]
     num_steps = parsed["steps"]
-    num_val = parsed["valSteps"]
-    num_test = parsed["testSteps"]
+    # num_val = parsed["valSteps"]
+    # num_test = parsed["testSteps"]
 
     # seed RNG
     rng = Random.MersenneTwister(seed)
@@ -153,7 +149,7 @@ function main_experiment(parsed::Dict; working = false, progress=false)
     num_targets = get_num_targets(env)
 
     # init data buffers
-    predictions, gt, valPreds, vgt, testPreds, tgt = init_data(num_steps, num_targets, num_val, num_test, horizon)
+    predictions, gt = init_data(num_steps, num_targets, horizon)
 
     # get agent
     parsed["num_features"] = num_state_features
@@ -173,15 +169,14 @@ function main_experiment(parsed::Dict; working = false, progress=false)
 
         for step in 1:num_steps
 
-            s_tp1 = step!(env)
-            println(size(s_tp1))
+            s_tp1, r = step!(env)
             
-            pred = step!(agent, s_tp1, 0, false, rng)
+            pred = step!(agent, s_tp1, r, false, rng)
 
             predictions[step, :] .= Flux.data(pred)
 
             if step > horizon
-                gt[step-horizon, :] = s_tp1
+                gt[step-horizon, :] = r
             end
 
             if progress
@@ -205,46 +200,46 @@ function main_experiment(parsed::Dict; working = false, progress=false)
     end
 
     # Re-init progress bar for validation phase
-    prg_bar = ProgressMeter.Progress(num_val, "Validation Step: ")
+    # prg_bar = ProgressMeter.Progress(num_val, "Validation Step: ")
 
-    # predict on the validation data
-    for step in 1:num_val
-        s_tp1= step!(env)
+    # # predict on the validation data
+    # for step in 1:num_val
+    #     s_tp1, r = step!(env)
 
-        pred = predict!(agent, s_tp1,0,false, rng)
-        valPreds[step, :] .= Flux.data(pred)
+    #     pred = predict!(agent, s_tp1, r, false, rng)
+    #     valPreds[step, :] .= Flux.data(pred)
 
 
-        if step>horizon
-            vgt[step-horizon,:] = s_tp1
-        end
+    #     if step>horizon
+    #         vgt[step-horizon,:] = r
+    #     end
 
-        if progress
-            ProgressMeter.next!(prg_bar)
-        end
-    end
+    #     if progress
+    #         ProgressMeter.next!(prg_bar)
+    #     end
+    # end
 
-    # re-init progress bar for test phase
-    prg_bar = ProgressMeter.Progress(num_test, "Test Step: ")
+    # # re-init progress bar for test phase
+    # prg_bar = ProgressMeter.Progress(num_test, "Test Step: ")
 
-    # predict on the test data
-    for step in 1:num_test
-        s_tp1= step!(env)
+    # # predict on the test data
+    # for step in 1:num_test
+    #     s_tp1, r = step!(env)
 
-        pred = predict!(agent, s_tp1, 0, false, rng)
-        testPreds[step,:] .= Flux.data(pred)
+    #     pred = predict!(agent, s_tp1, r, false, rng)
+    #     testPreds[step,:] .= Flux.data(pred)
 
-        if step>horizon
-            tgt[step - horizon,:] = s_tp1
-        end
+    #     if step>horizonn
+    #         tgt[step - horizon, :] = r
+    #     end
 
-        if progress
-            ProgressMeter.next!(prg_bar)
-        end
-    end
+    #     if progress
+    #         ProgressMeter.next!(prg_bar)
+    #     end
+    # end
 
     # put the arrays in a dict
-    results = label_results(predictions, gt, valPreds, vgt, testPreds, tgt)
+    results = label_results(predictions, gt) #, valPreds, vgt, testPreds, tgt)
 
     # save results
     GVFN.save_results(savefile, results, working)

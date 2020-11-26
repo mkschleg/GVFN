@@ -37,7 +37,7 @@ function Critterbot(obs_sensors, target_sensors)
     all_sensors = vcat(obs_sensors, target_sensors)
     num_features = length(obs_sensors)
     return Critterbot(CritterbotUtils.numSteps(),
-                      num_features, all_sensors,
+                      num_features, CritterbotUtils.getSensorIndices(all_sensors),
                       0, CritterbotUtils.loadSensor(all_sensors))
 end
 
@@ -48,12 +48,13 @@ get_num_targets(cb::Critterbot) = length(cb.sensors)-cb.num_features
 
 function MinimalRLCore.start!(cb::Critterbot)
     cb.idx = 1
+    println(size(cb.data))
     return MinimalRLCore.get_state(cb)
 end
 
 function MinimalRLCore.step!(cb::Critterbot)
     cb.idx += 1
-    return MinimalRLCore.get_state(cb)
+    return MinimalRLCore.get_state(cb), MinimalRLCore.get_reward(cb)
 end
 
 # Data for each sensor in a row, so that we can access data for all sensors by col

@@ -1,18 +1,16 @@
 [config]
 save_dir="critterbot_rnn"
-exp_file="experiment/timeseries.jl"
-exp_module_name = "TimeSeriesExperiment"
+exp_file="experiment/critterbot.jl"
+exp_module_name = "CritterbotExperiment"
 exp_func_name = "main_experiment"
 arg_iter_type = "iter"
 
 [static_args]
 "env" = "Critterbot"
-"horizon" = 12
+
 "steps" = 119000
-"valSteps" = 100
-"testSteps" = 100
-"observation_sensors" = [31, 32, 33]
-"target_sensors" = [31, 32, 33]
+"observation_sensors" = ["IR0", "IR2", "IR3"]
+"target_sensors" = ["Light3"]
 
 "agent" = "RNN"
 "rnn_cell" = "RNN"
@@ -25,8 +23,12 @@ arg_iter_type = "iter"
 
 "model_clip_coeff" = 0.25
 
+"activation" = "tanh"
+
 [sweep_args]
 "rnn_lr" = "collect(2.0.^(-20:-1))"
-"activation" = ["bounded1","bounded5","bounded10","tanh"]
-"rnn_tau" = [1,2,4,8,16,32]
+# "rnn_lr" = [0.001]
+# "activation" = ["bounded1","bounded5","bounded10","tanh"]
+"rnn_tau" = [1, 2, 4, 8, 16, 32, 64]
+"horizon" = [60, 200]
 "seed" = "1:30"

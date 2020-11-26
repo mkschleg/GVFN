@@ -67,7 +67,7 @@ savefig("returns_heatmap.pdf")
 @bind range_max html"<input type='range'>"
 
 # ╔═╡ 4ce45ee6-290f-11eb-095e-9784c9be38f6
-@bind sensor html"<input type='number' default='1' id='quantity' name='quantity' min='1' max='93'>"
+@bind sensor html"<input type='number' value='1' id='quantity' name='quantity' min='1' max='93'>"
 
 # ╔═╡ 4df8e094-2901-11eb-1fd4-4747788cd5b0
 @show range_max
@@ -123,7 +123,7 @@ final_rets = normalize_cols(GVFN.CritterbotUtils.getReturns(obs_sens, [0.0, 0.5,
 plot([temporal_cor(final_rets, final_targets[:, 1], i) for i ∈ 1:64])
 
 # ╔═╡ 563eb1e6-2921-11eb-31b6-b15bb20552ec
-@bind sensor_cor html"<input type='number' default='1' id='quantity' name='quantity' min='1' max='93'>"
+@bind sensor_cor html"<input type='number' value='1' id='quantity' name='quantity' min='1' max='93'>"
 
 # ╔═╡ a472b114-2921-11eb-21c2-cf0261b232c7
 plots = [plot([temporal_cor(final_rets, normalize(GVFN.CritterbotUtils.loadSensor(sc)), i) for i ∈ 1:64], label=sensor_names[sc+1]) for sc ∈ 1:93];
@@ -138,8 +138,11 @@ plots_2 = begin
 	[plot([temporal_cor(final_rets_2, normalize(GVFN.CritterbotUtils.loadSensor(sc)), i) for i ∈ 1:64], label=sensor_names[sc+1]) for sc ∈ 1:93];
 end
 
+# ╔═╡ bac65144-29c3-11eb-20e8-3d5297face93
+@bind sensor_cor_2 html"<input type='number' value='1' id='quantity' name='quantity' min='1' max='93'>"
+
 # ╔═╡ 21f3a6aa-29ba-11eb-25e3-e77acaa017f1
-plots_2[sensor_cor]
+plots_2[sensor_cor_2]
 
 # ╔═╡ Cell order:
 # ╠═174b25fe-28fa-11eb-2a22-734aacc6b674
@@ -174,4 +177,5 @@ plots_2[sensor_cor]
 # ╠═a472b114-2921-11eb-21c2-cf0261b232c7
 # ╠═6f3b586e-291e-11eb-1af2-8d1444ed18bb
 # ╠═8636c712-29b9-11eb-08d5-999617b110fc
+# ╠═bac65144-29c3-11eb-20e8-3d5297face93
 # ╠═21f3a6aa-29ba-11eb-25e3-e77acaa017f1
