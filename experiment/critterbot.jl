@@ -16,7 +16,7 @@ using DataStructures: CircularBuffer
 # --- UTILITIES ---
 # =================
 
-function init_data(num_steps, num_targets, num_val, num_test, horizon)
+function init_data(num_steps, num_targets, horizon)
     # --- init the buffers we'll save data in ---
 
     predictions = zeros(Float64, num_steps, num_targets)
@@ -137,8 +137,8 @@ function main_experiment(parsed::Dict; working = false, progress=false)
 
     horizon = parsed["horizon"]
     num_steps = parsed["steps"]
-    num_val = parsed["valSteps"]
-    num_test = parsed["testSteps"]
+    # num_val = parsed["valSteps"]
+    # num_test = parsed["testSteps"]
 
     # seed RNG
     rng = Random.MersenneTwister(seed)
@@ -149,7 +149,7 @@ function main_experiment(parsed::Dict; working = false, progress=false)
     num_targets = get_num_targets(env)
 
     # init data buffers
-    predictions, gt, valPreds, vgt, testPreds, tgt = init_data(num_steps, num_targets, num_val, num_test, horizon)
+    predictions, gt, valPreds, vgt, testPreds, tgt = init_data(num_steps, num_targets, horizon)
 
     # get agent
     parsed["num_features"] = num_state_features
