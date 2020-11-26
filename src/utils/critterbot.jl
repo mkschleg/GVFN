@@ -41,15 +41,28 @@ function getSensorName(sensorIdx)
     return names[sensorIx]
 end
 
+function getSensorIndex(sensorName, name_list)
+    idx = findfirst((x)->sensorName==x, name_list)
+    if idx isa Nothing
+        error("Sensor $(sensorName) not found")
+    end
+    idx-1
+end
+
+
 function getSensorIndex(sensorName)
     names = getData(joinpath(BASE_DIR, "sensorNames.h5"))
-    for i=1:length(names)
-        if names[i] == sensorName
-            return i
-        end
-    end
-    error("Sensor $(sensorName) not found")
+    getSensorIndex(sensorName, names)
 end
+
+getSensorIndex(idx::Int, args...) = idx
+
+function getSensorIndices(sensorNames)
+    namesList = getData(joinpath(BASE_DIR, "sensorNames.h5"))
+    [getSensorIndex(name, namesList) for name in sensorNames]
+end
+
+getSensorIndices(idx::AbstractArray{Int}) = sensorNames
 
 function getReturns(indices::AbstractArray, γ::Float64)
     sensors = loadSensor(indices)

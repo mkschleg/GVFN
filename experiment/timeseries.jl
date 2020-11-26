@@ -172,8 +172,10 @@ function main_experiment(parsed::Dict; working = false, progress=false)
         prg_bar = ProgressMeter.Progress(num_steps, "Step: ")
 
         for step in 1:num_steps
-            s_tp1 = step!(env)
 
+            s_tp1 = step!(env)
+            println(size(s_tp1))
+            
             pred = step!(agent, s_tp1, 0, false, rng)
 
             predictions[step, :] .= Flux.data(pred)

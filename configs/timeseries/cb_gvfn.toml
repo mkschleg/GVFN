@@ -1,18 +1,17 @@
 [config]
 save_dir="critterbot_gvfn"
-exp_file="experiment/timeseries.jl"
-exp_module_name = "TimeSeriesExperiment"
+exp_file="experiment/critterbot.jl"
+exp_module_name = "CritterbotExperiment"
 exp_func_name = "main_experiment"
 arg_iter_type = "iter"
 
 [static_args]
 "env" = "Critterbot"
-"horizon" = 12
 "steps" = 119000
 "valSteps" = 100
 "testSteps" = 100
-"observation_sensors" = [31, 32, 33]
-"target_sensors" = [31, 32, 33]
+"observation_sensors" = ["IR0", "IR2", "IR3"]
+"target_sensors" = ["Light3"]
 
 "agent" = "GVFN"
 "update_fn" = "BatchTD"
@@ -21,7 +20,7 @@ arg_iter_type = "iter"
 "horde" = "LinSpacing"
 "gamma_low" = 0.2
 "gamma_high" = 0.95
-"num_gvfs" = 10
+"num_gvfs" = 32
 
 "gvfn_opt" = "Descent"
 "model_opt" = "ADAM"
@@ -29,9 +28,13 @@ arg_iter_type = "iter"
 "model_clip_coeff" = 0.25
 
 [sweep_args]
-"gvfn_stepsize" = [1e-6,5e-6,0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005]
-"model_stepsize" = [0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01]
+# "gvfn_stepsize" = [1e-6,5e-6,0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005]
+"gvfn_stepsize" = [1e-6]
+# "model_stepsize" = [0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01]
+"model_stepsize" = [0.00001]
 "activation" = ["bounded1","bounded5","bounded10"]
+"horizon" = [60, 200]
 
-"gvfn_tau" = [1,2,4,8,16,32]
-"seed" = "1:30"
+# "gvfn_tau" = [1,2,4,8,16,32,64]
+"gvfn_tau" = [1,2]
+"seed" = "1:10"
