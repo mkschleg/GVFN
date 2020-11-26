@@ -22,13 +22,13 @@ function init_data(num_steps, num_targets, num_val, num_test, horizon)
     predictions = zeros(Float64, num_steps, num_targets)
     gt = zeros(Float64, num_steps-horizon, num_targets)
 
-    valPreds=zeros(Float64,num_val, num_targets)
-    vgt = zeros(Float64, num_val - horizon, num_targets)
+    # valPreds=zeros(Float64,num_val, num_targets)
+    # vgt = zeros(Float64, num_val - horizon, num_targets)
 
-    testPreds=zeros(Float64,num_test, num_targets)
-    tgt = zeros(Float64, num_test-horizon, num_targets)
+    # testPreds=zeros(Float64,num_test, num_targets)
+    # tgt = zeros(Float64, num_test-horizon, num_targets)
 
-    return predictions, gt, valPreds, vgt, testPreds, tgt
+    return predictions, gt #, valPreds, vgt, testPreds, tgt
 end
 
 function get_env(parsed)
@@ -70,12 +70,8 @@ function get_agent(parsed, rng)
 end
 
 # Put the results into a dict with a particular naming convention
-label_results(predictions, gt, valPreds, vgt, testPreds, tgt) = Dict("Predictions"=>predictions,
-                                                                     "GroundTruth"=>gt,
-                                                                     "ValidationPredictions"=>valPreds,
-                                                                     "ValidationGroundTruth"=>vgt,
-                                                                     "TestPredictions"=>testPreds,
-                                                                     "TestGroundTruth"=>tgt)
+label_results(predictions, gt) = Dict("Predictions"=>predictions,
+                                      "GroundTruth"=>gt)
 
 default_config(cell="GRU", tau=1, seed=1) = Dict(
     "save_dir"=>"DefaultConfig",
@@ -204,46 +200,46 @@ function main_experiment(parsed::Dict; working = false, progress=false)
     end
 
     # Re-init progress bar for validation phase
-    prg_bar = ProgressMeter.Progress(num_val, "Validation Step: ")
+    # prg_bar = ProgressMeter.Progress(num_val, "Validation Step: ")
 
-    # predict on the validation data
-    for step in 1:num_val
-        s_tp1, r = step!(env)
+    # # predict on the validation data
+    # for step in 1:num_val
+    #     s_tp1, r = step!(env)
 
-        pred = predict!(agent, s_tp1, r, false, rng)
-        valPreds[step, :] .= Flux.data(pred)
+    #     pred = predict!(agent, s_tp1, r, false, rng)
+    #     valPreds[step, :] .= Flux.data(pred)
 
 
-        if step>horizon
-            vgt[step-horizon,:] = r
-        end
+    #     if step>horizon
+    #         vgt[step-horizon,:] = r
+    #     end
 
-        if progress
-            ProgressMeter.next!(prg_bar)
-        end
-    end
+    #     if progress
+    #         ProgressMeter.next!(prg_bar)
+    #     end
+    # end
 
-    # re-init progress bar for test phase
-    prg_bar = ProgressMeter.Progress(num_test, "Test Step: ")
+    # # re-init progress bar for test phase
+    # prg_bar = ProgressMeter.Progress(num_test, "Test Step: ")
 
-    # predict on the test data
-    for step in 1:num_test
-        s_tp1, r = step!(env)
+    # # predict on the test data
+    # for step in 1:num_test
+    #     s_tp1, r = step!(env)
 
-        pred = predict!(agent, s_tp1, r, false, rng)
-        testPreds[step,:] .= Flux.data(pred)
+    #     pred = predict!(agent, s_tp1, r, false, rng)
+    #     testPreds[step,:] .= Flux.data(pred)
 
-        if step>horizonn
-            tgt[step - horizon, :] = r
-        end
+    #     if step>horizonn
+    #         tgt[step - horizon, :] = r
+    #     end
 
-        if progress
-            ProgressMeter.next!(prg_bar)
-        end
-    end
+    #     if progress
+    #         ProgressMeter.next!(prg_bar)
+    #     end
+    # end
 
     # put the arrays in a dict
-    results = label_results(predictions, gt, valPreds, vgt, testPreds, tgt)
+    results = label_results(predictions, gt) #, valPreds, vgt, testPreds, tgt)
 
     # save results
     GVFN.save_results(savefile, results, working)

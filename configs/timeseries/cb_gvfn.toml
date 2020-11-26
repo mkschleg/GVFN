@@ -7,9 +7,9 @@ arg_iter_type = "iter"
 
 [static_args]
 "env" = "Critterbot"
-"steps" = 119000
-"valSteps" = 100
-"testSteps" = 100
+"steps" = 144000
+# "valSteps" = 100
+# "testSteps" = 100
 "observation_sensors" = ["IR0", "IR2", "IR3"]
 "target_sensors" = ["Light3"]
 
