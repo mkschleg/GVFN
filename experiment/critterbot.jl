@@ -149,7 +149,7 @@ function main_experiment(parsed::Dict; working = false, progress=false)
     num_targets = get_num_targets(env)
 
     # init data buffers
-    predictions, gt, valPreds, vgt, testPreds, tgt = init_data(num_steps, num_targets, horizon)
+    predictions, gt = init_data(num_steps, num_targets, horizon)
 
     # get agent
     parsed["num_features"] = num_state_features
