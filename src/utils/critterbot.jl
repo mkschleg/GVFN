@@ -26,8 +26,13 @@ numRelevantSensors() = length(relevant_sensors())
 
 loadTiles() = getData(joinpath(BASE_DIR, "tiles.h5")) .+ 1 # NOTE: +1 to get 1-based indexing
 loadSensor(sensorIdx::Int) = getData(joinpath(BASE_DIR,"sensors/sensor$(sensorIdx).h5"))
-loadSensor(sensorName::String) =
-    getData(joinpath(BASE_DIR,"sensors/sensor$(getSensorIndex(sensorName)).h5"))
+loadSensor(sensorName::String) = begin
+    if '-' ∈ sensorName
+        getData(joinpath(BASE_DIR,"returns/$(sensorName).h5"))
+    else
+        getData(joinpath(BASE_DIR,"sensors/sensor$(getSensorIndex(sensorName)).h5"))
+    end
+end
 
 # TODO: eventually when a subset of the sensors is selected we should save that data in 1 file
 # so that we can load the subset with only 1 disk read
@@ -63,6 +68,9 @@ function getSensorIndices(sensorNames)
 end
 
 getSensorIndices(idx::AbstractArray{Int}) = sensorNames
+
+loadReturn(str) = getData(joinpath(BASE_DIR, "returns", str*".h5"))
+
 
 function getReturns(indices::AbstractArray, γ::Float64)
     sensors = loadSensor(indices)
