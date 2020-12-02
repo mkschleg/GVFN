@@ -49,7 +49,8 @@ end
 function getSensorIndex(sensorName, name_list)
     idx = findfirst((x)->sensorName==x, name_list)
     if idx isa Nothing
-        error("Sensor $(sensorName) not found")
+        # error("Sensor $(sensorName) not found")
+        return -1
     end
     idx-1
 end
