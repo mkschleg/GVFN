@@ -65,8 +65,8 @@ function get_horde(parsed::Dict)
         )
     elseif horde_t == "Exponential"
         N = parsed["num_gvfs"]
-
-        Γs=[1.0-2.0^-i for i=1:N]
+        ϵ = parsed["base_exponent"]
+        Γs=[1.0-ϵ^-i for i=1:N]
         Γ = Float32.(vcat([Γs for _=1:num_targets]...))
         return Horde(
             map(γ->GVF(NormalizedCumulant(1-γ, FeatureCumulant(1)), ConstantDiscount(γ),NullPolicy()), Γ)
