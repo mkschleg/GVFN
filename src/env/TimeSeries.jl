@@ -38,13 +38,13 @@ function Critterbot(obs_sensors, target_sensors)
     num_features = length(obs_sensors)
     return Critterbot(CritterbotUtils.numSteps(),
                       num_features, CritterbotUtils.getSensorIndices(all_sensors),
-                      0, CritterbotUtils.loadSensor(all_sensors))
+                      0, squish(CritterbotUtils.loadSensor(all_sensors)))
 end
 
 # Hack to use same features as targets; just duplicate the data in new cols
 Critterbot(sensors::Vector{Int}) = Critterbot(sensors, sensors)
 get_num_features(cb::Critterbot) = cb.num_features
-get_num_targets(cb::Critterbot) = length(cb.sensors)-cb.num_features
+get_num_targets(cb::Critterbot) = length(cb.sensors) - cb.num_features
 
 function MinimalRLCore.start!(cb::Critterbot)
     cb.idx = 1
@@ -60,6 +60,8 @@ end
 # Data for each sensor in a row, so that we can access data for all sensors by col
 MinimalRLCore.get_state(cb::Critterbot) = cb.data[1:cb.num_features, cb.idx]
 MinimalRLCore.get_reward(cb::Critterbot) = cb.data[cb.num_features+1:end, cb.idx] #
+
+squish(vec) = (vec .- minimum(vec; dims=2)) ./ (maximum(vec; dims=2) - minimum(vec; dims=2))
 
 # ===========
 # --- MSO ---

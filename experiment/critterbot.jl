@@ -172,7 +172,8 @@ function main_experiment(parsed::Dict; working = false, progress=false)
             s_tp1, r = step!(env)
             
             pred = step!(agent, s_tp1, r, false, rng)
-
+            
+            # println(size(pred))
             predictions[step, :] .= Flux.data(pred)
 
             if step > horizon

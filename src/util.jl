@@ -105,5 +105,6 @@ include("utils/flux.jl")
 include("utils/timeseries.jl")
 include("utils/arg_tables.jl")
 include("utils/critterbot.jl")
+include("utils/Tilecoder.jl")
 
 include("utils/experiment.jl")
