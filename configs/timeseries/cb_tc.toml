@@ -1,0 +1,36 @@
+[config]
+save_dir="critterbot_tc"
+exp_file="experiment/critterbot.jl"
+exp_module_name = "CritterbotExperiment"
+exp_func_name = "main_experiment"
+arg_iter_type = "iter"
+
+[static_args]
+"env" = "Critterbot"
+
+"steps" = 119000
+"observation_sensors" = ["IR0", "IR2", "IR3"]
+"target_sensors" = ["Light3"]
+
+"agent" = "Tilecoder"
+"rnn_cell" = "RNN"
+"rnn_nhidden" = 128
+"rnn_opt" = "Descent"
+"rnn_beta1" = 0.99
+"rnn_beta2" = 0.999
+"update_fn" = "BatchTD"
+"batchsize" = 32
+
+"model_clip_coeff" = 100.0
+
+"tilings" = 8
+"tiles" = 8
+
+[sweep_args]
+"rnn_lr" = "collect(2.0.^(-10:-1))"
+# "rnn_lr" = "[0.0125]"
+# "rnn_lr" = [0.001]
+# "activation" = ["bounded1","bounded5","bounded10","tanh"]
+"rnn_tau" = [1]
+"horizon" = [12, 32]
+"seed" = "1:30"
