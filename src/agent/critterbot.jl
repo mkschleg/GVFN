@@ -11,20 +11,20 @@ import MinimalRLCore
 # --- FLUX AGENT ---
 # =================
 
-mutable struct CritterbotAgent{L, O, C, N, H, Φ} <: MinimalRLCore.AbstractAgent where {L<:LearningUpdate}
+mutable struct CritterbotAgent{L, O, C, N, H, Φ, F} <: MinimalRLCore.AbstractAgent where {L<:LearningUpdate}
     lu::L
     opt::O
     chain::C
     normalizer::N
 
-    obs_sequence::DataStructures.CircularBuffer{Φ}
+    obs_sequence::DataStructures.CircularBuffer{Vector{F}}
     hidden_state_init::H
 
     h_buff::DataStructures.CircularBuffer{H}
-    obs_buff::DataStructures.CircularBuffer{Vector{Φ}}
+    obs_buff::DataStructures.CircularBuffer{Vector{F}}
 
     batch_h::Vector{H}
-    batch_obs::Vector{Vector{Φ}}
+    batch_obs::Vector{Vector{F}}
     batch_gvfn_target::Vector{Φ}
     batch_model_target::Vector{Φ}
 
@@ -34,8 +34,8 @@ mutable struct CritterbotAgent{L, O, C, N, H, Φ} <: MinimalRLCore.AbstractAgent
 end
 
 # Convenient type aliases
-Hidden_t = IdDict{Any,Any}
-Obs_t = Vector{Float32}
+# Hidden_t = IdDict{Any,Any}
+# Obs_t = Vector{Float32}
 
 function CritterbotGVFNAgent(parsed; rng=Random.GLOBAL_RNG)
 
@@ -86,6 +86,15 @@ function CritterbotGVFNAgent(parsed; rng=Random.GLOBAL_RNG)
 
     # Normalizer
     normalizer = TimeSeriesUtils.getNormalizer(parsed)
+    # normalizer = if "tilings" ∈ keys(parsed)
+    #     n = TimeSeriesUtils.getNormalizer(parsed)
+    #     tc = GVFN.TileCoder(parsed["tilings"], parsed["tiles"], parsed["num_features"])
+    #     (x)->begin
+    #         n(tc(x))
+    #     end
+    # else
+    #     TimeSeriesUtils.getNormalizer(parsed)
+    # end
 
     # build model
     act_str = get(parsed, "activation", "sigmoid")
@@ -132,7 +141,18 @@ end
 
 function CritterbotOriginalRNNAgent(parsed; rng=Random.GLOBAL_RNG)
     # RNN architecture originally used, with RNN -> linear output
-
+    
+    normalizer = if "tilings" ∈ keys(parsed)
+        n = TimeSeriesUtils.getNormalizer(parsed)
+        tc = GVFN.TileCoder(parsed["tilings"], parsed["tiles"], parsed["num_features"])
+        parsed["num_features"] = size(tc)
+        (x)->begin
+            n(tc(x))
+        end
+    else
+        TimeSeriesUtils.getNormalizer(parsed)
+    end
+    
     nhidden = parsed["rnn_nhidden"]
     cell = getproperty(Flux, Symbol(parsed["rnn_cell"]))
 
@@ -141,7 +161,7 @@ function CritterbotOriginalRNNAgent(parsed; rng=Random.GLOBAL_RNG)
         cell(1, nhidden; init=init_func),
         Flux.Dense(parsed["rnn_nhidden"], 1 ; initW=init_func)
     )
-    return _CritterbotRNNAgent(parsed, chain; rng=rng)
+    return _CritterbotRNNAgent(parsed, chain, normalizer; rng=rng)
 end
 
 function CritterbotRNNAgent(parsed; rng=Random.GLOBAL_RNG)
@@ -149,6 +169,17 @@ function CritterbotRNNAgent(parsed; rng=Random.GLOBAL_RNG)
     # a recurrent layer producing a representation, and
     # a FC NN producing timeseries predictions from this.
 
+    normalizer = if "tilings" ∈ keys(parsed)
+        n = TimeSeriesUtils.getNormalizer(parsed)
+        tc = GVFN.TileCoder(parsed["tilings"], parsed["tiles"], parsed["num_features"])
+        parsed["num_features"] = size(tc)
+        (x)->begin
+            tc(n(x))
+        end
+    else
+        TimeSeriesUtils.getNormalizer(parsed)
+    end
+    
     nhidden = parsed["rnn_nhidden"]
     act_str = get(parsed, "activation", "tanh")
     act = FluxUtils.get_activation(act_str)
@@ -165,10 +196,10 @@ function CritterbotRNNAgent(parsed; rng=Random.GLOBAL_RNG)
         Flux.Dense(nhidden, nhidden, relu; initW=init_func),
         Flux.Dense(nhidden, parsed["num_targets"]; initW=init_func)
     )
-    return _CritterbotRNNAgent(parsed, chain; rng=rng)
+    return _CritterbotRNNAgent(parsed, chain, normalizer; rng=rng)
 end
 
-function _CritterbotRNNAgent(parsed, chain; rng=Random.GLOBAL_RNG)
+function _CritterbotRNNAgent(parsed, chain, normalizer; rng=Random.GLOBAL_RNG)
 
     # hyperparameters
     alg_string = parsed["update_fn"]
@@ -181,20 +212,26 @@ function _CritterbotRNNAgent(parsed, chain; rng=Random.GLOBAL_RNG)
     lu = lu_func()
 
     # get normalizer
-    normalizer = TimeSeriesUtils.getNormalizer(parsed)
+    # normalizer = TimeSeriesUtils.getNormalizer(parsed)
 
     # get optimizer
     lr, β1, β2 = map(k->parsed[k], ["rnn_lr","rnn_beta1","rnn_beta2"])
     opt = getproperty(Flux, Symbol(parsed["rnn_opt"]))(lr, (β1, β2))
 
-    obs_sequence = DataStructures.CircularBuffer{Obs_t}(τ)
+    obs_sequence = if "tilings" ∈ keys(parsed)
+        DataStructures.CircularBuffer{Vector{Int}}(τ)
+    else
+        DataStructures.CircularBuffer{Obs_t}(τ)
+    end
     hidden_state_init = GVFN.get_initial_hidden_state(chain)
 
     # buffers for temporal offsets
-    obs_buff, h_buff = getTemporalBuffers(horizon)
+    obs_buff, h_buff = getTemporalBuffers(horizon, "tilings" ∈ keys(parsed))
 
     # buffers for batches
-    batch_obs, batch_h, batch_gvfn_target, batch_model_target = getNewBatch()
+    batch_obs, batch_h, batch_gvfn_target, batch_model_target = getNewBatch("tilings" ∈ keys(parsed))
+    println(typeof(obs_sequence))
+    println(typeof(batch_obs))
 
     CritterbotAgent(lu,
                     opt,
@@ -218,25 +255,25 @@ function _CritterbotRNNAgent(parsed, chain; rng=Random.GLOBAL_RNG)
 
 end
 
-# function getNewBatch()
-#     # get empty batch buffers
-#     batch_obs = Vector{Obs_t}[]
-#     batch_h  = Hidden_t[]
-#     batch_gvfn_target = Vector{Float32}[]
-#     batch_model_target = Vector{Float32}[]
-#     return batch_obs, batch_h, batch_gvfn_target, batch_model_target
-# end
+function getNewBatch(tc)
+    # get empty batch buffers
+    batch_obs = tc ? Vector{Int}[] : Vector{Obs_t}[]
+    batch_h  = Hidden_t[]
+    batch_gvfn_target = Vector{Float32}[]
+    batch_model_target = Vector{Float32}[]
+    return batch_obs, batch_h, batch_gvfn_target, batch_model_target
+end
 
 function resetBatch!(agent::CritterbotAgent)
     # reset the agent's batch buffers
     agent.batch_obs, agent.batch_h, agent.batch_gvfn_target, agent.batch_model_target = getNewBatch()
 end
 
-# function getTemporalBuffers(horizon::Int)
-#     h_buff = DataStructures.CircularBuffer{Hidden_t}(horizon)
-#     obs_buff = DataStructures.CircularBuffer{Vector{Obs_t}}(horizon)
-#     return obs_buff, h_buff
-# end
+function getTemporalBuffers(horizon::Int, tc)
+    h_buff = DataStructures.CircularBuffer{Hidden_t}(horizon)
+    obs_buff = tc ? DataStructures.CircularBuffer{Vector{Int}}(horizon) : DataStructures.CircularBuffer{Vector{Obs_t}}(horizon)
+    return obs_buff, h_buff
+end
 
 function MinimalRLCore.start!(agent::CritterbotAgent, env_s_tp1, rng=Random.GLOBAL_RNG)
 
@@ -254,7 +291,10 @@ function MinimalRLCore.step!(agent::CritterbotAgent, env_s_tp1, r, terminal, rng
     push!(agent.obs_sequence, agent.normalizer(env_s_tp1))
 
     # copy state sequence/hidden state into temporal offset buffers
-    push!(agent.obs_buff, copy(agent.obs_sequence))
+    # println(typeof(agent.obs_buff), typeof(agent.obs_sequence))
+    for obs ∈ agent.obs_sequence
+        push!(agent.obs_buff, copy(obs))
+    end
     push!(agent.h_buff, copy(agent.hidden_state_init))
 
     # Update =====================================================

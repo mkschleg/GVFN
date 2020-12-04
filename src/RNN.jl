@@ -170,6 +170,21 @@ abstract type AbstractActionRNN end
 
 _needs_action_input(m::M) where {M<:AbstractActionRNN} = true
 
+
+function (m::Flux.RNNCell)(h, x::AbstractArray{Int, 1})
+  σ, Wi, Wh, b = m.σ, m.Wi, m.Wh, m.b
+  h = σ.(sum(Wi[:, x]; dims=2)[:,1] .+ Wh*h .+ b)
+  return h, h
+end
+
+function (m::Flux.RNNCell)(h, x::AbstractArray{Int, 2})
+    σ, Wi, Wh, b = m.σ, m.Wi, m.Wh, m.b
+    o_i = sum(Wi[:, x]; dims=2)[:,1,:]
+    h = σ.(o_i .+ Wh*h .+ b)
+    return h, h
+end
+
+
 """
     ARNNCell
 
