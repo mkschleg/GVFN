@@ -63,6 +63,8 @@ function get_agent(parsed, rng)
         agent = GVFN.CritterbotAuxTaskAgent(parsed;rng=rng)
     elseif Agent_t == "OriginalAuxTasks"
         agent = GVFN.CritterbotOriginalAuxTaskAgent(parsed;rng=rng)
+    elseif Agent_t == "Tilecoder"
+        agent = GVFN.CritterbotTCAgent(parsed; rng=rng)
     else
         throw(DomainError("Agent $(Agent_t) not implemented!"))
     end

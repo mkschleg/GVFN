@@ -199,6 +199,24 @@ function CritterbotRNNAgent(parsed; rng=Random.GLOBAL_RNG)
     return _CritterbotRNNAgent(parsed, chain, normalizer; rng=rng)
 end
 
+function CritterbotTCAgent(parsed; rng=Random.GLOBAL_RNG)
+    
+    n = TimeSeriesUtils.getNormalizer(parsed)
+    tc = GVFN.TileCoder(parsed["tilings"], parsed["tiles"], parsed["num_features"])
+    parsed["num_features"] = size(tc)
+    normalizer = (x)->begin
+        tc(n(x))
+    end
+
+    chain = Flux.Chain(
+        TCLayer(parsed["num_features"], parsed["num_targets"])
+    )
+    return _CritterbotRNNAgent(parsed, chain, normalizer; rng=rng)
+    
+end
+
+Flux.Descent(α::Float64, ::Tuple{Float64,Float64}) = Flux.Descent(α)
+
 function _CritterbotRNNAgent(parsed, chain, normalizer; rng=Random.GLOBAL_RNG)
 
     # hyperparameters
