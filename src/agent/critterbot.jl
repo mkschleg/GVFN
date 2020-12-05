@@ -17,7 +17,7 @@ mutable struct CritterbotAgent{L, O, C, N, H, Φ, F} <: MinimalRLCore.AbstractAg
     chain::C
     normalizer::N
 
-    obs_sequence::DataStructures.CircularBuffer{Vector{F}}
+    obs_sequence::DataStructures.CircularBuffer{F}
     hidden_state_init::H
 
     h_buff::DataStructures.CircularBuffer{H}
@@ -275,7 +275,7 @@ end
 
 function getNewBatch(tc)
     # get empty batch buffers
-    batch_obs = tc ? Vector{Int}[] : Vector{Obs_t}[]
+    batch_obs = tc ? Vector{TC_Obs_t}[] : Vector{Obs_t}[]
     batch_h  = Hidden_t[]
     batch_gvfn_target = Vector{Float32}[]
     batch_model_target = Vector{Float32}[]
@@ -289,7 +289,7 @@ end
 
 function getTemporalBuffers(horizon::Int, tc)
     h_buff = DataStructures.CircularBuffer{Hidden_t}(horizon)
-    obs_buff = tc ? DataStructures.CircularBuffer{Vector{Int}}(horizon) : DataStructures.CircularBuffer{Vector{Obs_t}}(horizon)
+    obs_buff = tc ? DataStructures.CircularBuffer{Vector{TC_Obs_t}}(horizon) : DataStructures.CircularBuffer{Vector{Obs_t}}(horizon)
     return obs_buff, h_buff
 end
 
@@ -310,9 +310,9 @@ function MinimalRLCore.step!(agent::CritterbotAgent, env_s_tp1, r, terminal, rng
 
     # copy state sequence/hidden state into temporal offset buffers
     # println(typeof(agent.obs_buff), typeof(agent.obs_sequence))
-    for obs ∈ agent.obs_sequence
-        push!(agent.obs_buff, copy(obs))
-    end
+    # for obs ∈ agent.obs_sequence
+    push!(agent.obs_buff, copy(agent.obs_sequence))
+    # end
     push!(agent.h_buff, copy(agent.hidden_state_init))
 
     # Update =====================================================
