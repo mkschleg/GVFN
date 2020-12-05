@@ -42,7 +42,8 @@ function get_env(parsed)
     # elseif env_t == "ACEA"
     #     env = ACEA()
     if env_t == "Critterbot"
-        env = Critterbot(parsed["observation_sensors"], parsed["target_sensors"])
+        return_discounts = get(parsed, "env_gammas", nothing)
+        env = Critterbot(parsed["observation_sensors"], parsed["target_sensors"], return_discounts)
     else
         throw(DomainError("Environment $(env_t) not implemented, try in Timeseries.jl!"))
     end
@@ -65,6 +66,8 @@ function get_agent(parsed, rng)
         agent = GVFN.CritterbotOriginalAuxTaskAgent(parsed;rng=rng)
     elseif Agent_t == "Tilecoder"
         agent = GVFN.CritterbotTCAgent(parsed; rng=rng)
+    elseif Agent_t = "ANN"
+        agent = GVFN.CritterbotFCAgent(parsed; rng=rng)
     else
         throw(DomainError("Agent $(Agent_t) not implemented!"))
     end

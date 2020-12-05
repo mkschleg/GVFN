@@ -215,6 +215,49 @@ function CritterbotTCAgent(parsed; rng=Random.GLOBAL_RNG)
     
 end
 
+
+function CritterbotFCAgent(parsed; rng=Random.GLOBAL_RNG)
+    
+    # n = TimeSeriesUtils.getNormalizer(parsed)
+    # tc = GVFN.TileCoder(parsed["tilings"], parsed["tiles"], parsed["num_features"])
+    # parsed["num_features"] = size(tc)
+    # normalizer = (x)->begin
+    #     tc(n(x))
+    # end
+    normalizer = if "tilings" ∈ keys(parsed)
+        n = TimeSeriesUtils.getNormalizer(parsed)
+        tc = GVFN.TileCoder(parsed["tilings"], parsed["tiles"], parsed["num_features"])
+        parsed["num_features"] = size(tc)
+        (x)->begin
+            tc(n(x))
+        end
+    else
+        TimeSeriesUtils.getNormalizer(parsed)
+    end
+    
+    init_func = (dims...)->glorot_uniform(rng, dims...)
+    chain = if "network_arch" ∈ keys(parsed)
+        if length(parsed["network_arch"]) == 1
+            Flux.Chain(
+                Dense(parsed["num_features"], parsed["network_arch"][1][1], FluxUtils.get_activation(parsed["network_arch"][1][2]); initW=init_func),
+                Dense(parsed["network_arch"][1][1], parsed["num_targets"])
+            )
+        else
+            Flux.Chain(
+                Dense(parsed["num_features"], parsed["network_arch"][1][1], FluxUtils.get_activation(parsed["network_arch"][1][2]); initW=init_func),
+                [Dense(parsed["network_arch"][i-1][1], parsed["network_arch"][i][1], FluxUtils.get_activation(parsed["network_arch"][i][2]); initW=init_func) for i ∈ 2:length(parsed["network_arch"])]...,
+                Dense(parsed["network_arch"][end][1], parsed["num_targets"])
+            )
+        end
+    else
+        Flux.Chain(
+            Dense(parsed["num_features"], parsed["num_targets"])
+        )
+    end
+    return _CritterbotRNNAgent(parsed, chain, normalizer; rng=rng)
+    
+end
+
 Flux.Descent(α::Float64, ::Tuple{Float64,Float64}) = Flux.Descent(α)
 
 function _CritterbotRNNAgent(parsed, chain, normalizer; rng=Random.GLOBAL_RNG)

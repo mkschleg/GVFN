@@ -41,6 +41,19 @@ function Critterbot(obs_sensors, target_sensors)
                       0, squish(CritterbotUtils.loadSensor(all_sensors)))
 end
 
+function Critterbot(obs_sensors, target_sensors, γs::AbstractArray)
+    all_sensors = vcat(obs_sensors, target_sensors)
+    num_features = length(obs_sensors)*length(γs)
+    data = squish(vcat(CritterbotUtils.getReturns(obs_sensors, γs), CritterbotUtils.loadSensor(target_sensors)))
+    
+    return Critterbot(CritterbotUtils.numSteps(),
+                      num_features, CritterbotUtils.getSensorIndices(all_sensors),
+                      0, data)
+end
+
+Critterbot(obs_sensors, target_sensors, γ_str::String) =
+    Critterbot(obs_sensors, target_sensors, eval(Meta.parse(γ_str)))
+
 # Hack to use same features as targets; just duplicate the data in new cols
 Critterbot(sensors::Vector{Int}) = Critterbot(sensors, sensors)
 get_num_features(cb::Critterbot) = cb.num_features
