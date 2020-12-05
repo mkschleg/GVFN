@@ -61,7 +61,6 @@ get_num_targets(cb::Critterbot) = length(cb.sensors) - cb.num_features
 
 function MinimalRLCore.start!(cb::Critterbot)
     cb.idx = 1
-    println(size(cb.data))
     return MinimalRLCore.get_state(cb)
 end
 

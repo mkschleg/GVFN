@@ -50,14 +50,14 @@ parsed = parse_args(as)
         
         # subsample the data
         # g, p = g[1:subsample:end], p[1:subsample:end]
-        values = zero(g)
+        values = zeros(length(window+1:skip:(size(p)[1])), size(g)[2])
         
         for j ∈ 1:(size(g)[2])
-            for i=window+1:skip:(size(p)[1])
+            for (idx, i) = enumerate(window+1:skip:(size(p)[1]))
                 nrm = mean((g[i-window:i, j].-mean(g[i-window:i, j])).^2)
                 ĝ = g[i-window:i, j]
                 P̂ = p[i-window:i, j]
-                values[i, j] = sqrt(mean((ĝ.-P̂).^2) / nrm)
+                values[idx, j] = sqrt(mean((ĝ.-P̂).^2) / nrm)
             end
         end
         return values
@@ -67,7 +67,12 @@ parsed = parse_args(as)
     ValidationNRMSE(results, window, skip, subsample) = NRMSE(results, window, skip, subsample; phase="Validation")
     TestNRMSE(results, window, skip, subsample) = NRMSE(results, window, skip, subsample; phase="Test")
     
-    loadData(itm) = FileIO.load(joinpath(itm.folder_str,"results.jld2"))["results"]
+    loadData(itm) = try
+        FileIO.load(joinpath(itm.folder_str,"results.jld2"))["results"]
+    catch
+        println(itm.folder_str)
+        rethrow()
+    end
 
 
 
@@ -85,16 +90,22 @@ parsed = parse_args(as)
         end
     
         results = Dict()
-        functions = [TrainingNRMSE, ValidationNRMSE, TestNRMSE]
+        # functions = [TrainingNRMSE, ValidationNRMSE, TestNRMSE]
+        functions = [TrainingNRMSE]
         pairs = Dict(Pair.(String.(Symbol.(functions)), functions))
         for (lbl, fn) ∈ pairs
-            nrmse = fn(loadData(itm), window, skip, subsample)
-            results["$(lbl)"] = nrmse
+            try
+                nrmse = fn(loadData(itm), window, skip, subsample)
+                results["$(lbl)"] = nrmse[:, 1]
+            catch
+            end
         end
         results["window"], results["skip"], results["subsample"] = window, skip, subsample
-        
-        JLD2.@save joinpath(tmp_save_loc, "results.jld2") results
-        cp(joinpath(read_loc, "settings.jld2"), joinpath(tmp_save_loc, "settings.jld2"))
+
+        if length(keys(results)) != 0
+            JLD2.@save joinpath(tmp_save_loc, "results.jld2") results
+            cp(joinpath(read_loc, "settings.jld2"), joinpath(tmp_save_loc, "settings.jld2"))
+        end
     end 
 
 end #end @everywhere
