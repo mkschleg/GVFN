@@ -248,8 +248,6 @@ function _CritterbotRNNAgent(parsed, chain, normalizer; rng=Random.GLOBAL_RNG)
 
     # buffers for batches
     batch_obs, batch_h, batch_gvfn_target, batch_model_target = getNewBatch("tilings" ∈ keys(parsed))
-    println(typeof(obs_sequence))
-    println(typeof(batch_obs))
 
     CritterbotAgent(lu,
                     opt,
