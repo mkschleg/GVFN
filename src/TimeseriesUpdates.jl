@@ -194,7 +194,7 @@ function update!(chain,
     ℒ_out = 0.5f0*mean((preds[end] - model_target).^2)
 
     grads = Flux.Tracker.gradient(()->ℒ_out + ℒ_gvfn, Flux.params(chain))
-
+    
     prms = Flux.params(chain[rnn_idx:end])
     clip_coeff = FluxUtils.grad_clip_coeff(prms,grads,max_norm)
     for weights in prms

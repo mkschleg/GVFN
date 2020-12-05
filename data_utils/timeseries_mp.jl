@@ -82,7 +82,7 @@ parsed = parse_args(as)
             mkpath(tmp_save_loc)
         else
             if isfile(joinpath(tmp_save_loc, "settings.jld2"))
-                continue;
+                return;
             end
         end
 
