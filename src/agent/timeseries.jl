@@ -36,6 +36,7 @@ end
 # Convenient type aliases
 Hidden_t = IdDict{Any,Any}
 Obs_t = Vector{Float32}
+TC_Obs_t = Vector{Int}
 
 function TimeSeriesGVFNAgent(parsed; rng=Random.GLOBAL_RNG)
 
