@@ -15,11 +15,13 @@ const FLU = GVFN.FluxUtils
 
 function results_synopsis(results, ::Val{true})
     rmse = sqrt.(mean(results["err"].^2; dims=2))
+    acc = [findmax(results["pred"][step, :])[2] == findmax(results["oracle"][step, :])[2] for step in 1:(size(results["oracle"])[1])]
     Dict([
         "desc"=>"All operations are on the RMSE",
         "all"=>mean(rmse),
         "end"=>mean(rmse[Int64(floor(length(rmse)*0.8)):end]),
-        "lc"=>mean(reshape(rmse, 1000, Int64(length(rmse)/1000)); dims=1)
+        "lc"=>mean(reshape(rmse, 1000, Int64(length(rmse)/1000)); dims=1),
+        "acc"=>mean(reshape(acc, 1000, Int64(length(rmse)/1000)); dims=1)
     ])
 end
 

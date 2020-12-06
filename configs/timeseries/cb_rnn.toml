@@ -1,5 +1,5 @@
 [config]
-save_dir="critterbot_rnn"
+save_dir="critterbot_rnn_return"
 exp_file="experiment/critterbot.jl"
 exp_module_name = "CritterbotExperiment"
 exp_func_name = "main_experiment"
@@ -10,7 +10,7 @@ arg_iter_type = "iter"
 
 "steps" = 119000
 "observation_sensors" = ["IR0", "IR2", "IR3"]
-"target_sensors" = ["Light3"]
+"target_sensors" = ["Light3-0.9875"]
 
 "agent" = "RNN"
 "rnn_cell" = "RNN"
@@ -30,5 +30,5 @@ arg_iter_type = "iter"
 # "rnn_lr" = [0.001]
 # "activation" = ["bounded1","bounded5","bounded10","tanh"]
 "rnn_tau" = [1, 2, 4, 8, 16, 32, 64]
-"horizon" = [60, 200]
-"seed" = "1:30"
+"horizon" = [1, 6]
+"seed" = "1:10"

@@ -1,5 +1,5 @@
 [config]
-save_dir="mackeyglass_aux_lstm"
+save_dir="mackeyglass_gru"
 exp_file="experiment/timeseries.jl"
 exp_module_name = "TimeSeriesExperiment"
 exp_func_name = "main_experiment"
@@ -12,25 +12,19 @@ arg_iter_type = "iter"
 "valSteps" = 200000
 "testSteps" = 200000
 
-"agent" = "AuxTasks"
+"agent" = "RNN"
+"rnn_cell" = "GRU"
 
-"rnn_cell" = "LSTM"
 "rnn_opt" = "ADAM"
-"rnn_beta1" = 0.9
+"rnn_beta1" = 0.99
 "rnn_beta2" = 0.999
 "update_fn" = "BatchTD"
 "batchsize" = 32
 
-"horde" = "LinSpacing"
-"gamma_low" = 0.2
-"gamma_high" = 0.95
-
-
 "model_clip_coeff" = 0.25
 
 [sweep_args]
-"rnn_lr" = "collect(2.0.^(-20:-6))"
+"rnn_lr" = "collect(2.0.^(-20:-1))"
 "rnn_tau" = [1,2,4,8,16,32]
-"rnn_nhidden" = [4,8]
-"horde" = ["Exponential", "LinSpacing"]
 "seed" = "1:30"
+"rnn_nhidden" = [4, 8]

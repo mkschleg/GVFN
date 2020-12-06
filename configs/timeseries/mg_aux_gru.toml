@@ -1,5 +1,5 @@
 [config]
-save_dir="mackeyglass_aux_lstm"
+save_dir="mackeyglass_aux_gru"
 exp_file="experiment/timeseries.jl"
 exp_module_name = "TimeSeriesExperiment"
 exp_func_name = "main_experiment"
@@ -14,7 +14,7 @@ arg_iter_type = "iter"
 
 "agent" = "AuxTasks"
 
-"rnn_cell" = "LSTM"
+"rnn_cell" = "GRU"
 "rnn_opt" = "ADAM"
 "rnn_beta1" = 0.9
 "rnn_beta2" = 0.999
