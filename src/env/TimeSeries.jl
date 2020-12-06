@@ -27,6 +27,7 @@ get_num_targets(self::TimeSeriesEnv) = 1
 mutable struct Critterbot <: TimeSeriesEnv
     num_steps::Int
     num_features::Int
+    num_targets::Int
     sensors::Vector{Int}
 
     idx::Int
@@ -37,7 +38,7 @@ function Critterbot(obs_sensors, target_sensors)
     all_sensors = vcat(obs_sensors, target_sensors)
     num_features = length(obs_sensors)
     return Critterbot(CritterbotUtils.numSteps(),
-                      num_features, CritterbotUtils.getSensorIndices(all_sensors),
+                      num_features, length(target_sensors), CritterbotUtils.getSensorIndices(all_sensors),
                       0, squish(CritterbotUtils.loadSensor(all_sensors)))
 end
 
@@ -47,7 +48,7 @@ function Critterbot(obs_sensors, target_sensors, γs::AbstractArray)
     data = squish(vcat(CritterbotUtils.getReturns(obs_sensors, γs), CritterbotUtils.loadSensor(target_sensors)))
     
     return Critterbot(CritterbotUtils.numSteps(),
-                      num_features, CritterbotUtils.getSensorIndices(all_sensors),
+                      num_features, length(target_sensors), CritterbotUtils.getSensorIndices(all_sensors),
                       0, data)
 end
 
@@ -57,7 +58,7 @@ Critterbot(obs_sensors, target_sensors, γ_str::String) =
 # Hack to use same features as targets; just duplicate the data in new cols
 Critterbot(sensors::Vector{Int}) = Critterbot(sensors, sensors)
 get_num_features(cb::Critterbot) = cb.num_features
-get_num_targets(cb::Critterbot) = length(cb.sensors) - cb.num_features
+get_num_targets(cb::Critterbot) = cb.num_targets
 
 function MinimalRLCore.start!(cb::Critterbot)
     cb.idx = 1

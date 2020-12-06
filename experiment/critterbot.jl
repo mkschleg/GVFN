@@ -41,9 +41,12 @@ function get_env(parsed)
     #     env = MSO()
     # elseif env_t == "ACEA"
     #     env = ACEA()
-    if env_t == "Critterbot"
-        return_discounts = get(parsed, "env_gammas", nothing)
-        env = Critterbot(parsed["observation_sensors"], parsed["target_sensors"], return_discounts)
+    env = if env_t == "Critterbot"
+        if "env_gammas" ∈ keys(parsed)
+            Critterbot(parsed["observation_sensors"], parsed["target_sensors"], parsed["env_gammas"])
+        else
+            Critterbot(parsed["observation_sensors"], parsed["target_sensors"])
+        end
     else
         throw(DomainError("Environment $(env_t) not implemented, try in Timeseries.jl!"))
     end
@@ -66,7 +69,7 @@ function get_agent(parsed, rng)
         agent = GVFN.CritterbotOriginalAuxTaskAgent(parsed;rng=rng)
     elseif Agent_t == "Tilecoder"
         agent = GVFN.CritterbotTCAgent(parsed; rng=rng)
-    elseif Agent_t = "ANN"
+    elseif Agent_t == "ANN"
         agent = GVFN.CritterbotFCAgent(parsed; rng=rng)
     else
         throw(DomainError("Agent $(Agent_t) not implemented!"))
@@ -154,6 +157,7 @@ function main_experiment(parsed::Dict; working = false, progress=false)
     num_targets = get_num_targets(env)
 
     # init data buffers
+    # println(num_steps, " ", num_targets, " ", horizon)
     predictions, gt = init_data(num_steps, num_targets, horizon)
 
     # get agent
