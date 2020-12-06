@@ -14,7 +14,7 @@ arg_iter_type = "iter"
 
 "agent" = "RNN"
 "rnn_cell" = "LSTM"
-"rnn_nhidden" = 128
+
 "rnn_opt" = "ADAM"
 "rnn_beta1" = 0.99
 "rnn_beta2" = 0.999
@@ -27,3 +27,4 @@ arg_iter_type = "iter"
 "rnn_lr" = "collect(2.0.^(-20:-1))"
 "rnn_tau" = [1,2,4,8,16,32]
 "seed" = "1:30"
+"rnn_nhidden" = [4, 8]
