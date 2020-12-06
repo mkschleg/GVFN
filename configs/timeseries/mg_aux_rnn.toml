@@ -21,7 +21,6 @@ arg_iter_type = "iter"
 "update_fn" = "BatchTD"
 "batchsize" = 32
 
-"horde" = "LinSpacing"
 "gamma_low" = 0.2
 "gamma_high" = 0.95
 
