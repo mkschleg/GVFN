@@ -50,7 +50,9 @@ function get_horde(parsed::Dict)
     horde_t = parsed["horde"]
     num_targets = parsed["num_targets"]
     if horde_t == "LinSpacing"
-        lo, hi, N = parsed["gamma_low"], parsed["gamma_high"], parsed["num_gvfs"]
+        
+        lo, hi = parsed["gamma_low"], parsed["gamma_high"]
+        N = "num_gvfs" ∈ keys(parsed) ? parsed["num_gvfs"] : parsed["rnn_nhidden"]
 
         Γ = Float32.(vcat([collect(LinRange(lo,hi,N)) for _=1:num_targets]...))
         return Horde(
@@ -64,7 +66,7 @@ function get_horde(parsed::Dict)
             map(γ->GVF(UnityCumulant(1-γ, FeatureCumulant(1)), ConstantDiscount(γ),NullPolicy()), Γ)
         )
     elseif horde_t == "Exponential"
-        N = parsed["num_gvfs"]
+        N = "num_gvfs" ∈ keys(parsed) ? parsed["num_gvfs"] : parsed["rnn_nhidden"]
         ϵ = parsed["base_exponent"]
         Γs=[1.0-ϵ^-i for i=1:N]
         Γ = Float32.(vcat([Γs for _=1:num_targets]...))
