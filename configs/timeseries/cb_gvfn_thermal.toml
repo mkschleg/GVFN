@@ -1,5 +1,5 @@
 [config]
-save_dir="critterbot_gvfn"
+save_dir="critterbot_gvfn_thermal"
 exp_file="experiment/critterbot.jl"
 exp_module_name = "CritterbotExperiment"
 exp_func_name = "main_experiment"
@@ -10,7 +10,7 @@ arg_iter_type = "iter"
 "steps" = 119000
 # "valSteps" = 100
 # "testSteps" = 100
-"observation_sensors" = ["IR0", "IR2", "IR3"]
+"observation_sensors" = ["Thermal0", "Thermal1", "Thermal4"]
 "target_sensors" = ["Light3-0.9875"]
 
 "agent" = "GVFN"
