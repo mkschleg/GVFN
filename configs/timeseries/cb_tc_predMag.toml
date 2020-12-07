@@ -1,5 +1,5 @@
 [config]
-save_dir="critterbot_tc_observeMagLightSensors"
+save_dir="critterbot_tc_observeLightSensors"
 exp_file="experiment/critterbot.jl"
 exp_module_name = "CritterbotExperiment"
 exp_func_name = "main_experiment"
@@ -9,8 +9,8 @@ arg_iter_type = "iter"
 "env" = "Critterbot"
 
 "steps" = 119000
-"observation_sensors" = ["Mag0","Light1","Light2"]
-"target_sensors" = ["Light3"]
+"observation_sensors" = ["Light1","Light2", "Light3"]
+"target_sensors" = ["Mag0"]
 
 "agent" = "Tilecoder"
 "rnn_cell" = "RNN"
