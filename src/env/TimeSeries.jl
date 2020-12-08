@@ -24,6 +24,8 @@ get_num_targets(self::TimeSeriesEnv) = 1
 # --- CRITTERBOT ---
 # ==================
 
+squish(vec) = (vec .- minimum(vec; dims=2)) ./ (maximum(vec; dims=2) - minimum(vec; dims=2))
+
 mutable struct Critterbot <: TimeSeriesEnv
     num_steps::Int
     num_features::Int
@@ -74,7 +76,82 @@ end
 MinimalRLCore.get_state(cb::Critterbot) = cb.data[1:cb.num_features, cb.idx]
 MinimalRLCore.get_reward(cb::Critterbot) = cb.data[cb.num_features+1:end, cb.idx] #
 
-squish(vec) = (vec .- minimum(vec; dims=2)) ./ (maximum(vec; dims=2) - minimum(vec; dims=2))
+
+mutable struct CritterbotTPC <: TimeSeriesEnv
+    num_steps::Int
+    num_features::Int
+
+    idx::Int
+    obs_data::Array{Float64}
+    rewards::Array{Float64}
+    discounts::Array{Float64}
+end
+
+function CritterbotTPC(obs_sensors; γ=0.9875)
+    # all_sensors = vcat(obs_sensors, target_sensors)
+
+    volts = CritterbotTPCUtils.loadSensor(["Motor$(i)0" for i in 0:2])
+    cur = CritterbotTPCUtils.loadSensor(["Motor$(i)2" for i in 0:2])
+
+    rewards = sum(abs.(cur .* volt); dims=1)
+    light3 = GVFN.CritterbotUtils.loadSensor("Light3")
+    discounts = (light3 .< 1020) .* γ
+
+    num_features = length(obs_sensors)
+    feats = squish(CritterbotTPCUtils.loadSensor(obs_sensors)
+    
+    return CritterbotTPC(
+        CritterbotUtils.numSteps(),
+        num_features,        
+        0,
+        feats,
+        rewards,
+        discounts)
+end
+
+function CritterbotTPC(obs_sensors, γs::AbstractArray; γ=0.9875)
+    # all_sensors = vcat(obs_sensors, target_sensors)
+    num_features = length(obs_sensors)*length(γs)
+    feats = squish(CritterbotUtils.getReturns(obs_sensors, γs))
+
+    volts = CritterbotTPCUtils.loadSensor(["Motor$(i)0" for i in 0:2])
+    cur = CritterbotTPCUtils.loadSensor(["Motor$(i)2" for i in 0:2])
+
+    rewards = sum(abs.(cur .* volt); dims=1)
+    light3 = GVFN.CritterbotUtils.loadSensor("Light3")
+    discounts = (light3 .< 1020).*γ
+    
+    return CritterbotTPC(
+        CritterbotUtils.numSteps(),
+        num_features,        
+        0,
+        feats,
+        rewards,
+        discounts)
+end
+
+CritterbotTPC(obs_sensors, γ_str::String) =
+    CritterbotTPC(obs_sensors, eval(Meta.parse(γ_str)))
+
+# Hack to use same features as targets; just duplicate the data in new cols
+# CritterbotTPC(sensors::Vector{Int}) = Critterbot(sensors, sensors)
+get_num_features(cb::CritterbotTPC) = cb.num_features
+# get_num_targets(cb::CritterbotTPC) = 1
+
+function MinimalRLCore.start!(cb::CritterbotTPC)
+    cb.idx = 1
+    return MinimalRLCore.get_state(cb)
+end
+
+function MinimalRLCore.step!(cb::CritterbotTPC)
+    cb.idx += 1
+    return MinimalRLCore.get_state(cb), MinimalRLCore.get_reward(cb)
+end
+
+# Data for each sensor in a row, so that we can access data for all sensors by col
+MinimalRLCore.get_state(cb::CritterbotTPC) = cb.obs_data[:, cb.idx]
+MinimalRLCore.get_reward(cb::CritterbotTPC) = [cb.rewards[cb.idx], cb.discounts[cb.idx]]
+
 
 # ===========
 # --- MSO ---
