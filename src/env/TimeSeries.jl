@@ -98,7 +98,7 @@ function CritterbotTPC(obs_sensors; γ=0.9875)
     discounts = (light3 .< 1020) .* γ
 
     num_features = length(obs_sensors)
-    feats = squish(CritterbotTPCUtils.loadSensor(obs_sensors)
+    feats = squish(CritterbotUtils.loadSensor(obs_sensors))
     
     return CritterbotTPC(
         CritterbotUtils.numSteps(),
