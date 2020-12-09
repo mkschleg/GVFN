@@ -7,6 +7,7 @@ agent_settings!(as::Reproduce.ArgParseSettings, agent::Type{<:MinimalRLCore.Abst
 # Specialized Agents
 include("agent/timeseries.jl")
 include("agent/critterbot.jl")
+include("agent/critterbot_tpc.jl")
 include("agent/RGTDAgent.jl")
 
 

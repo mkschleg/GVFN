@@ -85,20 +85,23 @@ mutable struct CritterbotTPC <: TimeSeriesEnv
     obs_data::Array{Float64}
     rewards::Array{Float64}
     discounts::Array{Float64}
+    the_all_seeing_eye::Array{Float64}
 end
 
 function CritterbotTPC(obs_sensors; γ=0.9875)
     # all_sensors = vcat(obs_sensors, target_sensors)
 
-    volts = CritterbotTPCUtils.loadSensor(["Motor$(i)0" for i in 0:2])
-    cur = CritterbotTPCUtils.loadSensor(["Motor$(i)2" for i in 0:2])
+    volts = CritterbotUtils.loadSensor(["Motor$(i)0" for i in 0:2])
+    cur = CritterbotUtils.loadSensor(["Motor$(i)2" for i in 0:2])
 
-    rewards = sum(abs.(cur .* volt); dims=1)
+    rewards = sum(abs.(cur .* volts); dims=1)
     light3 = GVFN.CritterbotUtils.loadSensor("Light3")
     discounts = (light3 .< 1020) .* γ
 
     num_features = length(obs_sensors)
     feats = squish(CritterbotUtils.loadSensor(obs_sensors))
+
+    the_all_seeing_eye = CritterbotUtils.loadSensor("powerToGoal-$(γ)")
     
     return CritterbotTPC(
         CritterbotUtils.numSteps(),
@@ -106,7 +109,8 @@ function CritterbotTPC(obs_sensors; γ=0.9875)
         0,
         feats,
         rewards,
-        discounts)
+        discounts,
+        the_all_seeing_eye)
 end
 
 function CritterbotTPC(obs_sensors, γs::AbstractArray; γ=0.9875)
@@ -114,12 +118,14 @@ function CritterbotTPC(obs_sensors, γs::AbstractArray; γ=0.9875)
     num_features = length(obs_sensors)*length(γs)
     feats = squish(CritterbotUtils.getReturns(obs_sensors, γs))
 
-    volts = CritterbotTPCUtils.loadSensor(["Motor$(i)0" for i in 0:2])
-    cur = CritterbotTPCUtils.loadSensor(["Motor$(i)2" for i in 0:2])
+    volts = CritterbotUtils.loadSensor(["Motor$(i)0" for i in 0:2])
+    cur = CritterbotUtils.loadSensor(["Motor$(i)2" for i in 0:2])
 
-    rewards = sum(abs.(cur .* volt); dims=1)
+    rewards = sum(abs.(cur .* volts); dims=1)
     light3 = GVFN.CritterbotUtils.loadSensor("Light3")
     discounts = (light3 .< 1020).*γ
+
+    the_all_seeing_eye = CritterbotUtils.loadSensor("powerToGoal-$(γ)")
     
     return CritterbotTPC(
         CritterbotUtils.numSteps(),
@@ -127,7 +133,8 @@ function CritterbotTPC(obs_sensors, γs::AbstractArray; γ=0.9875)
         0,
         feats,
         rewards,
-        discounts)
+        discounts,
+        the_all_seeing_eye)
 end
 
 CritterbotTPC(obs_sensors, γ_str::String) =
@@ -151,6 +158,7 @@ end
 # Data for each sensor in a row, so that we can access data for all sensors by col
 MinimalRLCore.get_state(cb::CritterbotTPC) = cb.obs_data[:, cb.idx]
 MinimalRLCore.get_reward(cb::CritterbotTPC) = [cb.rewards[cb.idx], cb.discounts[cb.idx]]
+ground_truth(cb::CritterbotTPC) = [cb.the_all_seeing_eye[cb.idx]]
 
 
 # ===========
