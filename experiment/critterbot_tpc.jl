@@ -1,4 +1,4 @@
-module CritterbotExperiment
+module CritterbotTPCExperiment
 
 using GVFN: MackeyGlass, MSO, ACEA, step!, start!
 using GVFN
@@ -29,17 +29,12 @@ function get_env(parsed)
     # --- get the environment ---
 
     env_t = parsed["env"]
-    # if env_t == "MackeyGlass"
-    #     env = MackeyGlass()
-    # elseif env_t == "MSO"
-    #     env = MSO()
-    # elseif env_t == "ACEA"
-    #     env = ACEA()
+
     env = if env_t == "Critterbot"
         if "env_gammas" ∈ keys(parsed)
-            Critterbot(parsed["observation_sensors"], parsed["target_sensors"], parsed["env_gammas"])
+            CritterbotTPC(parsed["observation_sensors"], parsed["env_gammas"])
         else
-            Critterbot(parsed["observation_sensors"], parsed["target_sensors"])
+            CritterbotTPC(parsed["observation_sensors"])
         end
     else
         throw(DomainError("Environment $(env_t) not implemented, try in Timeseries.jl!"))
@@ -52,19 +47,19 @@ function get_agent(parsed, rng)
 
     Agent_t = parsed["agent"]
     if Agent_t == "GVFN"
-        agent = GVFN.CritterbotGVFNAgent(parsed; rng=rng)
+        agent = GVFN.CritterbotTPCGVFNAgent(parsed; rng=rng)
     elseif Agent_t == "OriginalRNN"
-        agent = GVFN.CritterbotOriginalRNNAgent(parsed;rng=rng)
+        agent = GVFN.CritterbotTPCOriginalRNNAgent(parsed;rng=rng)
     elseif Agent_t == "RNN"
-        agent = GVFN.CritterbotRNNAgent(parsed;rng=rng)
+        agent = GVFN.CritterbotTPCRNNAgent(parsed;rng=rng)
     elseif Agent_t == "AuxTasks"
-        agent = GVFN.CritterbotAuxTaskAgent(parsed;rng=rng)
+        agent = GVFN.CritterbotTPCAuxTaskAgent(parsed;rng=rng)
     elseif Agent_t == "OriginalAuxTasks"
-        agent = GVFN.CritterbotOriginalAuxTaskAgent(parsed;rng=rng)
+        agent = GVFN.CritterbotTPCOriginalAuxTaskAgent(parsed;rng=rng)
     elseif Agent_t == "Tilecoder"
-        agent = GVFN.CritterbotTCAgent(parsed; rng=rng)
+        agent = GVFN.CritterbotTPCTCAgent(parsed; rng=rng)
     elseif Agent_t == "ANN"
-        agent = GVFN.CritterbotFCAgent(parsed; rng=rng)
+        agent = GVFN.CritterbotTPCFCAgent(parsed; rng=rng)
     else
         throw(DomainError("Agent $(Agent_t) not implemented!"))
     end
@@ -78,7 +73,7 @@ label_results(predictions, gt) = Dict("Predictions"=>predictions,
 default_config(cell="GRU", tau=1, seed=1) = Dict(
     "save_dir"=>"DefaultConfig",
     "exp_file"=>"experiment/timeseries.jl",
-    "exp_module_name" => "CritterbotExperiment",
+    "exp_module_name" => "CritterbotTPCExperiment",
     "exp_func_name" => "main_experiment",
     "arg_iter_type" => "iter",
 
@@ -174,13 +169,13 @@ function main_experiment(parsed::Dict; working = false, progress=false)
 
             s_tp1, r = step!(env)
             
-            pred = step!(agent, s_tp1, r, false, rng)
+            pred = step!(agent, s_tp1, Float32.(r), false, rng)
             
             # println(size(pred))
             predictions[step, :] .= Flux.data(pred)
 
             if step > horizon
-                gt[step-horizon, :] = r
+                gt[step-horizon, :] = GVFN.ground_truth(env)
             end
 
             if progress

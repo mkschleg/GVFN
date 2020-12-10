@@ -25,3 +25,7 @@ outdir/
 */.ipynb_checkpoints/*
 
 .DS_Store
+
+*.pdf
+*.png
+*.mp4
