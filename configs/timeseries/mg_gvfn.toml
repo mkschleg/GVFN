@@ -18,7 +18,8 @@ arg_iter_type = "iter"
 "batchsize" = 32
 "gamma_low" = 0.2
 "gamma_high" = 0.95
-
+"base_exponent" = 2.0
+"horde" = "LinSpacing"
 
 "gvfn_opt" = "Descent"
 "model_opt" = "ADAM"
@@ -28,8 +29,8 @@ arg_iter_type = "iter"
 [sweep_args]
 "gvfn_stepsize" = [1e-6,5e-6,0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005]
 "model_stepsize" = [0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05]
-"activation" = ["bounded1","bounded5","bounded10"]
-"horde" = ["Exponential", "LinSpacing"]
+"activation" = ["bounded10"]
+
 "num_gvfs" = [4, 8]
 
 "gvfn_tau" = [1,2,4,8,16,32]
