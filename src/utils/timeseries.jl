@@ -73,6 +73,13 @@ function get_horde(parsed::Dict)
         return Horde(
             map(γ->GVF(NormalizedCumulant(1-γ, FeatureCumulant(1)), ConstantDiscount(γ),NullPolicy()), Γ)
         )
+    elseif horde_t == "List"
+        N = length(parsed["gamma_list"])
+        Γs = parsed["gamma_list"]
+        Γ = Float32.(vcat([Γs for _=1:num_targets]...))
+        return Horde(
+            map(γ->GVF(NormalizedCumulant(1-γ, FeatureCumulant(1)), ConstantDiscount(γ),NullPolicy()), Γ)
+        )
     else
         throw(DomainError("Invalid horde type: $(horde_t)"))
     end

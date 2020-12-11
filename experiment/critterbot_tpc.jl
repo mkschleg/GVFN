@@ -30,7 +30,11 @@ function get_env(parsed)
 
     env_t = parsed["env"]
 
+
     env = if env_t == "Critterbot"
+        if parsed["observation_sensors"] isa String
+            parsed["observation_sensors"] = eval(Meta.parse(parsed["observation_sensors"]))
+        end
         if "env_gammas" ∈ keys(parsed)
             CritterbotTPC(parsed["observation_sensors"], parsed["env_gammas"])
         else
@@ -187,10 +191,10 @@ function main_experiment(parsed::Dict; working = false, progress=false)
         # Save dummy data and quit early
         if exc isa ErrorException && (exc.msg == "Loss is infinite" || exc.msg == "Loss is NaN" || exc.msg == "Loss is Inf")
             predictions .= Inf
-            valPreds .= Inf
-            testPreds .= Inf
+            # valPreds .= Inf
+            # testPreds .= Inf
 
-            results = label_results(predictions, gt, valPreds, vgt, testPreds, tgt)
+            results = label_results(predictions, gt)
             GVFN.save_results(savefile, results, working)
         else
             rethrow()

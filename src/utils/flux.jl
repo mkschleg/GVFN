@@ -85,6 +85,8 @@ bounded1(a) = clamp.(a, -1.0f0,1.0f0)
 bounded1(a::TrackedArray) = track(bounded1, a)
 Flux.Tracker.@grad function bounded1(a)  bounded1(Flux.data(a)), Δ -> Δ end
 
+tanh10(x) = 10*tanh(x)
+
 function get_activation(act::AbstractString)
     if act == "sigmoid"
         return GVFN.sigmoid
@@ -100,6 +102,8 @@ function get_activation(act::AbstractString)
         return bounded5
     elseif act == "bounded10"
         return bounded10
+    elseif act == "tanh10"
+        return tanh10
     elseif act == "relu"
         return Flux.relu
     elseif act == "softplus"
