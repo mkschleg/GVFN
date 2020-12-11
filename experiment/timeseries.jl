@@ -55,6 +55,8 @@ function get_agent(parsed, rng)
     Agent_t = parsed["agent"]
     if Agent_t == "GVFN"
         agent = GVFN.TimeSeriesGVFNAgent(parsed; rng=rng)
+    elseif Agent_t == "GVFNJoint"
+        agent = GVFN.TimeSeriesGVFNJointAgent(parsed; rng=rng)
     elseif Agent_t == "OriginalRNN"
         agent = GVFN.TimeSeriesOriginalRNNAgent(parsed;rng=rng)
     elseif Agent_t == "RNN"

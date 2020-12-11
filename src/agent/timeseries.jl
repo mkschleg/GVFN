@@ -131,6 +131,99 @@ function TimeSeriesGVFNAgent(parsed; rng=Random.GLOBAL_RNG)
                     model_clip_coeff)
 end
 
+function TimeSeriesGVFNJointAgent(parsed; rng=Random.GLOBAL_RNG)
+
+    # ==========================================
+    # hyperparameters
+    # ==========================================
+    alg_string = parsed["update_fn"]
+    horizon = Int(parsed["horizon"])
+    batchsize=parsed["batchsize"]
+
+    τ=parsed["gvfn_tau"]
+    gvfn_opt_string = parsed["gvfn_opt"]
+    gvfn_stepsize = parsed["gvfn_stepsize"]
+
+    model_clip_coeff = Float32(parsed["model_clip_coeff"])
+    # ==========================================
+
+
+    # =============================================================
+    # Instantiations
+    # =============================================================
+
+    # GVFN learning update
+    gvfn_lu_func = getproperty(GVFN, Symbol(alg_string))
+    lu = gvfn_lu_func()
+
+    # Optimizers
+    opt = begin
+        gvfn_opt_func = getproperty(Flux, Symbol(gvfn_opt_string))
+        gvfn_opt = gvfn_opt_func(gvfn_stepsize)
+
+        if "model_opt" ∈ keys(parsed)
+            model_opt_string = parsed["model_opt"]
+            model_stepsize = parsed["model_stepsize"]
+
+            model_opt_func = getproperty(Flux, Symbol(model_opt_string))
+            model_opt = model_opt_func(model_stepsize)
+            (gvfn=gvfn_opt, model=model_opt)
+        else
+            gvfn_opt
+        end
+    end
+    # =============================================================
+
+    # get horde
+    horde = TimeSeriesUtils.get_horde(parsed)
+    num_gvfs = length(horde)
+
+    # Normalizer
+    normalizer = TimeSeriesUtils.getNormalizer(parsed)
+
+    # build model
+    act_str = get(parsed, "activation", "sigmoid")
+    act = FluxUtils.get_activation(act_str)
+    init_func = (dims...)->glorot_uniform(rng, dims...)
+    chain = Flux.Chain(
+        GVFR_RNN(parsed["num_features"], horde, act; init=init_func),
+        # Flux.data,
+        Flux.Dense(num_gvfs, num_gvfs, relu; initW=init_func),
+        Flux.Dense(num_gvfs, parsed["num_targets"]; initW=init_func)
+    )
+
+    # Init observation sequence and hidden state
+    obs_sequence = DataStructures.CircularBuffer{Obs_t}(τ)
+    hidden_state_init = GVFN.get_initial_hidden_state(chain)
+
+    # buffers for temporal offsets
+    obs_buff, h_buff = getTemporalBuffers(horizon)
+
+    # buffers for batches
+    batch_obs, batch_h, batch_gvfn_target, batch_model_target = getNewBatch()
+
+
+    TimeSeriesAgent(lu,
+                    opt,
+                    chain,
+                    normalizer,
+
+                    obs_sequence,
+                    hidden_state_init,
+
+                    h_buff,
+                    obs_buff,
+
+                    batch_h,
+                    batch_obs,
+                    batch_gvfn_target,
+                    batch_model_target,
+
+                    horizon,
+                    batchsize,
+                    model_clip_coeff)
+end
+
 function TimeSeriesOriginalRNNAgent(parsed; rng=Random.GLOBAL_RNG)
     # RNN architecture originally used, with RNN -> linear output
 

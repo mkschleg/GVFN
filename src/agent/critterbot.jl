@@ -246,7 +246,7 @@ function CritterbotFCAgent(parsed; rng=Random.GLOBAL_RNG)
             Flux.Chain(
                 Dense(parsed["num_features"], parsed["network_arch"][1]["size"], FluxUtils.get_activation(parsed["network_arch"][1]["act"]); initW=init_func),
                 [Dense(parsed["network_arch"][i-1]["size"], parsed["network_arch"][i]["size"], FluxUtils.get_activation(parsed["network_arch"][i]["act"]); initW=init_func) for i ∈ 2:length(parsed["network_arch"])]...,
-                Dense(parsed["network_arch"][end][1], parsed["num_targets"])
+                Dense(parsed["network_arch"][end]["size"], parsed["num_targets"])
             )
         end
     else
