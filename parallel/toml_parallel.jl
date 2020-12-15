@@ -19,6 +19,9 @@ function main()
     @add_arg_table as begin
         "config"
         arg_type=String
+        "--dest"
+        arg_type=String
+        default="./"
         "--numworkers"
         arg_type=Int
         default=4
@@ -27,13 +30,12 @@ function main()
     end
     parsed = parse_args(as)
     
-    experiment = Experiment(parsed["config"])
+    experiment = Experiment(parsed["config"], parsed["dest"])
 
     create_experiment_dir(experiment; tldr="")
     add_experiment(experiment; settings_dir="settings")
     ret = job(experiment; num_workers=parsed["numworkers"])
     post_experiment(experiment, ret)
-
 end
 
 main()
