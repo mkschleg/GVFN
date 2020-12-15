@@ -250,7 +250,11 @@ function main_experiment(parsed::Dict; working = false, progress=false)
     # save results
     GVFN.save_results(savefile, results, working)
 
-    return results
+    if working
+        return results
+    else
+        return
+    end
 end
 
 end
