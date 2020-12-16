@@ -4,7 +4,7 @@ This repo contains the code used for the majority of results in "General Value F
 
 ## Authors
 
-- [Matthew Schlegel][https://mkschleg.github.io]
+- [Matthew Schlegel](https://mkschleg.github.io)
 - Andrew Jacobsen
 - Zaheer Abbas
 - Andrew Patterson
