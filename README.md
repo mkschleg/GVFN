@@ -8,8 +8,8 @@ This repo contains the code used for the majority of results in "General Value F
 - Andrew Jacobsen
 - Zaheer Abbas
 - Andrew Patterson
-- Adam White
-- Martha White
+- [Adam White](https://sites.ualberta.ca/~amw8/)
+- [Martha White](https://webdocs.cs.ualberta.ca/~whitem/)
 
 
 ## Abstract
