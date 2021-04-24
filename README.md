@@ -1,6 +1,6 @@
 # GVFN
 
-This repo contains the code used for the majority of results in "General Value Function Networks". This was accepted to JAIR and is currently in the production phase.
+This repo contains the code used for the majority of results in "General Value Function Networks". This was published in JAIR in 2021 https://www.jair.org/index.php/jair/article/view/12105.
 
 ## Authors
 
